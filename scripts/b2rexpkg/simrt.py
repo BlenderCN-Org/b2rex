@@ -25,6 +25,7 @@ class BlenderAgent(object):
         self.in_lock = in_lock
         self.out_queue = out_queue
         self.out_lock = out_lock
+        self.initialize_logger()
 
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
@@ -89,14 +90,7 @@ class BlenderAgent(object):
                             client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                                       client.session_id,
                                                       obj.LocalID, cmd[2])
-                            #for group in client.group_manager.group_store:
-                                #    print ':\t\t\t',  group.GroupName
-                                #print client.region.objects.avatar_store
-                                #print obj
-                                #if hasattr(obj, 'PCode') and obj.PCode ==  PCodeEnum.Avatar:
-                                    #    print "AVATAR!"
-
-    def initialize_agent(self):
+    def initialize_logger(self):
         logger = logging.getLogger("client.example")
 
         if self.verbose:
@@ -111,8 +105,7 @@ class BlenderAgent(object):
             # otherwise it is NOTSET(=0) which means to log nothing.
             logging.getLogger('').setLevel(logging.DEBUG)
 
-        # example from a pure agent perspective
-
+    def initialize_agent(self):
         # let's disable inventory handling for this example
         settings = Settings()
         settings.ENABLE_INVENTORY_MANAGEMENT = False
