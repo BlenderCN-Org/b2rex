@@ -130,12 +130,16 @@ class BaseApplication(Screen):
             return
         # create the regions panel
         self.addRegionsPanel(regions, griddata)
-        rtButton = CheckBox(self.CallbackAction(self.onToggleRt),
+        try:
+            import eventlet
+            rtButton = CheckBox(self.CallbackAction(self.onToggleRt),
 			          self.rt_on,
 				  'RT',
 				  [20, 20],
 				  tooltip='Toggle real time connection')
-        self.buttonLayout.addWidget(rtButton, 'RtButton')
+            self.buttonLayout.addWidget(rtButton, 'RtButton')
+        except:
+            print "no support for real time communications"
 
         self.addStatus("Connected to " + griddata['gridnick'])
 
