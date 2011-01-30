@@ -29,7 +29,7 @@ class BlenderAgent(object):
         self.out_queue = out_queue
         self.out_lock = out_lock
 
-    def login(self, firstline=""):
+    def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
         out_queue = self.out_queue
@@ -39,11 +39,12 @@ class BlenderAgent(object):
         client = self.initialize_agent()
 
         # Now let's log it in
-        loginuri = 'http://localhost:9000/go.cgi'
-        firstname = 'caedes'
-        lastname = 'caedes'
-        password = 'nemesis'
         region = 'Taiga'
+        firstname, lastname = username.split(" ", 1)
+        if not server_url.endswith("/"):
+            server_url = server_url + "/"
+        loginuri = server_url + 'go.cgi'
+        print loginuri, firstname, lastname, password
         api.spawn(client.login, loginuri, firstname, lastname, password, start_location = region, connect_region = True)
 
         client.sit_on_ground()
@@ -247,14 +248,16 @@ class BlenderAgent(object):
 
 
 class GreenletsThread(Thread):
-    def __init__ (self):
-        import Blender
-        self.firstline = 'Blender '+ str(Blender.Get('version'))
+    def __init__ (self, server_url, username, password, firstline="Hello"):
         self.running = True
         self.cmd_out_queue = []
         self.cmd_in_queue = []
         self.cmd_out_lock = threading.RLock()
         self.cmd_in_lock = threading.RLock()
+        self.server_url = server_url
+        self.username = username
+        self.password = password
+        self.firstline = firstline
         Thread.__init__(self)
 
     def apply_position(self, obj_uuid, pos):
@@ -266,7 +269,10 @@ class GreenletsThread(Thread):
                    self.cmd_in_lock,
                    self.cmd_out_queue,
                    self.cmd_out_lock)
-        agent.login(self.firstline)
+        agent.login(self.server_url,
+                    self.username,
+                    self.password,
+                    self.firstline)
         print "quitting"
         self.running = False
 
@@ -288,9 +294,9 @@ class GreenletsThread(Thread):
 
 running = False
 
-def run_thread():
+def run_thread(server_url, username, password, firstline):
     global running
-    running = GreenletsThread()
+    running = GreenletsThread(server_url, username, password, firstline)
     running.start()
     return running
 

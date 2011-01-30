@@ -145,7 +145,12 @@ class BaseApplication(Screen):
             self.simrt.addCmd("quit")
             self.rt_on = False
         else:
-            self.simrt = simrt.run_thread()
+
+            firstline = 'Blender '+ str(Blender.Get('version'))
+            self.simrt = simrt.run_thread(self.exportSettings.server_url,
+                                          self.exportSettings.username,
+                                          self.exportSettings.password,
+                                          firstline)
             Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
 
