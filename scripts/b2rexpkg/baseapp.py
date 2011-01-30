@@ -150,7 +150,16 @@ class BaseApplication(Screen):
             self.rt_on = True
 
 
-    def processCommand(self, objId, pos):
+    def processCommand(self, cmd, *args):
+        if cmd == 'pos':
+            self.processPosCommand(*args)
+        elif cmd == 'msg':
+            self.processMsgCommand(*args)
+
+    def processMsgCommand(self, username, message):
+        self.addStatus("message from "+username+": "+message)
+
+    def processPosCommand(self, objId, pos):
         obj = self.find_with_uuid(str(objId), Blender.Object.Get, "objects")
         def get_mesh(name=""):
             if name:

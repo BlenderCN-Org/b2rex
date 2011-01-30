@@ -97,9 +97,10 @@ class BlenderAgent(object):
         res = client.region.message_handler.register("ChatFromSimulator")
         queue = []
         def onChatFromViewer(packet):
-            print packet
             fromname = packet["ChatData"][0]["FromName"].split(" ")[0]
             message = packet["ChatData"][0]["Message"]
+            with out_lock:
+                out_queue.append(['msg',fromname, message])
             if message.startswith("#"):
                 return
             if fromname.strip() == client.firstname:
@@ -164,11 +165,9 @@ class BlenderAgent(object):
                                  Z=Helpers.packed_u32_to_float(objdata, pos+
                                                              8, MIN_HEIGHT,
                                                              MAX_HEIGHT))
-                   print pos
                    with out_lock:
-                       print ObjectData_block["FullID"], ObjectData_block["ParentID"]
-                       out_queue.append([ObjectData_block["FullID"],pos])
-                       out_queue.append([ObjectData_block["ParentID"],pos])
+                       out_queue.append(['pos',ObjectData_block["FullID"],pos])
+                       #out_queue.append([ObjectData_block["ParentID"],pos])
                elif len(objdata) == 12:
                     # 8 bit precision update.
 
@@ -203,7 +202,7 @@ class BlenderAgent(object):
                         """
                     print pos,"SMALL"
                     with out_lock:
-                        out_queue.append([ObjectData_block["FullID"],pos])
+                        out_queue.append(['pos',ObjectData_block["FullID"],pos])
               
                else:
                     print "Unparsed update of size ",len(objdata)
