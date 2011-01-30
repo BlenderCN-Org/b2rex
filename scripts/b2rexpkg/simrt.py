@@ -1,24 +1,21 @@
 # standard
 import re
 import getpass, sys, logging
-from threading import Thread
-import threading
-
-from optparse import OptionParser
 import time
+import popen2
+from threading import Thread, RLock
 
 # related
 from eventlet import api
 
 # pyogp
-from pyogp.lib.client.agent import Agent
 from pyogp.lib.base.helpers import Helpers
+from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
+
+from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.enums import PCodeEnum
 
-from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
-
-import popen2
 
 class BlenderAgent(object):
     do_megahal = False
@@ -44,7 +41,6 @@ class BlenderAgent(object):
         if not server_url.endswith("/"):
             server_url = server_url + "/"
         loginuri = server_url + 'go.cgi'
-        print loginuri, firstname, lastname, password
         api.spawn(client.login, loginuri, firstname, lastname, password, start_location = region, connect_region = True)
 
         client.sit_on_ground()
@@ -144,33 +140,17 @@ class BlenderAgent(object):
            objdata = ObjectData_block["ObjectData"]
            if len(objdata) == 48:
                pos = 0
-               pos = Vector3(X=Helpers.packed_u32_to_float(objdata, pos+
-                                                         0,
-                                                         -0.5*REGION_SIZE,
-                                                         1.5*REGION_SIZE),
-                             Y=Helpers.packed_u32_to_float(objdata, pos+
-                                                         4,
-                                                         -0.5*REGION_SIZE,
-                                                         1.5*REGION_SIZE),
-                             Z=Helpers.packed_u32_to_float(objdata, pos+
-                                                         8, MIN_HEIGHT,
-                                                         MAX_HEIGHT))
+               pos = Vector3(X=Helpers.bytes_to_float(objdata, pos+0),
+                             Y=Helpers.bytes_to_float(objdata, pos+4),
+                             Z=Helpers.bytes_to_float(objdata, pos+8))
                with out_lock:
                    out_queue.append(['pos',ObjectData_block["FullID"],pos])
-                   #out_queue.append([ObjectData_block["ParentID"],pos])
            elif len(objdata) == 12:
-                # 8 bit precision update.
-
-                # Position. U8Vec3.
-                # Velocity. U8Vec3.
-                # Acceleration. U8Vec3.
-                # Rotation. U8Rot(4xU8).
-                # Angular velocity. U8Vec3
-
+                # position only packed as 3 floats
                 pos = Vector3(
-                    X=Helpers.packed_u32_to_float(objdata,  0, -0.5*REGION_SIZE, 1.5*REGION_SIZE),
-                    Y=Helpers.packed_u32_to_float(objdata,  4, -0.5*REGION_SIZE, 1.5*REGION_SIZE),
-                    Z=Helpers.packed_u32_to_float(objdata,  8, MIN_HEIGHT, MAX_HEIGHT))
+                    X=Helpers.bytes_to_float(objdata,  0),
+                    Y=Helpers.bytes_to_float(objdata,  4),
+                    Z=Helpers.bytes_to_float(objdata,  8))
                 """
                 object_properties['Velocity'] = Vector3(
                     X=Helpers.packed_u8_to_float(objdata,  3, -REGION_SIZE, REGION_SIZE),
@@ -252,8 +232,8 @@ class GreenletsThread(Thread):
         self.running = True
         self.cmd_out_queue = []
         self.cmd_in_queue = []
-        self.cmd_out_lock = threading.RLock()
-        self.cmd_in_lock = threading.RLock()
+        self.cmd_out_lock = RLock()
+        self.cmd_in_lock = RLock()
         self.server_url = server_url
         self.username = username
         self.password = password
