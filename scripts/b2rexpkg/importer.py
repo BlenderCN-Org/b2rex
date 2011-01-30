@@ -245,6 +245,14 @@ class Importer(object):
         sys.stderr.flush()
         return new_mesh
 
+    def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
+                       offset_z=20.0):
+        obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+
+    def unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
+                       offset_z=20.0):
+        return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
+
     def import_object(self, scenegroup, offset_x=128.0, offset_y=128.0,
                       offset_z=20.0):
         """
@@ -256,7 +264,7 @@ class Importer(object):
                              "objects")
         if not obj:
             obj = Blender.Object.New("Mesh", scenegroup["asset"])
-        obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+        self.apply_position(obj, pos)
         rot_q = parse_vector(scenegroup["rotation"])
         b_q = Blender.Mathutils.Quaternion(rot_q[3], rot_q[0], rot_q[1],
                                            rot_q[2])

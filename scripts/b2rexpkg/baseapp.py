@@ -16,9 +16,12 @@ ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
-class BaseApplication(object):
+class BaseApplication(Screen):
     def __init__(self, title="RealXtend"):
-        self.screen = Screen()
+        self.positions = {}
+        Screen.__init__(self)
+        self.rt_on = False
+        self.screen = self
         self.gridinfo = GridInfo()
         self.buttons = {}
         self.settings_visible = False
@@ -125,9 +128,66 @@ class BaseApplication(object):
             self.addStatus("Error: couldnt connect to " + base_url, ERROR)
             traceback.print_exc()
             return
-        self.addRegionsPanel(regions, griddata)
         # create the regions panel
+        self.addRegionsPanel(regions, griddata)
+        rtButton = CheckBox(self.CallbackAction(self.onToggleRt),
+			          self.rt_on,
+				  'RT',
+				  [20, 20],
+				  tooltip='Toggle real time connection')
+        self.buttonLayout.addWidget(rtButton, 'RtButton')
+
         self.addStatus("Connected to " + griddata['gridnick'])
+
+    def onToggleRt(self):
+        from b2rexpkg import simrt
+        if self.rt_on:
+            self.simrt.addCmd("quit")
+            self.rt_on = False
+        else:
+            self.simrt = simrt.run_thread()
+            Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
+            self.rt_on = True
+
+
+    def processCommand(self, objId, pos):
+        obj = self.find_with_uuid(str(objId), Blender.Object.Get, "objects")
+        def get_mesh(name=""):
+            if name:
+                return Blender.NMesh.GetRaw(name)
+            else:
+                return map(lambda s: s.getData(0, True), Blender.Object.Get())
+        if not obj:
+            obj = self.find_with_uuid(str(objId), get_mesh, "meshes")
+
+        if obj:
+            self.apply_position(obj, [pos.X, pos.Y, pos.Z])
+            self.positions[str(objId)] = list(obj.getLocation())
+            Blender.Window.QRedrawAll()
+            print "IN_CMDS",pos.X,obj
+
+    def processUpdate(self, obj):
+        obj_uuid = self.get_uuid(obj)
+        if obj_uuid:
+            pos = list(obj.getLocation())
+            if not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
+                self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
+                self.positions[obj_uuid] = pos
+
+    def processUpdates(self):
+        selected = Blender.Object.GetSelected()
+        for obj in selected:
+            self.processUpdate(obj)
+
+    def _draw(self):
+        Screen._draw(self)
+        if self.rt_on:
+            cmds = self.simrt.getQueue()
+            if cmds:
+                for cmd in cmds:
+                    self.processCommand(*cmd)
+            self.processUpdates()
+            Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
 
     def toggleSettings(self):
         """
