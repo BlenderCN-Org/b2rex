@@ -19,6 +19,8 @@ IMMEDIATE = 2
 class BaseApplication(Screen):
     def __init__(self, title="RealXtend"):
         self.positions = {}
+        self.rotations = {}
+        self.scales = {}
         Screen.__init__(self)
         self.rt_on = False
         self.screen = self
@@ -162,6 +164,10 @@ class BaseApplication(Screen):
     def processCommand(self, cmd, *args):
         if cmd == 'pos':
             self.processPosCommand(*args)
+        elif cmd == 'rot':
+            self.processRotCommand(*args)
+        elif cmd == 'scale':
+            self.processScaleCommand(*args)
         elif cmd == 'msg':
             self.processMsgCommand(*args)
 
@@ -184,13 +190,54 @@ class BaseApplication(Screen):
             Blender.Window.QRedrawAll()
             print "IN_CMDS",pos.X,obj
 
+    def processScaleCommand(self, objId, scale):
+        obj = self.find_with_uuid(str(objId), Blender.Object.Get, "objects")
+        def get_mesh(name=""):
+            if name:
+                return Blender.NMesh.GetRaw(name)
+            else:
+                return map(lambda s: s.getData(0, True), Blender.Object.Get())
+        if not obj:
+            obj = self.find_with_uuid(str(objId), get_mesh, "meshes")
+
+        if obj:
+            prev_scale = list(obj.getSize())
+            if not prev_scale == scale:
+                obj.setSize(scale.X, scale.Y, scale.Z)
+                self.scales[str(objId)] = list(obj.getSize())
+                Blender.Window.QRedrawAll()
+
+
+    def processRotCommand(self, objId, rot):
+        obj = self.find_with_uuid(str(objId), Blender.Object.Get, "objects")
+        def get_mesh(name=""):
+            if name:
+                return Blender.NMesh.GetRaw(name)
+            else:
+                return map(lambda s: s.getData(0, True), Blender.Object.Get())
+        if not obj:
+            obj = self.find_with_uuid(str(objId), get_mesh, "meshes")
+
+        if obj:
+            self.apply_rotation(obj, [rot.X, rot.Y, rot.Z, rot.W])
+            self.rotations[str(objId)] = list(obj.getEuler())
+            Blender.Window.QRedrawAll()
+
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
         if obj_uuid:
             pos = list(obj.getLocation())
-            if not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
+            rot = list(obj.getEuler())
+            scale = list(obj.getSize())
+            if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
+                self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
+                self.rotations[obj_uuid] = rot
+                self.positions[obj_uuid] = pos
+            elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
                 self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
                 self.positions[obj_uuid] = pos
+            if not obj_uuid in self.scales or not scale == self.scales[obj_uuid]:
+                self.simrt.apply_scale(obj_uuid, scale)
 
     def processUpdates(self):
         selected = Blender.Object.GetSelected()

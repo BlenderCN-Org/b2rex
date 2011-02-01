@@ -2,6 +2,7 @@
 import re
 import getpass, sys, logging
 import time
+import math
 import popen2
 from threading import Thread, RLock
 
@@ -62,13 +63,15 @@ class BlenderAgent(object):
         res.subscribe(self.onChatFromViewer)
         res = client.region.objects.message_handler.register("ObjectUpdate")
         res.subscribe(self.onObjectUpdate)
+        res = client.region.message_handler.register("SimStats")
+        res.subscribe(self.onSimStats)
 
         # wait 30 seconds for some object data to come in
         now = time.time()
         start = now
-        while now - start < 30 and client.running:
-            api.sleep(0)
-            now = time.time()
+        #while now - start < 30 and client.running:
+            #    api.sleep(0)
+            #now = time.time()
 
         client.say("going on")
         client.stand()
@@ -81,15 +84,48 @@ class BlenderAgent(object):
                 while len(in_queue):
                     in_queue.pop()
             if cmds:
+                cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
+                # 10-rot
                 for cmd in cmds:
                     if cmd[0] == "quit":
                         client.logout()
+                    elif cmd[0] == "scale":
+                        cmd_type = 12
+                        obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                        if obj:
+                            data = cmd[2]
+                            client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
+                                                      client.session_id,
+                                                      obj.LocalID, data, cmd_type)
                     elif cmd[0] == "pos":
                         obj = client.region.objects.get_object_from_store(FullID=cmd[1])
                         if obj:
+                            pos = cmd[2]
+                            rot = cmd[3]
+                            if rot:
+                                X = rot[0]
+                                Y = rot[1]
+                                Z = rot[2]
+                                W = rot[3]
+                                norm = math.sqrt((X*X)+(Y*Y)+(Z*Z)+(W*W))
+                                if norm == 0:
+                                    data = [pos[0], pos[1], pos[2]]
+                                else:
+                                    norm = 1.0 / norm
+                                    if W < 0:
+                                        X = -X
+                                        Y = -Y
+                                        Z = -Z
+                                    data = [pos[0], pos[1], pos[2],
+                                            #0.0,0.0,0.0,
+                                            #0.0,0.0,0.0,
+                                            X*norm, Y*norm, Z*norm]
+                                    cmd_type = 11 # PrimGroupRotation
+                            else:
+                                data = [pos[0], pos[1], pos[2]]
                             client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                                       client.session_id,
-                                                      obj.LocalID, cmd[2])
+                                                      obj.LocalID, data, cmd_type)
     def initialize_logger(self):
         logger = logging.getLogger("client.example")
 
@@ -121,52 +157,69 @@ class BlenderAgent(object):
             firstline = megahal_r.readline()
         return client
 
+    def onSimStats(self, packet):
+        return
+        for stat in packet["Stat"]:
+            print stat["StatID"],stat["StatValue"]
+        print "received sim stats!",packet
+
+    def parseVector3(self, objdata, pos=0):
+        vector = Vector3(X=Helpers.bytes_to_float(objdata, pos+0),
+                     Y=Helpers.bytes_to_float(objdata, pos+4),
+                     Z=Helpers.bytes_to_float(objdata, pos+8))
+        return vector
+
+    def parseNormQuaternion(self, objdata, pos=0):
+        rot_x = Helpers.bytes_to_float(objdata, pos+0)
+        rot_y = Helpers.bytes_to_float(objdata, pos+4)
+        rot_z = Helpers.bytes_to_float(objdata, pos+8)
+        rot_w = 1.0 - (rot_x * rot_x) - (rot_y * rot_y) - (rot_z * rot_z)
+        if rot_w < 0.0:
+            rot_w = 0.0
+        else:
+            rot_w = math.sqrt(rot_w)
+        rot = Quaternion(X=rot_x,
+                     Y=rot_y,
+                     Z=rot_z,
+                     W=rot_w)
+        return rot
+
     def onObjectUpdate(self, packet):
-       REGION_SIZE = 256.0
-       MIN_HEIGHT = -REGION_SIZE
-       MAX_HEIGHT = 4096.0
-       out_queue = self.out_queue
-       out_lock = self.out_lock
-       #print "onObjectUpdate"
-       for ObjectData_block in packet['ObjectData']:
-           #print           ObjectData_block.name,          ObjectData_block.get_variable("ID"), ObjectData_block.var_list,           ObjectData_block.get_variable("State")
+        out_queue = self.out_queue
+        out_lock = self.out_lock
+        for ObjectData_block in packet['ObjectData']:
+           #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
            objdata = ObjectData_block["ObjectData"]
-           if len(objdata) == 48:
-               pos = 0
-               pos = Vector3(X=Helpers.bytes_to_float(objdata, pos+0),
-                             Y=Helpers.bytes_to_float(objdata, pos+4),
-                             Z=Helpers.bytes_to_float(objdata, pos+8))
+           if "Scale" in ObjectData_block.var_list:
+               scale = ObjectData_block["Scale"]
                with out_lock:
-                   out_queue.append(['pos',ObjectData_block["FullID"],pos])
+                   out_queue.append(['scale', ObjectData_block["FullID"], scale])
+           if len(objdata) == 48:
+               pos_vector = self.parseVector3(objdata, 0)
+               vel = self.parseVector3(objdata, 12)
+               acc = self.parseVector3(objdata, 24)
+               rot = self.parseNormQuaternion(objdata, 36)
+               with out_lock:
+                   out_queue.append(['pos',ObjectData_block["FullID"],pos_vector])
+                   out_queue.append(['rot',ObjectData_block["FullID"],rot])
            elif len(objdata) == 12:
-                # position only packed as 3 floats
-                pos = Vector3(
-                    X=Helpers.bytes_to_float(objdata,  0),
-                    Y=Helpers.bytes_to_float(objdata,  4),
-                    Z=Helpers.bytes_to_float(objdata,  8))
-                """
-                object_properties['Velocity'] = Vector3(
-                    X=Helpers.packed_u8_to_float(objdata,  3, -REGION_SIZE, REGION_SIZE),
-                    Y=Helpers.packed_u8_to_float(objdata,  4, -REGION_SIZE, REGION_SIZE),
-                    Z=Helpers.packed_u8_to_float(objdata,  5, -REGION_SIZE, REGION_SIZE))
-                object_properties['Acceleration'] = Vector3(
-                    X=Helpers.packed_u8_to_float(objdata,  6, -REGION_SIZE, REGION_SIZE),
-                    Y=Helpers.packed_u8_to_float(objdata,  7, -REGION_SIZE, REGION_SIZE),
-                    Z=Helpers.packed_u8_to_float(objdata,  8, -REGION_SIZE, REGION_SIZE))
-                object_properties['Rotation'] = Quaternion(
-                    X=Helpers.packed_u8_to_float(objdata,  9, -1.0, 1.0),
-                    Y=Helpers.packed_u8_to_float(objdata, 10, -1.0, 1.0),
-                    Z=Helpers.packed_u8_to_float(objdata, 11, -1.0, 1.0),
-                    W=Helpers.packed_u8_to_float(objdata, 12, -1.0, 1.0)) 
-                object_properties['AngularVelocity'] = Vector3(
-                    X=Helpers.packed_u8_to_float(objdata, 13, -REGION_SIZE, REGION_SIZE),
-                    Y=Helpers.packed_u8_to_float(objdata, 14, -REGION_SIZE, REGION_SIZE),
-                    Z=Helpers.packed_u8_to_float(objdata, 15, -REGION_SIZE, REGION_SIZE))
-                    """
-                print pos,"SMALL"
-                with out_lock:
-                    out_queue.append(['pos',ObjectData_block["FullID"],pos])
-          
+               print "SMALL UPDATE", ObjectData_block.vars
+               if True:
+                   # position only packed as 3 floats
+                   pos = self.parseVector3(objdata, 0)
+                   with out_lock:
+                       out_queue.append(['pos',ObjectData_block["FullID"],pos])
+               elif ObjectData_block.Type in [4, 20, 12, 28]:
+                   # position only packed as 3 floats
+                   scale = self.parseVector3(objdata, 0)
+                   with out_lock:
+                       out_queue.append(['scale',ObjectData_block["FullID"],scale])
+               elif ObjectData_block.Type in [2, 10]:
+                   # rotation only packed as 3 floats
+                   rot = self.parseNormQuaternion(objdata, 0)
+                   with out_lock:
+                       out_queue.append(['rot',ObjectData_block["FullID"],rot])
+         
            else:
                 print "Unparsed update of size ",len(objdata)
 
@@ -233,9 +286,13 @@ class GreenletsThread(Thread):
         self.firstline = firstline
         Thread.__init__(self)
 
-    def apply_position(self, obj_uuid, pos):
-        cmd = ['pos', obj_uuid, pos]
-        self.addCmd(['pos', obj_uuid, pos])
+    def apply_position(self, obj_uuid, pos, rot=None):
+        cmd = ['pos', obj_uuid, pos, rot]
+        self.addCmd(cmd)
+
+    def apply_scale(self, obj_uuid, scale):
+        cmd = ['scale', obj_uuid, scale]
+        self.addCmd(cmd)
 
     def run(self):
         agent = BlenderAgent(self.cmd_in_queue,

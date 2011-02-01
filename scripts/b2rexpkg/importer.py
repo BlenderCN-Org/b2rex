@@ -25,9 +25,9 @@ import traceback
 CONNECTION_ERRORS = (urllib2.HTTPError, urllib2.URLError, httplib.BadStatusLine,
                                      xml.parsers.expat.ExpatError)
 
-default_timeout = 4
+#default_timeout = 10
 
-socket.setdefaulttimeout(default_timeout)
+#socket.setdefaulttimeout(default_timeout)
 
 class Importer(object):
     def __init__(self, gridinfo):
@@ -253,6 +253,26 @@ class Importer(object):
                        offset_z=20.0):
         return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
 
+
+    def unapply_rotation(self, euler):
+        r = 180.0/math.pi
+        euler = Blender.Mathutils.Euler([-euler[0]*r, -euler[1]*r,
+                                        (euler[2]*r)+180.0])
+        q = euler.toQuat()
+        return [q.x, q.y, q.z, q.w]
+        
+    def apply_rotation(self, obj, rot):
+        b_q = Blender.Mathutils.Quaternion(rot[3], rot[0], rot[1],
+                                           rot[2])
+        #b_q1 = b_q.cross(Blender.Mathutils.Quaternion([0,-1,0]))
+        #b_q2 = b_q1.cross(Blender.Mathutils.Quaternion([-1,0,0]))
+        #b_q3 = b_q2.cross(Blender.Mathutils.Quaternion([0,0,-1]))
+        r = math.pi/180.0;
+        if b_q:
+            b_q = Blender.Mathutils.Quaternion(b_q.w, b_q.x, b_q.y, b_q.z)
+            euler = b_q.toEuler()
+            obj.setEuler(-euler[0]*r, -euler[1]*r, (euler[2]-180.0)*r)
+
     def import_object(self, scenegroup, offset_x=128.0, offset_y=128.0,
                       offset_z=20.0):
         """
@@ -265,17 +285,7 @@ class Importer(object):
         if not obj:
             obj = Blender.Object.New("Mesh", scenegroup["asset"])
         self.apply_position(obj, pos)
-        rot_q = parse_vector(scenegroup["rotation"])
-        b_q = Blender.Mathutils.Quaternion(rot_q[3], rot_q[0], rot_q[1],
-                                           rot_q[2])
-        #b_q1 = b_q.cross(Blender.Mathutils.Quaternion([0,-1,0]))
-        #b_q2 = b_q1.cross(Blender.Mathutils.Quaternion([-1,0,0]))
-        #b_q3 = b_q2.cross(Blender.Mathutils.Quaternion([0,0,-1]))
-        r = math.pi/180.0;
-        if b_q:
-            b_q = Blender.Mathutils.Quaternion(b_q.w, b_q.x, b_q.y, b_q.z)
-            euler = b_q.toEuler()
-            obj.setEuler(-euler[0]*r, euler[1]*r, (euler[2]-180.0)*r)
+        self.apply_rotation(obj, parse_vector(scenegroup["rotation"]))
         obj.setSize(scale[0], scale[1], scale[2])
         obj.properties['opensim'] = {}
         obj.properties['opensim']['uuid'] = str(scenegroup["id"])
