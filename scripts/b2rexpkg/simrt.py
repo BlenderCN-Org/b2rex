@@ -31,6 +31,7 @@ class BlenderAgent(object):
 
     def onRexPrimData(self, packet):
         rexdata = packet[1]["Parameter"]
+        self.logger.debug("REXPRIMDATA "+str(len(rexdata)))
         if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
         drawType = struct.unpack("<b", rexdata[0])[0]
@@ -202,6 +203,8 @@ class BlenderAgent(object):
         settings.ENABLE_INVENTORY_MANAGEMENT = False
         settings.ENABLE_EQ_LOGGING = False
         settings.ENABLE_CAPS_LOGGING = False
+        settings.ENABLE_REGION_EVENT_QUEUE = False
+        settings.REGION_EVENT_QUEUE_POLL_INTERVAL = 1
 
         #First, initialize the agent
         client = Agent(settings = settings, handle_signals=False)
@@ -358,7 +361,7 @@ class GreenletsThread(Thread):
                     self.username,
                     self.password,
                     self.firstline)
-        print "quitting"
+        agent.logger.debug("Quitting")
         self.running = False
 
     def addCmd(self, cmd):
