@@ -4,6 +4,7 @@ import getpass, sys, logging
 import time
 import math
 import popen2
+import struct
 from threading import Thread, RLock
 
 # related
@@ -20,13 +21,60 @@ from pyogp.lib.client.enums import PCodeEnum
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, in_lock, out_queue, out_lock):
         self.in_queue = in_queue
         self.in_lock = in_lock
         self.out_queue = out_queue
         self.out_lock = out_lock
         self.initialize_logger()
+
+    def onRexPrimData(self, packet):
+        rexdata = packet[1]["Parameter"]
+        if len(rexdata) < 102:
+            rexdata = rexdata + ('\0'*(102-len(rexdata)))
+        drawType = struct.unpack("<b", rexdata[0])[0]
+        RexIsVisible = struct.unpack("<?", rexdata[1])[0]
+        RexCastShadows = struct.unpack("<?", rexdata[2])[0]
+        RexLightCreatesShadows = struct.unpack("<?", rexdata[3])[0]
+        RexDescriptionTexture = struct.unpack("<?", rexdata[4])[0]
+        RexScaleToPrim = struct.unpack("<?", rexdata[5])[0]
+        RexDrawDistance = struct.unpack("<f", rexdata[6:6+4])[0]
+        RexLOD = struct.unpack("<f", rexdata[10:10+4])[0]
+        RexMeshUUID = UUID(bytes=rexdata[14:14+16])
+        RexCollisionMeshUUID = UUID(bytes=rexdata[30:30+16])
+        RexParticleScriptUUID = UUID(bytes=rexdata[46:46+16])
+        RexAnimationPackageUUID = UUID(bytes=rexdata[62:62+16])
+        animname = ""
+        idx = 78
+        while rexdata[idx] != '\0':
+            idx += 1
+        animname = rexdata[78:idx+1]
+        pos = idx+1
+        RexAnimationRate = struct.unpack("<f", rexdata[pos:pos+4])[0]
+        materialsCount = struct.unpack("<b", rexdata[pos+4])[0]
+        pos = pos+5
+        for i in range(materialsCount):
+            assettype = struct.unpack("<b", rexdata[pos])[0]
+            matuuid_b = rexdata[pos+1:pos+1+16]
+            matuuid = UUID(bytes=matuuid_b)
+            matindex = struct.unpack("<b", rexdata[pos+17])[0]
+            pos = pos + 18
+        if not len(rexdata) > pos:
+            self.logger.debug("RexPrimData: no more data")
+            return
+        idx = pos
+        while rexdata[idx] != '\0':
+              idx += 1
+        RexClassName = rexdata[pos:idx+1]
+        self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
+
+    def onGenericMessage(self, packet):
+        if packet["MethodData"][0]["Method"] == "RexPrimData":
+            self.onRexPrimData(packet["ParamList"])
+        else:
+            self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
+
 
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
@@ -42,8 +90,9 @@ class BlenderAgent(object):
         firstname, lastname = username.split(" ", 1)
         if not server_url.endswith("/"):
             server_url = server_url + "/"
-        loginuri = server_url + 'go.cgi'
-        api.spawn(client.login, loginuri, firstname, lastname, password, start_location = region, connect_region = True)
+        loginuri = server_url
+        api.spawn(client.login, loginuri, firstname, lastname, password,
+                  start_location = region, connect_region = True)
 
         client.sit_on_ground()
 
@@ -65,6 +114,12 @@ class BlenderAgent(object):
         res.subscribe(self.onObjectUpdate)
         res = client.region.message_handler.register("SimStats")
         res.subscribe(self.onSimStats)
+        res = client.region.message_handler.register("RexPrimData")
+        res.subscribe(self.onRexPrimData)
+        res = client.region.message_handler.register("GenericMessage")
+        res.subscribe(self.onGenericMessage)
+        res = client.region.objects.message_handler.register("RexPrimData")
+        res.subscribe(self.onRexPrimData)
 
         # wait 30 seconds for some object data to come in
         now = time.time()
@@ -127,7 +182,7 @@ class BlenderAgent(object):
                                                       client.session_id,
                                                       obj.LocalID, data, cmd_type)
     def initialize_logger(self):
-        logger = logging.getLogger("client.example")
+        self.logger = logging.getLogger("b2rex.simrt")
 
         if self.verbose:
             console = logging.StreamHandler()
@@ -160,8 +215,8 @@ class BlenderAgent(object):
     def onSimStats(self, packet):
         return
         for stat in packet["Stat"]:
-            print stat["StatID"],stat["StatValue"]
-        print "received sim stats!",packet
+            self.logger.debug(str(stat["StatID"]) + " " + str(stat["StatValue"]))
+        self.logger.debug("received sim stats!"+str(packet))
 
     def parseVector3(self, objdata, pos=0):
         vector = Vector3(X=Helpers.bytes_to_float(objdata, pos+0),
@@ -203,7 +258,6 @@ class BlenderAgent(object):
                    out_queue.append(['pos',ObjectData_block["FullID"],pos_vector])
                    out_queue.append(['rot',ObjectData_block["FullID"],rot])
            elif len(objdata) == 12:
-               print "SMALL UPDATE", ObjectData_block.vars
                if True:
                    # position only packed as 3 floats
                    pos = self.parseVector3(objdata, 0)
@@ -221,7 +275,8 @@ class BlenderAgent(object):
                        out_queue.append(['rot',ObjectData_block["FullID"],rot])
          
            else:
-                print "Unparsed update of size ",len(objdata)
+                # missing sizes: 28, 40, 44, 64
+                self.logger.debug("Unparsed update of size "+str(len(objdata)))
 
     def onChatFromViewer(self, packet):
         client = self.client
@@ -269,8 +324,8 @@ class BlenderAgent(object):
                 megahal_w.write(message+"\n\n")
                 megahal_w.flush()
                 client.say(str(megahal_r.readline()))
-        print "chat",packet["ChatData"][0]["Message"]
-        print "chat",packet["ChatData"][0]["FromName"]
+        self.logger.debug("chat:"+packet["ChatData"][0]["Message"])
+        self.logger.debug("chat:"+packet["ChatData"][0]["FromName"])
 
 
 class GreenletsThread(Thread):
