@@ -2,27 +2,40 @@
 Import sim data into Blender.
 """
 
-from siminfo import GridInfo
-from simconnection import SimConnection
-import tools.oimporter
-import xml.parsers.expat
-import httplib
-
-import urllib2
-import struct
 import sys
+import logging
+
+logging.getLogger("b2rex.importer")
+
+from .siminfo import GridInfo
+from .simconnection import SimConnection
+
+import xml.parsers.expat
+
+if sys.version_info[0] == 2:
+    import httplib
+    import urllib2
+    import Blender
+    from urllib2 import HTTPError, URLError
+else:
+    import http.client as httplib
+    import urllib.request as urllib2
+    from urllib.error import HTTPError, URLError
+
+import struct
 import subprocess
-import Blender
 import math
-from tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDINATES
-from tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
-from tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
-from tools.oimporter.omaterial import OgreMaterial
+from .tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDINATES
+from .tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
+from .tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
+from .tools.oimporter.omaterial import OgreMaterial
 
 import socket
 import traceback
 
-CONNECTION_ERRORS = (urllib2.HTTPError, urllib2.URLError, httplib.BadStatusLine,
+import bpy
+
+CONNECTION_ERRORS = (HTTPError, URLError, httplib.BadStatusLine,
                                      xml.parsers.expat.ExpatError)
 
 #default_timeout = 10
@@ -84,7 +97,7 @@ class Importer(object):
                         self._imported_assets[texture] = btex
                         return btex
                     except:
-                        print "error opening:", dest
+                        logger.error(("error opening:", dest))
 
     def create_blender_material(self, ogremat, mat):
         """
@@ -162,11 +175,11 @@ class Importer(object):
             return self._imported_assets[scenegroup["asset"]]
         asset = self.gridinfo.getAsset(scenegroup["asset"])
         if not asset["type"] == "43":
-            print "("+asset["type"]+")"
+            logger.debug("("+asset["type"]+")")
             return
         mesh = tools.oimporter.parse(asset["data"])
         if not mesh:
-            print "error loading",scenegroup["asset"]
+            logger.debug("error loading",scenegroup["asset"])
             return
         try:
             new_mesh = Blender.NMesh.GetRaw(asset["name"]+scenegroup["asset"])
@@ -211,7 +224,7 @@ class Importer(object):
                 new_mesh.verts.append(Blender.NMesh.Vert(0.0,0.0,0.0))
                 indices_map.append(len(new_mesh.verts)-1)
         if not len(new_mesh.verts):
-            print "mesh with no vertex!!"
+            logger.debug("mesh with no vertex!!")
         # faces
         for idx in range(len(indices)/3):
             idx = idx*3
@@ -240,7 +253,7 @@ class Importer(object):
                 uv3 = get_uv(indices[idx+2], vbuffer, uvco_offset)
                 face.uv = (uv1, uv2, uv3)
         if not len(new_mesh.faces):
-            print "mesh with no faces!!"
+            logger.debug("mesh with no faces!!")
         sys.stderr.write("*")
         sys.stderr.flush()
         return new_mesh
@@ -454,11 +467,11 @@ if __name__ == '__main__':
     base_url = "http://127.0.0.1:9000"
     gridinfo = GridInfo()
     gridinfo.connect(base_url, "caedes caedes", "XXXXXX")
-    print gridinfo.getGridInfo()["gridnick"]
+    logger.debug(gridinfo.getGridInfo()["gridnick"])
     regions = gridinfo.getRegions()
     for id in regions:
         region = regions[id]
-        print " *", region["name"], region["x"], region["y"], id
+        logger.debug((" *", region["name"], region["x"], region["y"], id))
     importer = Importer(gridinfo)
     importer.import_region(id)
 

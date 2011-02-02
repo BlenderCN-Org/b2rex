@@ -2,10 +2,15 @@
  Converts xml messages coming from opensim rest into python structs.
 """
 
-import urllib2
+import sys
 import base64
 import binascii
 import xml.etree.ElementTree as ET
+
+if sys.version_info[0] == 3:
+    import urllib.request as urllib2
+else:
+    import urllib2
 
 class RestConnector(object):
     def __init__(self):

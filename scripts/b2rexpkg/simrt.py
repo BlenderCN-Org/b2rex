@@ -18,6 +18,18 @@ from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.enums import PCodeEnum
 
+# Extra asset and inventory types for rex
+import pyogp.lib.client.enums
+pyogp.lib.client.enums.AssetType.OgreMesh = 43
+pyogp.lib.client.enums.AssetType.OgreSkeleton = 44
+pyogp.lib.client.enums.AssetType.OgreMaterial = 45
+pyogp.lib.client.enums.AssetType.OgreParticles = 47
+pyogp.lib.client.enums.AssetType.FlashAnimation = 49
+pyogp.lib.client.enums.AssetType.GAvatar = 46
+
+pyogp.lib.client.enums.InventoryType.OgreParticles = 41
+pyogp.lib.client.enums.InventoryType.FlashAnimation = 42
+pyogp.lib.client.enums.InventoryType.OgreMaterial = 41
 
 class BlenderAgent(object):
     do_megahal = False
@@ -143,6 +155,7 @@ class BlenderAgent(object):
                 cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
                 # 10-rot
                 for cmd in cmds:
+                    api.sleep(0)
                     if cmd[0] == "quit":
                         client.logout()
                     elif cmd[0] == "scale":
@@ -221,27 +234,6 @@ class BlenderAgent(object):
             self.logger.debug(str(stat["StatID"]) + " " + str(stat["StatValue"]))
         self.logger.debug("received sim stats!"+str(packet))
 
-    def parseVector3(self, objdata, pos=0):
-        vector = Vector3(X=Helpers.bytes_to_float(objdata, pos+0),
-                     Y=Helpers.bytes_to_float(objdata, pos+4),
-                     Z=Helpers.bytes_to_float(objdata, pos+8))
-        return vector
-
-    def parseNormQuaternion(self, objdata, pos=0):
-        rot_x = Helpers.bytes_to_float(objdata, pos+0)
-        rot_y = Helpers.bytes_to_float(objdata, pos+4)
-        rot_z = Helpers.bytes_to_float(objdata, pos+8)
-        rot_w = 1.0 - (rot_x * rot_x) - (rot_y * rot_y) - (rot_z * rot_z)
-        if rot_w < 0.0:
-            rot_w = 0.0
-        else:
-            rot_w = math.sqrt(rot_w)
-        rot = Quaternion(X=rot_x,
-                     Y=rot_y,
-                     Z=rot_z,
-                     W=rot_w)
-        return rot
-
     def onObjectUpdate(self, packet):
         out_queue = self.out_queue
         out_lock = self.out_lock
@@ -253,27 +245,27 @@ class BlenderAgent(object):
                with out_lock:
                    out_queue.append(['scale', ObjectData_block["FullID"], scale])
            if len(objdata) == 48:
-               pos_vector = self.parseVector3(objdata, 0)
-               vel = self.parseVector3(objdata, 12)
-               acc = self.parseVector3(objdata, 24)
-               rot = self.parseNormQuaternion(objdata, 36)
+               pos_vector = Vector3(objdata)
+               vel = Vector3(objdata[12:])
+               acc = Vector3(objdata[24:])
+               rot = Quaternion(objdata[36:])
                with out_lock:
                    out_queue.append(['pos',ObjectData_block["FullID"],pos_vector])
                    out_queue.append(['rot',ObjectData_block["FullID"],rot])
            elif len(objdata) == 12:
                if True:
                    # position only packed as 3 floats
-                   pos = self.parseVector3(objdata, 0)
+                   pos = Vector3(objdata)
                    with out_lock:
                        out_queue.append(['pos',ObjectData_block["FullID"],pos])
                elif ObjectData_block.Type in [4, 20, 12, 28]:
                    # position only packed as 3 floats
-                   scale = self.parseVector3(objdata, 0)
+                   scale = Vector3(objdata)
                    with out_lock:
                        out_queue.append(['scale',ObjectData_block["FullID"],scale])
                elif ObjectData_block.Type in [2, 10]:
                    # rotation only packed as 3 floats
-                   rot = self.parseNormQuaternion(objdata, 0)
+                   rot = Quaternion(objdata)
                    with out_lock:
                        out_queue.append(['rot',ObjectData_block["FullID"],rot])
          

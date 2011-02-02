@@ -69,8 +69,8 @@ if __name__ == "__main__":
     f = open("../../test/pack.material")
     material = {"data":f.read()}
     f.close()
-    print ogremat
+    #print ogremat
     ogremat.parse_material(material)
-    for a in ogremat.__dict__:
-        print " *", a, ogremat.__dict__[a]
+    #for a in ogremat.__dict__:
+        #    print " *", a, ogremat.__dict__[a]
 
