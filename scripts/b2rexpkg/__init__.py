@@ -35,15 +35,17 @@ bl_addon_info = {
         'func=detail&aid=22011&group_id=153&atid=469',
     'category': 'System'}
 
+import sys
 import traceback
-
 from .siminfo import GridInfo
 from .importer import Importer
 from .tools.logger import logger
 
-try:
+if sys.version_info[0] == 2:
     import Blender
-except:
+    from .b24.hooks import start, write
+    from .b24 import hacks
+else:
     from bpy.props import PointerProperty
     from .b25.ops import Connect, Export, Import, Settings
     from .b25.panels.main import ConnectionPanel

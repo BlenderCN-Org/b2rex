@@ -7,7 +7,7 @@ import b2rexpkg
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg.simconnection import SimConnection
 from b2rexpkg.ogre_exporter import OgreExporter
-from b2rexpkg.hooks import reset_uuids
+from .b24.hooks import reset_uuids
 import Blender
 
 class Exporter(object):
