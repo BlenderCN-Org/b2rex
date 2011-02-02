@@ -133,8 +133,11 @@ class Base24Application(Screen, BaseApplication):
     def getSelected(self):
         return Blender.Objects.GetSelected()
 
-    def queueRedraw(self):
-        Blender.Window.QRedrawAll()
+    def queueRedraw(self, pars=None):
+        if pars:
+            Blender.Window.Redraw(Blender.Window.Types[pars])
+        else:
+            Blender.Window.QRedrawAll()
 
     def addCallbackButton(self, button_name, layout, tooltip=""):
         """

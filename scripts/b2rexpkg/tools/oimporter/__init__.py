@@ -5,9 +5,9 @@ Ogre Importer
 import sys
 import struct
 if sys.version_info[0] == 2:
-    import StringIO
+    from StringIO import StringIO
 else:
-    import io as StringIO
+    from io import BytesIO as StringIO
 from  .oserializer import Serializer
 from .otypes import MeshChunkID, MeshCids, GeomCids, SubMeshCids
 
@@ -138,7 +138,7 @@ class MeshImporter(oserializer.Serializer):
         """
         Parse the given raw ogre mesh data into python.
         """
-        reader = StringIO.StringIO(data)
+        reader = StringIO(data)
         meshes = []
         if self.ReadShort(reader) == MeshChunkID.Header:
             fileVersion = self.ReadString(reader)

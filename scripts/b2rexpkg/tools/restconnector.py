@@ -6,6 +6,8 @@ import sys
 import base64
 import binascii
 import xml.etree.ElementTree as ET
+import logging
+logger = logging.getLogger("b2rex.restconnector")
 
 if sys.version_info[0] == 3:
     import urllib.request as urllib2
@@ -44,6 +46,7 @@ class RestConnector(object):
         Get an url using GET method.
         """
         self._connect()
+        logger.debug(self._url + relative_url)
         req = urllib2.Request(self._url + relative_url)
         req = self.opener.open(req)
         return req.read()

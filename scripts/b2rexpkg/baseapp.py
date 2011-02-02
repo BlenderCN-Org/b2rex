@@ -107,7 +107,7 @@ class BaseApplication(Importer, Exporter):
         if obj:
             self.apply_position(obj, [pos.X, pos.Y, pos.Z])
             self.positions[str(objId)] = list(obj.getLocation())
-            Blender.Window.QRedrawAll()
+            self.queueRedraw()
             logger.debug(("IN_CMDS",pos.X,obj))
 
     def processScaleCommand(self, objId, scale):
@@ -117,7 +117,7 @@ class BaseApplication(Importer, Exporter):
             if not prev_scale == scale:
                 obj.setSize(scale.X, scale.Y, scale.Z)
                 self.scales[str(objId)] = list(obj.getSize())
-                Blender.Window.QRedrawAll()
+                self.queueRedraw()
 
 
     def processRotCommand(self, objId, rot):
@@ -156,7 +156,7 @@ class BaseApplication(Importer, Exporter):
     def addRegionsPanel(self, regions, griddata):
         pass
 
-    def queueRedraw(self):
+    def queueRedraw(self, pars=None):
         pass
 
     def getObjectProperties(self, obj):

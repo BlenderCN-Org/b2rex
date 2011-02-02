@@ -6,7 +6,7 @@ def arr2float(v):
 
 def parse_vector(text):
     text = text.strip()[1:-1]
-    return map(lambda s: float(s.strip()), text.split(','))
+    return list(map(lambda s: float(s.strip()), text.split(',')))
 
 def get_vertex_legend(vertex):
     result_dict = {}

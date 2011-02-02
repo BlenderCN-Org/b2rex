@@ -11,7 +11,7 @@ class Serializer(object):
         reader.seek(self.currentChunkLength-self.ChunkOverheadSize, 1)
     def ReadMany(self, reader, count, reader_func):
         dest = []
-        for i in xrange(count):
+        for i in range(count):
             dest.append(reader_func(reader))
         return dest
     def ReadBytes(self, reader, count):
@@ -19,7 +19,8 @@ class Serializer(object):
     def ReadFloats(self, reader, count):
         return self.ReadMany(reader, count, self.ReadFloat)
     def ReadByte(self, reader):
-        return struct.unpack("c", reader.read(1))[0]
+        b = reader.read(1)
+        return struct.unpack("c", b)[0]
     def ReadBool(self, reader):
         return struct.unpack("?", reader.read(1))[0]
     def ReadFloat(self, reader):
@@ -41,13 +42,13 @@ class Serializer(object):
         return self.ReadMany(reader, count, self.ReadInt)
     def ReadShorts(self, reader, count):
         return self.ReadMany(reader, count, self.ReadShort)
-    def ReadString(self, reader, delimiter="\n"):
-        dest = ""
+    def ReadString(self, reader, delimiter=b"\n"):
+        dest = b""
         c = self.ReadByte(reader)
         while not c == delimiter:
             dest += c
             c = self.ReadByte(reader)
-        return dest
+        return bytes.decode(dest, "latin1")
     def ReadQuat(self, reader):
         return {"x":self.ReadFloat(reader), "y":self.ReadFloat(reader),
                 "z":self.ReadFloat(reader), "w":self.ReadFloat(reader)}
@@ -66,7 +67,7 @@ class Serializer(object):
         else:
             reader.seek(length, 1)
     def IsEOF(self, reader):
-        return reader.pos >= reader.len
+        return reader.tell() >= len(reader.getvalue())
         
 
 

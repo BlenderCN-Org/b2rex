@@ -5,7 +5,7 @@ Import sim data into Blender.
 import sys
 import logging
 
-logging.getLogger("b2rex.importer")
+logger = logging.getLogger("b2rex.importer")
 
 from .siminfo import GridInfo
 from .simconnection import SimConnection
@@ -17,10 +17,14 @@ if sys.version_info[0] == 2:
     import urllib2
     import Blender
     from urllib2 import HTTPError, URLError
+    bversion = 2
+    def bytes(text):
+        return text
 else:
     import http.client as httplib
     import urllib.request as urllib2
     from urllib.error import HTTPError, URLError
+    bversion = 3
 
 import struct
 import subprocess
@@ -29,6 +33,7 @@ from .tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDI
 from .tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
 from .tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
 from .tools.oimporter.omaterial import OgreMaterial
+from .tools import oimporter
 
 import socket
 import traceback
@@ -38,9 +43,9 @@ import bpy
 CONNECTION_ERRORS = (HTTPError, URLError, httplib.BadStatusLine,
                                      xml.parsers.expat.ExpatError)
 
-#default_timeout = 10
+default_timeout = 10
 
-#socket.setdefaulttimeout(default_timeout)
+socket.setdefaulttimeout(default_timeout)
 
 class Importer(object):
     def __init__(self, gridinfo):
@@ -66,13 +71,15 @@ class Importer(object):
         """
         Import the given texture from opensim.
         """
+        logger.debug(("texture", texture))
         if texture in self._imported_assets:
             return self._imported_assets[texture]
         else:
+            texture = texture.decode()
             tex = self.gridinfo.getAsset(texture)
             if "name" in tex:
                 try:
-                    btex = Blender.Texture.Get(tex["name"])
+                    btex = bpy.data.textures["name"]
                     # XXX should update
                     return btex
                 except:
@@ -108,39 +115,71 @@ class Importer(object):
         idx = 0
         mat_name = mat["name"].split("/")[0]
         try:
-            bmat = Blender.Material.Get(mat_name)
+            bmat = bpy.data.materials[mat_name]
         except:
-            bmat = Blender.Material.New(mat_name)
+            bmat = bpy.data.materials.new(mat_name)
         # material base properties
         if ogremat.doambient:
-            bmat.setAmb(ogremat.ambient)
+            if bversion == 2:
+                bmat.setAmb(ogremat.ambient)
+            else:
+                bmat.ambient = ogremat.ambient
         if ogremat.specular:
-            bmat.setSpec(1.0)
-            bmat.setSpecCol(ogremat.specular[:3])
-            bmat.setHardness(int(ogremat.specular[3]*4.0))
+            if bversion == 2:
+                bmat.setSpec(1.0)
+                bmat.setSpecCol(ogremat.specular[:3])
+                bmat.setHardness(int(ogremat.specular[3]*4.0))
+            else:
+                bmat.specular_intensity = 1.0
+                ogremat.specular[:3]
+                bmat.specular_color = ogremat.specular[:3]
+                bmat.specular_hardness = int(ogremat.specular[3]*4.0)
         if ogremat.alpha < 1.0:
-            bmat.setAlpha(ogremat.alpha)
+            bmat.alpha = ogremat.alpha
         # specular
-        layerMappings = {'normalMap':'NOR',
+        if bversion == 2:
+           layerMappings = {'normalMap':'NOR',
                          'heightMap':'DISP',
                          'reflectionMap':'REF',
                          'opacityMap':'ALPHA',
                          'lightMap':'AMB',
                          'specularMap':'SPEC' }
+        elif bversion == 2:
+           layerMappings = {'normalMap':'use_map_normal',
+                         'heightMap':'use_map_displacement',
+                         'reflectionMap':'use_map_reflect',
+                         'opacityMap':'use_map_alpha',
+                         'lightMap':'use_map_ambient',
+                         'specularMap':'use_map_specular' }
+
         for layerName, textureName in ogremat.layers.items():
             if layerName == 'shadowMap':
-                bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
+                if bversion == 2:
+                    bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
+                else:
+                    bmat.use_cast_buffer_shadows = True
             if textureName:
                 btex = self.import_texture(textureName)
                 if btex:
-                    mapto = 'COL'
+                    if bversion == 2:
+                        mapto = 'COL'
+                    else:
+                        mapto = 'use_map_color'
                     if layerName in layerMappings:
                         mapto = layerMappings[layerName]
                     if mapto == 'COL':
                         ogremat.btex = btex
-                    if mapto:
-                        mapto = Blender.Texture.MapTo[mapto]
-                    bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
+                    if bversion == 2:
+                        if mapto:
+                            mapto = Blender.Texture.MapTo[mapto]
+                        bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
+                    if bversion == 3:
+                        new_slot = bmat.texture_slots.add()
+                        setattr(new_slot, mapto, True)
+                        new_slot.texture = btex
+                        new_slot.texture_coords = 'ORCO'
+
+
                     idx += 1
         self._imported_materials[mat["name"]] = bmat
         return bmat
@@ -149,6 +188,7 @@ class Importer(object):
         """
         Import a material from opensim.
         """
+        logger.debug(("material", material))
         btex = None
         bmat = None
         gridinfo = self.gridinfo
@@ -171,23 +211,26 @@ class Importer(object):
         """
         Import mesh object from opensim scene.
         """
+        logger.debug(("mesh", scenegroup["asset"]))
         if scenegroup["asset"] in self._imported_assets:
             return self._imported_assets[scenegroup["asset"]]
         asset = self.gridinfo.getAsset(scenegroup["asset"])
         if not asset["type"] == "43":
             logger.debug("("+asset["type"]+")")
             return
-        mesh = tools.oimporter.parse(asset["data"])
+        mesh = oimporter.parse(asset["data"])
         if not mesh:
             logger.debug("error loading",scenegroup["asset"])
             return
         try:
-            new_mesh = Blender.NMesh.GetRaw(asset["name"]+scenegroup["asset"])
-            new_mesh.faces = []
-            new_mesh.verts = []
+            new_mesh = bpy.data.meshes[asset["name"]+scenegroup["asset"]]
+            new_mesh.faces.delete(1, range(len(new_mesh.faces)))
+            new_mesh.verts.delete(1, range(len(new_mesh.verts)))
             new_mesh.materials = []
+            print("new mesh!")
         except:
-            new_mesh = Blender.NMesh.New(asset["name"]+scenegroup["asset"])
+            new_mesh = bpy.data.meshes.new(asset["name"]+scenegroup["asset"])
+            print("new mesh - bak!")
         self._imported_assets[scenegroup["asset"]] = new_mesh
         for vertex, vbuffer, indices, materialName in mesh:
             self.import_submesh(new_mesh, vertex, vbuffer, indices, materialName)
@@ -213,26 +256,33 @@ class Importer(object):
         vertmaps = {}
         indices_map = []
         # vertices
-        for idx in xrange(max(indices)+1):
+        for idx in range(max(indices)+1):
             coords = get_vcoords(vbuffer, idx, pos_offset)
             if coords:
                 if not coords in vertmaps:
-                    new_mesh.verts.append(Blender.NMesh.Vert(*coords))
+                    new_mesh.verts.extend(*coords)
                     vertmaps[coords] = len(new_mesh.verts)-1
                 indices_map.append(vertmaps[coords])
             else:
-                new_mesh.verts.append(Blender.NMesh.Vert(0.0,0.0,0.0))
+                new_mesh.verts.extend(0.0,0.0,0.0)
                 indices_map.append(len(new_mesh.verts)-1)
         if not len(new_mesh.verts):
             logger.debug("mesh with no vertex!!")
         # faces
         for idx in range(len(indices)/3):
             idx = idx*3
-            new_mesh.hasVertexUV(False)
-            face = Blender.NMesh.Face([new_mesh.verts[indices_map[indices[idx]]],
-                                new_mesh.verts[indices_map[indices[idx+1]]],
-                                new_mesh.verts[indices_map[indices[idx+2]]]])
-            new_mesh.faces.append(face)
+            new_mesh.vertexUV = False
+            #face = [new_mesh.verts[indices_map[indices[idx]]],
+            #                    new_mesh.verts[indices_map[indices[idx+1]]],
+            #                    new_mesh.verts[indices_map[indices[idx+2]]]]
+            face = [indices_map[indices[idx]],
+                                indices_map[indices[idx+1]],
+                                indices_map[indices[idx+2]]]
+            new_mesh.faces.extend(face, ignoreDups=True)
+            if len(new_mesh.faces) == 0:
+                logger.debug("Degenerate face!")
+                continue
+            face = new_mesh.faces[len(new_mesh.faces)-1]
             if image:
                 face.image = image
             try:
@@ -251,7 +301,9 @@ class Importer(object):
                 uv1 = get_uv(indices[idx], vbuffer, uvco_offset)
                 uv2 = get_uv(indices[idx+1], vbuffer, uvco_offset)
                 uv3 = get_uv(indices[idx+2], vbuffer, uvco_offset)
-                face.uv = (uv1, uv2, uv3)
+                face.uv = (Blender.Mathutils.Vector(uv1),
+                           Blender.Mathutils.Vector(uv2),
+                           Blender.Mathutils.Vector(uv3))
         if not len(new_mesh.faces):
             logger.debug("mesh with no faces!!")
         sys.stderr.write("*")
@@ -300,8 +352,7 @@ class Importer(object):
         self.apply_position(obj, pos)
         self.apply_rotation(obj, parse_vector(scenegroup["rotation"]))
         obj.setSize(scale[0], scale[1], scale[2])
-        obj.properties['opensim'] = {}
-        obj.properties['opensim']['uuid'] = str(scenegroup["id"])
+        self.set_uuid(obj, str(scenegroup["id"]))
         return obj
 
     def import_group(self, groupid, scenegroup, retries,
@@ -331,11 +382,11 @@ class Importer(object):
                 obj.link(new_mesh)
                 # new_mesh properties have to be set here otherwise blender
                 # can crash!!
-                new_mesh.properties['opensim'] = {}
-                new_mesh.properties['opensim']['uuid'] = str(scenegroup["asset"])
+                self.set_uuid(new_mesh, str(scenegroup["asset"]))
                 scene = Blender.Scene.GetCurrent ()
                 if load_materials:
-                    new_mesh.setMaterials(materials)
+                    new_mesh.materials = materials
+                    #new_mesh.setMaterials(materials)
                 try:
                     scene.link(obj)
                 except RuntimeError:
@@ -432,9 +483,9 @@ class Importer(object):
         con = SimConnection()
         con.connect(self.gridinfo._url)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})["res"]
-        objects = Blender.Object.GetSelected()
+        objects = self.getSelected()
         if not objects:
-            objects = Blender.Object.Get()
+            objects = bpy.data.objects
         for obj in objects:
             obj_uuid = str(self.get_uuid(obj))
             if obj_uuid:
@@ -451,7 +502,7 @@ class Importer(object):
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
         for groupid, scenegroup in scenedata['res'].items():
             getattr(self, action+"_group")(groupid, scenegroup, 10)
-            Blender.Window.Redraw(Blender.Window.Types['VIEW3D'])
+            self.queueRedraw('VIEW3D')
 
 
 if __name__ == '__main__':
