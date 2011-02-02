@@ -23,6 +23,8 @@ class OgreMaterial(object):
         return None
     def parse_material(self, material):
         self.textures = []
+        print(material)
+        return
         material_data = material["data"]
         basemap = False
         currlayer = None
@@ -69,8 +71,8 @@ if __name__ == "__main__":
     f = open("../../test/pack.material")
     material = {"data":f.read()}
     f.close()
-    print ogremat
+    print(ogremat)
     ogremat.parse_material(material)
     for a in ogremat.__dict__:
-        print " *", a, ogremat.__dict__[a]
+        print(" *", a, ogremat.__dict__[a])
 

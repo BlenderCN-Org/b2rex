@@ -3,11 +3,12 @@ Ogre Importer
 """
 
 import sys
+import io
 import struct
-import oserializer
-import otypes
-import StringIO
-from otypes import MeshChunkID, MeshCids, GeomCids, SubMeshCids
+#import oserializer
+#import otypes
+from .oserializer import Serializer
+from .otypes import MeshChunkID, MeshCids, GeomCids, SubMeshCids
 
 class MeshImporter(oserializer.Serializer):
     """
@@ -93,7 +94,7 @@ class MeshImporter(oserializer.Serializer):
                 raise Exception("Missing geometry data")
             vertex, vbuffer = self.ReadGeometry(reader)
         else:
-            print "no shared!"
+            print("no shared!")
         cid = self.ReadChunk(reader)
         while not self.IsEOF(reader) and cid in SubMeshCids:
             if cid == MeshChunkID.SubMeshOperation:
@@ -133,7 +134,8 @@ class MeshImporter(oserializer.Serializer):
         """
         Parse the given raw ogre mesh data into python.
         """
-        reader = StringIO.StringIO(data)
+#        reader = StringIO.StringIO(data)
+        reader = io.BytesIO(data)
         meshes = []
         if self.ReadShort(reader) == MeshChunkID.Header:
             fileVersion = self.ReadString(reader)
@@ -148,7 +150,7 @@ class MeshImporter(oserializer.Serializer):
                         #print "incorrect cid", cid
         else:
             #raise Exception("no header found")
-            print "no header found"
+            print("no header found")
             f = open("/tmp/noheader.txt","a")
             f.write(data+"\n-------------------\n")
             f.close()

@@ -1,49 +1,54 @@
-import traceback
+#import traceback
 
-from b2rexpkg.settings import ExportSettings
-from b2rexpkg.siminfo import GridInfo
-from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
+#from b2rexpkg.settings import ExportSettings
+#from b2rexpkg.siminfo import GridInfo
+#from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 
-from ogredotscene import Screen, HorizontalLayout
-from ogredotscene import NumberView, Widget, CheckBox
-from ogredotscene import VerticalLayout, Action, QuitButton, Button
-from ogredotscene import StringButton, Label, Button, Box
-from ogredotscene import SelectableLabel
-
-import Blender
+#from ogredotscene import Screen, HorizontalLayout
+#from ogredotscene import NumberView, Widget, CheckBox
+#from ogredotscene import VerticalLayout, Action, QuitButton, Button
+#from ogredotscene import StringButton, Label, Button, Box
+#from ogredotscene import SelectableLabel
+#
+#import Blender
 
 ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
+#Action = "bleble"
+class Action(object):
+    def __init__(self):
+        pass
+
 class BaseApplication(object):
     def __init__(self, title="RealXtend"):
-        self.screen = Screen()
-        self.gridinfo = GridInfo()
+#        self.screen = Screen()
+#        self.gridinfo = GridInfo()
+        self.title = title
         self.buttons = {}
         self.settings_visible = False
-        self.exportSettings = ExportSettings()
+#        self.exportSettings = ExportSettings()
         self.initGui(title)
         self.addStatus("b2rex started")
+        self.buttonLayout = ""
 
     def connect(self, base_url, username="", password=""):
         """
         Connect to an opensim instance
         """
         self.gridinfo.connect(base_url, username, password)
-        #self.sim.connect(base_url)
+        self.sim.connect(base_url)
 
     def initGui(self, title):
         """
         Initialize the interface system.
         """
-        self.vLayout = VerticalLayout()
-        self.buttonLayout = HorizontalLayout()
         self.addCallbackButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
         #self.addButton('Export', self.buttonLayout, 'Export to disk')
-        self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
-        self.vLayout.addWidget(self.buttonLayout, 'buttonPanel')
-        self.screen.addWidget(Box(self.vLayout, title), "layout")
+        #self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
+        #self.vLayout.addWidget(self.buttonLayout, 'buttonPanel')
+        #self.screen.addWidget(Box(self.vLayout, title), "layout")
 
         settingsButton = CheckBox(self.ToggleSettingsAction(self),
 			          self.settings_visible,
@@ -165,13 +170,15 @@ class BaseApplication(object):
     def addStatus(self, text, level = OK):
         """
         Add status information.
+
         """
-        self.screen.addWidget(Box(Label(text), 'status'), 'b2rex initialized')
-        if level in [ERROR, IMMEDIATE]:
-            # Force a redraw
-            Blender.Draw.Draw()
-        else:
-            Blender.Draw.Redraw(1)
+         pass
+#        bpy.context.window_manager.b2rex_props.status = 'b2rex initialized')
+       # if level in [ERROR, IMMEDIATE]:
+       #     # Force a redraw
+       #     Blender.Draw.Draw()
+       # else:
+       #     Blender.Draw.Redraw(1)
 
     def go(self):
         """
@@ -223,7 +230,7 @@ class BaseApplication(object):
         def execute(self):
             try:
                 self.cb()
-	    except:
+            except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt rum. Check your settings to see they are ok", ERROR)
                 return False

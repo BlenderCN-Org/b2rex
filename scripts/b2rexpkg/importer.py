@@ -2,27 +2,32 @@
 Import sim data into Blender.
 """
 
-from siminfo import GridInfo
-from simconnection import SimConnection
-import tools.oimporter
+from .siminfo import GridInfo
+from .simconnection import SimConnection
+#import tools.oimporter
+#import b2rexpkg.tools.oimporter
 import xml.parsers.expat
-import httplib
+import http.client
 
-import urllib2
+import urllib
 import struct
 import sys
 import subprocess
-import Blender
+#import Blender
+import bpy
 import math
-from tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDINATES
-from tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
-from tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
-from tools.oimporter.omaterial import OgreMaterial
+#from .tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDINATES
+#from .tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
+#from .tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
+from .tools.oimporter.omaterial import OgreMaterial
+from .tools.oimporter import parse
 
 import socket
 import traceback
 
-CONNECTION_ERRORS = (urllib2.HTTPError, urllib2.URLError, httplib.BadStatusLine,
+from urllib.error import HTTPError
+from urllib.error import URLError
+CONNECTION_ERRORS = (urllib.error.HTTPError, urllib.error.URLError, http.client.BadStatusLine,
                                      xml.parsers.expat.ExpatError)
 
 default_timeout = 4
@@ -84,7 +89,7 @@ class Importer(object):
                         self._imported_assets[texture] = btex
                         return btex
                     except:
-                        print "error opening:", dest
+                        print("error opening:", dest)
 
     def create_blender_material(self, ogremat, mat):
         """
@@ -95,41 +100,41 @@ class Importer(object):
         idx = 0
         mat_name = mat["name"].split("/")[0]
         try:
-            bmat = Blender.Material.Get(mat_name)
+            bmat = bpy.data.materials.get(mat_name)
         except:
-            bmat = Blender.Material.New(mat_name)
+            bmat = bpy.data.materials.new(mat_name)
         # material base properties
-        if ogremat.doambient:
-            bmat.setAmb(ogremat.ambient)
-        if ogremat.specular:
-            bmat.setSpec(1.0)
-            bmat.setSpecCol(ogremat.specular[:3])
-            bmat.setHardness(int(ogremat.specular[3]*4.0))
-        if ogremat.alpha < 1.0:
-            bmat.setAlpha(ogremat.alpha)
+#        if ogremat.doambient:
+#            bmat.setAmb(ogremat.ambient)
+#        if ogremat.specular:
+#            bmat.setSpec(1.0)
+#            bmat.setSpecCol(ogremat.specular[:3])
+#            bmat.setHardness(int(ogremat.specular[3]*4.0))
+#        if ogremat.alpha < 1.0:
+#            bmat.setAlpha(ogremat.alpha)
         # specular
-        layerMappings = {'normalMap':'NOR',
-                         'heightMap':'DISP',
-                         'reflectionMap':'REF',
-                         'opacityMap':'ALPHA',
-                         'lightMap':'AMB',
-                         'specularMap':'SPEC' }
-        for layerName, textureName in ogremat.layers.iteritems():
-            if layerName == 'shadowMap':
-                bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
-            if textureName:
-                btex = self.import_texture(textureName)
-                if btex:
-                    mapto = 'COL'
-                    if layerName in layerMappings:
-                        mapto = layerMappings[layerName]
-                    if mapto == 'COL':
-                        ogremat.btex = btex
-                    if mapto:
-                        mapto = Blender.Texture.MapTo[mapto]
-                    bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
-                    idx += 1
-        self._imported_materials[mat["name"]] = bmat
+#        layerMappings = {'normalMap':'NOR',
+#                         'heightMap':'DISP',
+#                         'reflectionMap':'REF',
+#                         'opacityMap':'ALPHA',
+#                         'lightMap':'AMB',
+#                         'specularMap':'SPEC' }
+#        for layerName, textureName in ogremat.layers.iteritems():
+#            if layerName == 'shadowMap':
+#                bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
+#            if textureName:
+#                btex = self.import_texture(textureName)
+#                if btex:
+#                    mapto = 'COL'
+#                    if layerName in layerMappings:
+#                        mapto = layerMappings[layerName]
+#                    if mapto == 'COL':
+#                        ogremat.btex = btex
+#                    if mapto:
+#                        mapto = Blender.Texture.MapTo[mapto]
+#                    bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
+#                    idx += 1
+#        self._imported_materials[mat["name"]] = bmat
         return bmat
 
     def import_material(self, material, retries):
@@ -162,11 +167,14 @@ class Importer(object):
             return self._imported_assets[scenegroup["asset"]]
         asset = self.gridinfo.getAsset(scenegroup["asset"])
         if not asset["type"] == "43":
-            print "("+asset["type"]+")"
+            print("("+asset["type"]+")")
             return
-        mesh = tools.oimporter.parse(asset["data"])
+        #print(asset)
+        #mesh = tools.oimporter.parse(asset["data"])
+        mesh = parse(asset["data"])
+        mesh = None
         if not mesh:
-            print "error loading",scenegroup["asset"]
+            print("error loading",scenegroup["asset"])
             return
         try:
             new_mesh = Blender.NMesh.GetRaw(asset["name"]+scenegroup["asset"])
@@ -211,7 +219,7 @@ class Importer(object):
                 new_mesh.verts.append(Blender.NMesh.Vert(0.0,0.0,0.0))
                 indices_map.append(len(new_mesh.verts)-1)
         if not len(new_mesh.verts):
-            print "mesh with no vertex!!"
+            print("mesh with no vertex!!")
         # faces
         for idx in range(len(indices)/3):
             idx = idx*3
@@ -240,7 +248,7 @@ class Importer(object):
                 uv3 = get_uv(indices[idx+2], vbuffer, uvco_offset)
                 face.uv = (uv1, uv2, uv3)
         if not len(new_mesh.faces):
-            print "mesh with no faces!!"
+            print("mesh with no faces!!")
         sys.stderr.write("*")
         sys.stderr.flush()
         return new_mesh
@@ -280,11 +288,11 @@ class Importer(object):
         Import the given group into blender.
         """
         materials = []
-        if load_materials:
-           for material in scenegroup["materials"].keys():
-                if not material == "00000000-0000-0000-0000-000000000000":
-                    bmat = self.import_material(material, 10)
-                    materials.append(bmat)
+        #if load_materials:
+        #   for material in scenegroup["materials"].keys():
+        #        if not material == "00000000-0000-0000-0000-000000000000":
+        #            bmat = self.import_material(material, 10)
+        #            materials.append(bmat)
 
         try:
             new_mesh = None
@@ -366,16 +374,17 @@ class Importer(object):
         """
         Run a check on the group, to see if it exists in blender.
         """
-        if self.find_with_uuid(groupid, Blender.Object.Get, "objects"):
-            self._found["objects"] += 1
+#        if self.find_with_uuid(groupid, Blender.Object.Get, "objects"):
+#            self._found["objects"] += 1
         self._total_server["objects"] += 1
         def get_mesh(name=""):
+            return
             if name:
                 return Blender.NMesh.GetRaw(name)
             else:
                 return map(lambda s: s.getData(0, True), Blender.Object.Get())
-        if self.find_with_uuid(scenegroup["asset"], get_mesh, "meshes"):
-            self._found["meshes"] += 1
+#        if self.find_with_uuid(scenegroup["asset"], get_mesh, "meshes"):
+#            self._found["meshes"] += 1
         self._total_server["meshes"] += 1
 
     def check_region(self, region_id, action="check"):
@@ -386,10 +395,12 @@ class Importer(object):
         self.init_structures()
         con = SimConnection()
         con.connect(self.gridinfo._url)
+        print('region id'+region_id)
+ 
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
         total = 0
         total_yes = 0
-        for groupid, scenegroup in scenedata['res'].iteritems():
+        for groupid, scenegroup in scenedata['res'].items():
             if getattr(self, action+"_group")(groupid, scenegroup):
                 total_yes += 1
             total += 1
@@ -426,21 +437,24 @@ class Importer(object):
         self.init_structures()
         con = SimConnection()
         con.connect(self.gridinfo._url)
+        print('imporing regid',region_id)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
-        for groupid, scenegroup in scenedata['res'].iteritems():
+        print('scenedata')
+        #print(scenedata)
+        for groupid, scenegroup in scenedata['res'].items():
             getattr(self, action+"_group")(groupid, scenegroup, 10)
-            Blender.Window.Redraw(Blender.Window.Types['VIEW3D'])
+#            Blender.Window.Redraw(Blender.Window.Types['VIEW3D'])
 
 
 if __name__ == '__main__':
-    base_url = "http://127.0.0.1:9000"
+    base_url = "http://delirium:9000"
     gridinfo = GridInfo()
-    gridinfo.connect(base_url, "caedes caedes", "XXXXXX")
-    print gridinfo.getGridInfo()["gridnick"]
+    gridinfo.connect(base_url, "caedes caedes", "nemesis")
+    print(gridinfo.getGridInfo()["gridnick"])
     regions = gridinfo.getRegions()
     for id in regions:
         region = regions[id]
-        print " *", region["name"], region["x"], region["y"], id
+        print(" *", region["name"], region["x"], region["y"], id)
     importer = Importer(gridinfo)
     importer.import_region(id)
 

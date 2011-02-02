@@ -39,7 +39,6 @@ class B2Rex(Importer):
         pass
         #BaseApplication.__init__(self)
         #self.addStatus("b2rex started")
-        self.region_report = ''
         self.gridinfo = GridInfo()
         Importer.__init__(self, self.gridinfo)
 
@@ -63,19 +62,12 @@ class B2Rex(Importer):
 
         print("conecttt")
     def _import(self):
-       
-        #selected_region = bpy.contex.b2rex_props.selected_region
-        #self.region_uuid = self.regions[selected_region] 
-        print('importing..')
         text = self.import_region(self.region_uuid)
         self.addStatus("Scene imported " + self.region_uuid)
     def export(self):
         print("conecttt")
     def settings(self):
         print("conecttt")
-    def do_check(self):
-        print("do_check regionuuid" + self.region_uuid)
-        self.region_report = self.check_region(self.region_uuid)
     def addStatus(self, status, level=0):
         bpy.context.scene.b2rex_props.status = status
 
@@ -114,8 +106,8 @@ def addProperties(B2RexProps):
     #B2RexProps.credentials = PasswordManager("b2rex")
     B2RexProps.path = StringProperty(name='path', default='')
     B2RexProps.pack = StringProperty(name='pack', default='pack')
-    B2RexProps.username = StringProperty(name='username', default='caedes caedes')
-    B2RexProps.password = StringProperty(name='password', default='nemesis')
+    B2RexProps.username = StringProperty(name='username', default='invi invi')
+    B2RexProps.password = StringProperty(name='password', default='invi')
     B2RexProps.server_url = StringProperty(name='server url', default='http://delirium:9000')
     B2RexProps.export_dir = StringProperty(name='login password', default='') 
     B2RexProps.locX = FloatProperty(name="X", description="loc X", default=128.0,min=-10000.0,max=10000.0)
@@ -127,7 +119,7 @@ def addProperties(B2RexProps):
     B2RexProps.regenMeshes = BoolProperty(name="Regen Meshes", default=False)
     B2RexProps.expand = BoolProperty(default=False, description="Expand, to diesply")
     B2RexProps.status = StringProperty(default="b2rex started", description="Expand, to diesply")
-    B2RexProps.selected_region = IntProperty(default=-1, description="Expand, to diesply")
+    B2RexProps.selected_region = IntProperty(default=0, description="Expand, to diesply")
     B2RexProps.regions = CollectionProperty(type=B2RexRegions, name='Regions', description='Sessions on Renderfarm.fi')
 #    B2RexProps.regions.name = StringProperty(name='Name', description='Name of the session', maxlen=128, default='[session]')
 
@@ -152,7 +144,6 @@ class Connect(B2Rex, bpy.types.Operator):
             props.regions.add()
             regionss = props.regions[-1]
             regionss.name = region['name']
-#            regionss.description = region['id']
         return {'FINISHED'}
 
 class Export(B2Rex, bpy.types.Operator):
@@ -164,24 +155,6 @@ class Export(B2Rex, bpy.types.Operator):
         self.export()
         return {'FINISHED'}
 
-class Import(B2Rex, bpy.types.Operator):
-    bl_idname = "b2rex.import"
-    bl_label = "import"
-
-    def execute(self, context):
-        print('exec import')
-        session = bpy.b2rex_session
-        props = context.scene.b2rex_props
-#        print(props.selected_region)
-#        session.region_uuid = props.regions[props.selected_region]['name']
-#        print(session.region_uuid)
-#        print(props.regions[1].name)
-        
-        session.region_uuid = list(session.regions.keys())[props.selected_region]
-        session._import()
-#        print(session.regions.keys()[1])
-        return {'FINISHED'}
-
 class Settings(B2Rex, bpy.types.Operator):
     bl_idname = "b2rex.settings"
     bl_label = "Settings"
@@ -189,17 +162,6 @@ class Settings(B2Rex, bpy.types.Operator):
     def execute(self, context):
         
         self.settings()
-        return {'FINISHED'}
-
-class Check(B2Rex, bpy.types.Operator):
-    bl_idname = "b2rex.check"
-    bl_label = "Check"
-
-    def execute(self, context):
-        session = bpy.b2rex_session
-        props = context.scene.b2rex_props
-        session.region_uuid = list(session.regions.keys())[props.selected_region]
-        session.do_check()
         return {'FINISHED'}
 
 
@@ -226,7 +188,6 @@ class OBJECT_PT_b2rex(B2Rex, bpy.types.Panel):
         
         layout = self.layout
         props = context.scene.b2rex_props
-        session = bpy.b2rex_session
 
         box = layout.box()
         box.operator("b2rex.connect", text="Connect")
@@ -235,35 +196,14 @@ class OBJECT_PT_b2rex(B2Rex, bpy.types.Panel):
         row = box.row() 
         row.label(text="Status: "+bpy.context.scene.b2rex_props.status)
         row = layout.row() 
-        
 
         if len(props.regions):
             row.template_list(props, 'regions', props, 'selected_region', rows=2)
-
         if props.selected_region > -1:
-            box = layout.row()
-            col = box.column()
-            col.operator("b2rex.export", text="Export/Upload")
-            col = box.column() 
-            col.operator("b2rex.export", text="Upload")
-            box = layout.row()
-            col = box.column()
-            col.operator("b2rex.export", text="Clear")
-            col = box.column() 
-            col.operator("b2rex.check", text="Check")
-            box = layout.row()
-            col = box.column()
-            col.operator("b2rex.import", text="Sync")
-            col = box.column() 
-            col.operator("b2rex.import", text="Import")
+            print("selected")
+        print(props.selected_region)
 
-        row = layout.row()
-
-        for k in session.region_report:
-            row.label(text=k)
-            row = layout.row()
-
-        box = layout.row()
+#        box = layout.row()
         row = layout.row()
         if not bpy.context.scene.b2rex_props.expand:
             row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)

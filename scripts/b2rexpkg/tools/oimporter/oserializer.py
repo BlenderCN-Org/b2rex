@@ -19,7 +19,10 @@ class Serializer(object):
     def ReadFloats(self, reader, count):
         return self.ReadMany(reader, count, self.ReadFloat)
     def ReadByte(self, reader):
-        return struct.unpack("c", reader.read(1))[0]
+        #return struct.unpack("c", reader.read(1))[0]
+        b=reader.read(1)
+        if b:
+            return struct.unpack("c", b)[0]
     def ReadBool(self, reader):
         return struct.unpack("?", reader.read(1))[0]
     def ReadFloat(self, reader):
@@ -43,9 +46,12 @@ class Serializer(object):
         return self.ReadMany(reader, count, self.ReadShort)
     def ReadString(self, reader, delimiter="\n"):
         dest = ""
+        print('reader')
+        print(reader)
         c = self.ReadByte(reader)
-        while not c == delimiter:
-            dest += c
+
+        while not c == delimiter and c: 
+            dest += str(c)
             c = self.ReadByte(reader)
         return dest
     def ReadQuat(self, reader):
@@ -66,7 +72,8 @@ class Serializer(object):
         else:
             reader.seek(length, 1)
     def IsEOF(self, reader):
-        return reader.pos >= reader.len
+        return reader.tell() >= len(reader.getvalue())
+#        return reader.pos >= reader.len
         
 
 
