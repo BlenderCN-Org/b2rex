@@ -2,7 +2,7 @@
 Region asset browser.
 """
 
-from .baseapp import BaseApplication
+from .compatibility import BaseApplication
 from .baseapp import HorizontalLayout, Box, Label, VerticalLayout
 from .baseapp import IMMEDIATE
 

@@ -293,7 +293,7 @@ class Importer(object):
         """
         pos = parse_vector(scenegroup["position"])
         scale = parse_vector(scenegroup["scale"])
-        obj = self.find_with_uuid(scenegroup["id"], Blender.Object.Get,
+        obj = self.find_with_uuid(scenegroup["id"], bpy.data.objects,
                              "objects")
         if not obj:
             obj = Blender.Object.New("Mesh", scenegroup["asset"])
@@ -377,35 +377,26 @@ class Importer(object):
             obj.properties["opensim"] = {}
         obj.properties["opensim"]["uuid"] = obj_uuid
 
-    def find_with_uuid(self, groupid, getter, section):
+    def find_with_uuid(self, groupid, objects, section):
         """
         Find the object with the given uuid.
         """
-        if self._total[section]:
-            pass
+        if groupid in self._total[section]:
+            return objects[self._total[section][groupid]]
         else:
-            for obj in getter():
-                #if section == "meshes":
-                    #    print obj
+            for obj in objects:
                 obj_uuid = self.get_uuid(obj)
                 if obj_uuid:
                     self._total[section][obj_uuid] = obj.name
-        if groupid in self._total[section]:
-            return getter(self._total[section][groupid])
 
     def check_group(self, groupid, scenegroup):
         """
         Run a check on the group, to see if it exists in blender.
         """
-        if self.find_with_uuid(groupid, Blender.Object.Get, "objects"):
+        if self.find_with_uuid(groupid, bpy.data.objects, "objects"):
             self._found["objects"] += 1
         self._total_server["objects"] += 1
-        def get_mesh(name=""):
-            if name:
-                return Blender.NMesh.GetRaw(name)
-            else:
-                return map(lambda s: s.getData(0, True), Blender.Object.Get())
-        if self.find_with_uuid(scenegroup["asset"], get_mesh, "meshes"):
+        if self.find_with_uuid(scenegroup["asset"], bpy.data.meshes, "meshes"):
             self._found["meshes"] += 1
         self._total_server["meshes"] += 1
 
