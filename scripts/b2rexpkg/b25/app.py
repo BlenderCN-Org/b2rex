@@ -4,12 +4,17 @@ from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
 
+from b2rexpkg import IMMEDIATE, ERROR
+
+import bpy
+
 class B2Rex(BaseApplication):
     def __init__(self, context):
         self.region_report = ''
         BaseApplication.__init__(self)
 
     def onConnect(self, context):
+        props = context.scene.b2rex_props
         self.connect(props.server_url, props.username, props.password)
         while(len(props.regions) > 0):
             props.regions.remove(0)
