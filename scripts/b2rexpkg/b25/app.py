@@ -15,7 +15,9 @@ class B2Rex(BaseApplication):
 
     def onConnect(self, context):
         props = context.scene.b2rex_props
-        self.connect(props.server_url, props.username, props.password)
+        #self.connect(props.server_url, props.username, props.password)
+        self.exportSettings = props
+        self.onConnectAction()
         while(len(props.regions) > 0):
             props.regions.remove(0)
         for key, region in self.regions.items():
@@ -30,9 +32,11 @@ class B2Rex(BaseApplication):
         self.do_check()
 
     def onExport(self, context):
+        props = context.scene.b2rex_props
         self.export()
 
     def onImport(self, context):
+        props = context.scene.b2rex_props
         self.region_uuid = list(self.regions.keys())[props.selected_region]
         self._import()
 
@@ -61,12 +65,35 @@ class B2Rex(BaseApplication):
         print('importing..')
         text = self.import_region(self.region_uuid)
         self.addStatus("Scene imported " + self.region_uuid)
+
     def export(self):
         print("conecttt")
+
     def settings(self):
         print("conecttt")
+
     def do_check(self):
         print("do_check regionuuid" + self.region_uuid)
         self.region_report = self.check_region(self.region_uuid)
+
     def addStatus(self, status, level=0):
         bpy.context.scene.b2rex_props.status = status
+
+    def getSelected(self):
+        return bpy.context.selected_objects
+
+    def get_uuid(self, obj):
+        """
+        Get the uuid from the given object.
+        """
+        obj_uuid = obj.opensim.uuid
+        if obj_uuid:
+            return obj_uuid
+
+    def set_uuid(self, obj, obj_uuid):
+        """
+        Set the uuid for the given blender object.
+        """
+        obj.opensim.uuid = obj_uuid
+
+

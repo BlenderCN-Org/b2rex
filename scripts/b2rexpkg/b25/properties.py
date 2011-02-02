@@ -7,6 +7,21 @@ from bpy.props import FloatVectorProperty
 class B2RexRegions(bpy.types.IDPropertyGroup):
     pass
 
+class B2RexBaseProps(bpy.types.IDPropertyGroup):
+    uuid = StringProperty(name='uuid', default='', description='')
+
+class B2RexObjectProps(B2RexBaseProps):
+    uuid = StringProperty(name='uuid', default='', description='')
+
+class B2RexMeshProps(B2RexBaseProps):
+    uuid = StringProperty(name='uuid', default='', description='')
+
+class B2RexTextureProps(B2RexBaseProps):
+    uuid = StringProperty(name='uuid', default='', description='')
+
+class B2RexMaterialProps(B2RexBaseProps):
+    uuid = StringProperty(name='uuid', default='', description='')
+
 class B2RexProps(bpy.types.IDPropertyGroup):
     #B2RexProps.credentials = PasswordManager("b2rex")
     path = StringProperty(name='path', default='', description='')

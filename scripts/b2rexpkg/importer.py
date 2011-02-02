@@ -127,7 +127,7 @@ class Importer(object):
                          'opacityMap':'ALPHA',
                          'lightMap':'AMB',
                          'specularMap':'SPEC' }
-        for layerName, textureName in ogremat.layers.iteritems():
+        for layerName, textureName in ogremat.layers.items():
             if layerName == 'shadowMap':
                 bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
             if textureName:
@@ -411,7 +411,7 @@ class Importer(object):
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
         total = 0
         total_yes = 0
-        for groupid, scenegroup in scenedata['res'].iteritems():
+        for groupid, scenegroup in scenedata['res'].items():
             if getattr(self, action+"_group")(groupid, scenegroup):
                 total_yes += 1
             total += 1
@@ -449,7 +449,7 @@ class Importer(object):
         con = SimConnection()
         con.connect(self.gridinfo._url)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
-        for groupid, scenegroup in scenedata['res'].iteritems():
+        for groupid, scenegroup in scenedata['res'].items():
             getattr(self, action+"_group")(groupid, scenegroup, 10)
             Blender.Window.Redraw(Blender.Window.Types['VIEW3D'])
 

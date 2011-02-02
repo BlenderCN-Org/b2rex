@@ -153,8 +153,8 @@ class BaseApplication(Importer, Exporter):
         """
         self.screen.activate()
 
-    def getSelected(self):
-        return bpy.context.selected_objects
+    def addRegionsPanel(self, regions, griddata):
+        pass
 
     def queueRedraw(self):
         pass

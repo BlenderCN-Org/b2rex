@@ -55,12 +55,22 @@ else:
     from .b25.ops import Connect, Export, Import, Settings
     from .b25.panels.main import ConnectionPanel
     from .b25.properties import B2RexRegions, B2RexProps
+    from .b25.properties import B2RexObjectProps, B2RexMaterialProps
+    from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.app import B2Rex
 
 import bpy
 
 def register():
     bpy.types.Scene.b2rex_props = PointerProperty(type=B2RexProps, name="b2rex props")
+    bpy.types.Object.opensim = PointerProperty(type=B2RexObjectProps,
+                                               name="b2rex object props")
+    bpy.types.Mesh.opensim = PointerProperty(type=B2RexMeshProps,
+                                               name="b2rex object props")
+    bpy.types.Material.opensim = PointerProperty(type=B2RexMaterialProps,
+                                               name="b2rex object props")
+    bpy.types.Texture.opensim = PointerProperty(type=B2RexTextureProps,
+                                               name="b2rex object props")
     bpy.b2rex_session = B2Rex(bpy.context.scene)
 #    register_keymaps()
 
