@@ -9,7 +9,7 @@ class B2RexRegions(bpy.types.IDPropertyGroup):
 
 class B2RexProps(bpy.types.IDPropertyGroup):
     #B2RexProps.credentials = PasswordManager("b2rex")
-    path = StringProperty(name='path', default='', description)
+    path = StringProperty(name='path', default='', description='')
     pack = StringProperty(name='pack', default='pack')
     username = StringProperty(name='username',
                               default='caedes caedes',

@@ -1,14 +1,13 @@
 import traceback
 
 from ..siminfo import GridInfo
-from ..importer import Importer
+from ..compatibility import BaseApplication
 from ..tools.logger import logger
 
-class B2Rex(Importer):
+class B2Rex(BaseApplication):
     def __init__(self, context):
         self.region_report = ''
-        self.gridinfo = GridInfo()
-        Importer.__init__(self, self.gridinfo)
+        BaseApplication.__init__(self)
 
     def onConnect(self, context):
         self.connect(props.server_url, props.username, props.password)
@@ -54,3 +53,15 @@ class B2Rex(Importer):
         logger.debug("conecttt")
 
     def _import(self):
+        print('importing..')
+        text = self.import_region(self.region_uuid)
+        self.addStatus("Scene imported " + self.region_uuid)
+    def export(self):
+        print("conecttt")
+    def settings(self):
+        print("conecttt")
+    def do_check(self):
+        print("do_check regionuuid" + self.region_uuid)
+        self.region_report = self.check_region(self.region_uuid)
+    def addStatus(self, status, level=0):
+        bpy.context.scene.b2rex_props.status = status

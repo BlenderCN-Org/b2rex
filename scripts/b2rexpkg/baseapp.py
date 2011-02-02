@@ -1,8 +1,10 @@
 import traceback
 
 from b2rexpkg.siminfo import GridInfo
-from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 from b2rexpkg import IMMEDIATE, ERROR
+
+from .importer import Importer
+from .exporter import Exporter
 
 eventlet_present = False
 try:
@@ -15,7 +17,7 @@ except:
 import logging
 logger = logging.getLogger('b2rex.baseapp')
 
-class BaseApplication(object):
+class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.positions = {}
         self.rotations = {}
@@ -25,6 +27,9 @@ class BaseApplication(object):
         self.gridinfo = GridInfo()
         self.buttons = {}
         self.settings_visible = False
+        Importer.__init__(self, self.gridinfo)
+        Exporter.__init__(self, self.gridinfo)
+        
 
     def initGui(self, title):
         pass
@@ -103,7 +108,7 @@ class BaseApplication(object):
             self.apply_position(obj, [pos.X, pos.Y, pos.Z])
             self.positions[str(objId)] = list(obj.getLocation())
             Blender.Window.QRedrawAll()
-            print "IN_CMDS",pos.X,obj
+            logger.debug(("IN_CMDS",pos.X,obj))
 
     def processScaleCommand(self, objId, scale):
         obj = self.findWithUUID()

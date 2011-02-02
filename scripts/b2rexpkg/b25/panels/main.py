@@ -92,12 +92,7 @@ class ConnectionPanel(bpy.types.Panel):
             row = layout.row()
             row.prop(bpy.context.scene.b2rex_props,"password")
             box = layout.row()
-            col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"locX")
-            col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"locY")
-            col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"locZ")
+            box.prop(bpy.context.scene.b2rex_props,"loc")
 
             box = layout.row()
             col = box.column()

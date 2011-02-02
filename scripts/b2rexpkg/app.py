@@ -23,12 +23,10 @@ IMMEDIATE = 2
 
 from .compatibility import BaseApplication
 
-class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
+class RealxtendExporterApplication(BaseApplication):
     def __init__(self):
         self.region_uuid = ''
         self.regionLayout = None
-        Exporter.__init__(self)
-        Importer.__init__(self, self.gridinfo)
         BaseApplication.__init__(self)
         self.addStatus("b2rex started")
 
