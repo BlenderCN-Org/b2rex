@@ -9,22 +9,31 @@ class B2RexRegions(bpy.types.IDPropertyGroup):
 
 class B2RexProps(bpy.types.IDPropertyGroup):
     #B2RexProps.credentials = PasswordManager("b2rex")
-    path = StringProperty(name='path', default='')
+    path = StringProperty(name='path', default='', description)
     pack = StringProperty(name='pack', default='pack')
-    username = StringProperty(name='username', default='caedes caedes')
-    password = StringProperty(name='password', default='nemesis')
-    server_url = StringProperty(name='server url', default='http://delirium:9000')
-    export_dir = StringProperty(name='login password', default='') 
+    username = StringProperty(name='username',
+                              default='caedes caedes',
+                              description='')
+    password = StringProperty(name='password',
+                              default='nemesis',
+                              description='')
+    server_url = StringProperty(name='server url',
+                                default='http://delirium:9000',
+                                description='')
+    export_dir = StringProperty(name='export dir',
+                                default='',
+                                description='') 
     loc = FloatVectorProperty(name="location", 
                               description="offset to apply when exporting",
                               default=(128.0, 128.0, 20.0),
                               min=0.0,
                               max=512.0)
-    regenMaterials = BoolProperty(name="Regen Material", default=False)
+    regenMaterials = BoolProperty(name="Regen Material", default=True)
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
-    expand = BoolProperty(default=False, description="Expand, to diesply")
+    expand = BoolProperty(default=False,
+                          description="Expand, to display settings")
     status = StringProperty(default="b2rex started", description="Expand, to diesply")
     selected_region = IntProperty(default=-1, description="Expand, to diesply")
     regions = CollectionProperty(type=B2RexRegions,
