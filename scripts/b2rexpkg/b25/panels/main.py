@@ -52,6 +52,64 @@ class ConnectionPanel(bpy.types.Panel):
 
         if len(props.regions):
             row.template_list(props, 'regions', props, 'selected_region', rows=2)
-
         if props.selected_region > -1:
             box = layout.row()
+            col = box.column()
+            col.operator("b2rex.export", text="Export/Upload")
+            col = box.column()
+            col.operator("b2rex.export", text="Upload")
+            box = layout.row()
+            col = box.column()
+            col.operator("b2rex.export", text="Clear")
+            col = box.column()
+            col.operator("b2rex.check", text="Check")
+            box = layout.row()
+            col = box.column()
+            col.operator("b2rex.import", text="Sync")
+            col = box.column()
+            col.operator("b2rex.import", text="Import")
+
+        row = layout.row()
+
+        for k in session.region_report:
+            row.label(text=k)
+            row = layout.row()
+
+        box = layout.row()
+        row = layout.row()
+        if not bpy.context.scene.b2rex_props.expand:
+            row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
+            row = layout.row()
+            row.operator("b2rex.export", text="Export")
+            row = layout.row()
+            row.prop(bpy.context.scene.b2rex_props,"pack")
+            row = layout.row()
+            row.prop(bpy.context.scene.b2rex_props,"path")
+            row = layout.row()
+            row.prop(bpy.context.scene.b2rex_props,"server_url")
+            row = layout.row()
+            row.prop(bpy.context.scene.b2rex_props,"username")
+            row = layout.row()
+            row.prop(bpy.context.scene.b2rex_props,"password")
+            box = layout.row()
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"locX")
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"locY")
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"locZ")
+
+            box = layout.row()
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"regenMaterials")
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"regenObjects")
+
+            box = layout.row()
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"regenTextures")
+            col = box.column()
+            col.prop(bpy.context.scene.b2rex_props,"regenMeshes")
+            
+        else:
+            row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)
