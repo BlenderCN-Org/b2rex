@@ -11,6 +11,8 @@ if sys.version_info[0] == 3:
     import urllib.request as urllib2
 else:
     import urllib2
+    def bytes(text, _):
+        return text
 
 class RestConnector(object):
     def __init__(self):
@@ -68,7 +70,7 @@ class RestConnector(object):
             obj[prop] = val
         if xmldata.text:
             #obj["data"] = binascii.a2b_base64(xmldata.text)
-            obj["data"] = base64.decodestring(xmldata.text)
+            obj["data"] = base64.decodestring(bytes(xmldata.text, 'ascii'))
             #obj["data"] = base64.b64decode(xmldata.text)
         return obj
 
