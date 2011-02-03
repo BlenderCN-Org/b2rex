@@ -15,7 +15,7 @@ def get_uuid_str(ob):
         ob.opensim.uuid = str(uuid.uuid4())
     return str(ob.opensim.uuid)
 
-def image_tagger(self, im):
+def image_tagger(im):
     uuid_str = get_uuid_str(im)
     uuidexport.uuidexporter.add('textures', 'texture', ob.name, uuid_str)
 
