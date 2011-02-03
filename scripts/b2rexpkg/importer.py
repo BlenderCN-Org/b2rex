@@ -17,6 +17,7 @@ if sys.version_info[0] == 2:
     import urllib2
     import Blender
     from urllib2 import HTTPError, URLError
+    from Blender import Mathutils as mathutils
     bversion = 2
     def bytes(text):
         return text
@@ -24,6 +25,7 @@ else:
     import http.client as httplib
     import urllib.request as urllib2
     from urllib.error import HTTPError, URLError
+    import mathutils
     bversion = 3
 
 import struct
@@ -47,195 +49,172 @@ default_timeout = 10
 
 socket.setdefaulttimeout(default_timeout)
 
-class Importer(object):
-    def __init__(self, gridinfo):
-        self.gridinfo = gridinfo
-        self.init_structures()
-
-    def init_structures(self):
+class Importer25(object):
+    def import_submesh(self, new_mesh, vertex, vbuffer, indices, materialName):
         """
-        Initialize importer caches.
-
-        Can be called to avoid caching of results.
+        Import submesh info and fill blender face and vertex information.
         """
-        self._imported_assets = {}
-        self._imported_materials = {}
-        self._imported_ogre_materials = {}
-
-        self._objects = {}
-        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
-
-    def import_texture(self, texture):
-        """
-        Import the given texture from opensim.
-        """
-        logger.debug(("texture", texture))
-        if texture in self._imported_assets:
-            return self._imported_assets[texture]
-        else:
-            texture = texture.decode()
-            tex = self.gridinfo.getAsset(texture)
-            if "name" in tex:
-                try:
-                    btex = bpy.data.textures["name"]
-                    # XXX should update
-                    return btex
-                except:
-                    f = open("/tmp/"+texture+".1.jpg", "wb")
-                    f.write(tex["data"])
-                    f.close()
-                    tex_name = tex["name"]
-                    split_name = tex_name.split("/")
-                    if len(split_name) > 2:
-                        tex_name = split_name[2]
-                    dest = "/tmp/"+tex_name
-                    if not dest[-3:] in ["png"]:
-                        dest = dest + ".png"
-                    try:
-                        subprocess.call(["convert",
-                                          "/tmp/"+texture+".1.jpg",
-                                          dest])
-                        bim = Blender.Image.Load(dest)
-                        btex = Blender.Texture.New(tex_name)
-                        btex.setType('Image')
-                        btex.image = bim
-                        self._imported_assets[texture] = btex
-                        return btex
-                    except:
-                        logger.error(("error opening:", dest))
-
-    def create_blender_material(self, ogremat, mat):
-        """
-        Create a blender material from ogre format.
-        """
-        textures = ogremat.textures
+        logger.debug("import_submesh")
+        vertex_legend = get_vertex_legend(vertex)
+        pos_offset = vertex_legend[VES_POSITION][1]
+        no_offset = vertex_legend[VES_NORMAL][1]
         bmat = None
-        idx = 0
-        mat_name = mat["name"].split("/")[0]
-        try:
-            bmat = bpy.data.materials[mat_name]
-        except:
-            bmat = bpy.data.materials.new(mat_name)
-        # material base properties
-        if ogremat.doambient:
-            if bversion == 2:
-                bmat.setAmb(ogremat.ambient)
+        image = None
+        logger.debug("looking for image "+materialName)
+        if materialName in self._imported_materials:
+            bmat = self._imported_materials[materialName]
+        if materialName in self._imported_ogre_materials:
+            ogremat = self._imported_ogre_materials[materialName]
+            if ogremat.btex and ogremat.btex.image:
+                image = ogremat.btex.image
+            if image:
+                logger.debug("found image")
+        if VES_TEXTURE_COORDINATES in vertex_legend:
+            uvco_offset = vertex_legend[VES_TEXTURE_COORDINATES][1]
+        vertmaps = {}
+        indices_map = []
+        # vertices
+        for idx in range(max(indices)+1):
+            coords = get_vcoords(vbuffer, idx, pos_offset)
+            if coords:
+                if not coords in vertmaps:
+                    new_mesh.vertices.add(1)
+                    new_mesh.vertices[len(new_mesh.vertices)-1].co = coords
+                    vertmaps[coords] = len(new_mesh.vertices)-1
+                indices_map.append(vertmaps[coords])
             else:
-                bmat.ambient = ogremat.ambient
-        if ogremat.specular:
-            if bversion == 2:
-                bmat.setSpec(1.0)
-                bmat.setSpecCol(ogremat.specular[:3])
-                bmat.setHardness(int(ogremat.specular[3]*4.0))
+                new_mesh.vertices.add(1)
+                new_mesh.vertices[len(new_mesh.vertices)-1].co = (0.0,0.0,0.0)
+                indices_map.append(len(new_mesh.vertices)-1)
+        if not len(new_mesh.vertices):
+            logger.debug("mesh with no vertex!!")
+        start_face = len(new_mesh.faces)
+        # faces
+        for idx in range(int(len(indices)/3)):
+            idx = idx*3
+            #new_mesh.vertexUV = False
+            #face = [new_mesh.verts[indices_map[indices[idx]]],
+            #                    new_mesh.verts[indices_map[indices[idx+1]]],
+            #                    new_mesh.verts[indices_map[indices[idx+2]]]]
+            face = [indices_map[indices[idx]],
+                                indices_map[indices[idx+1]],
+                                indices_map[indices[idx+2]]]
+            new_mesh.faces.add(1)
+            new_mesh.faces[len(new_mesh.faces)-1].vertices = face
+            #new_mesh.faces.extend(face, ignoreDups=True)
+            if len(new_mesh.faces) == 0:
+                logger.debug("Degenerate face!")
+                continue
+            face = new_mesh.faces[len(new_mesh.faces)-1]
+
+            continue
+            try:
+                no1 = get_nor(indices[idx], vbuffer, no_offset)
+            except:
+                no1 = [0.0,0.0,0.0]
+            try:
+                no2 = get_nor(indices[idx+1], vbuffer, no_offset)
+            except:
+                no2 = [0.0,0.0,0.0]
+            try:
+                no3 = get_nor(indices[idx+2], vbuffer, no_offset)
+            except:
+                no3 = [0.0,0.0,0.0]
+            if VES_TEXTURE_COORDINATES in vertex_legend:
+                uv1 = get_uv(indices[idx], vbuffer, uvco_offset)
+                uv2 = get_uv(indices[idx+1], vbuffer, uvco_offset)
+                uv3 = get_uv(indices[idx+2], vbuffer, uvco_offset)
+
+                blender_tface = uvtex.data[len(new_mesh.faces)-1]
+                blender_tface.uv1 = uv1
+                blender_tface.uv2 = uv2
+                blender_tface.uv3 = uv3
+                if image:
+                    blender_tface.image = image
+
+                #face.uv = (mathutils.Vector(uv1),
+                #           mathutils.Vector(uv2),
+                #           mathutils.Vector(uv3)
+        # UV
+        if VES_TEXTURE_COORDINATES in vertex_legend:
+            if image:
+                logger.debug("setting image on material")
+            if not len(new_mesh.uv_textures):
+                uvtex = new_mesh.uv_textures.new()
+                new_mesh.uv_textures.active = uvtex
             else:
-                bmat.specular_intensity = 1.0
-                ogremat.specular[:3]
-                bmat.specular_color = ogremat.specular[:3]
-                bmat.specular_hardness = int(ogremat.specular[3]*4.0)
-        if ogremat.alpha < 1.0:
-            bmat.alpha = ogremat.alpha
-        # specular
-        if bversion == 2:
-           layerMappings = {'normalMap':'NOR',
-                         'heightMap':'DISP',
-                         'reflectionMap':'REF',
-                         'opacityMap':'ALPHA',
-                         'lightMap':'AMB',
-                         'specularMap':'SPEC' }
-        elif bversion == 2:
-           layerMappings = {'normalMap':'use_map_normal',
-                         'heightMap':'use_map_displacement',
-                         'reflectionMap':'use_map_reflect',
-                         'opacityMap':'use_map_alpha',
-                         'lightMap':'use_map_ambient',
-                         'specularMap':'use_map_specular' }
+                uvtex = new_mesh.uv_textures.active
+            for idx in range(int(len(indices)/3)):
+                fidx = idx*3
+                uv1 = get_uv(indices[fidx], vbuffer, uvco_offset)
+                uv2 = get_uv(indices[fidx+1], vbuffer, uvco_offset)
+                uv3 = get_uv(indices[fidx+2], vbuffer, uvco_offset)
 
-        for layerName, textureName in ogremat.layers.items():
-            if layerName == 'shadowMap':
-                if bversion == 2:
-                    bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
-                else:
-                    bmat.use_cast_buffer_shadows = True
-            if textureName:
-                btex = self.import_texture(textureName)
-                if btex:
-                    if bversion == 2:
-                        mapto = 'COL'
-                    else:
-                        mapto = 'use_map_color'
-                    if layerName in layerMappings:
-                        mapto = layerMappings[layerName]
-                    if mapto == 'COL':
-                        ogremat.btex = btex
-                    if bversion == 2:
-                        if mapto:
-                            mapto = Blender.Texture.MapTo[mapto]
-                        bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
-                    if bversion == 3:
-                        new_slot = bmat.texture_slots.add()
-                        setattr(new_slot, mapto, True)
-                        new_slot.texture = btex
-                        new_slot.texture_coords = 'ORCO'
+                blender_tface = uvtex.data[start_face+idx]
+                blender_tface.uv1 = uv1
+                blender_tface.uv2 = uv2
+                blender_tface.uv3 = uv3
+                if image:
+                    blender_tface.image = image
+                    blender_tface.use_image = True
 
-
-                    idx += 1
-        self._imported_materials[mat["name"]] = bmat
-        return bmat
-
-    def import_material(self, material, retries):
-        """
-        Import a material from opensim.
-        """
-        logger.debug(("material", material))
-        btex = None
-        bmat = None
-        gridinfo = self.gridinfo
-        try:
-            if material in self._imported_assets:
-                bmat = self._imported_assets[material]
-            else:
-            # XXX should check on library and refresh if its there
-                mat = gridinfo.getAsset(material)
-                ogremat = OgreMaterial(mat)
-                self._imported_ogre_materials[mat["name"]] = ogremat
-                bmat = self.create_blender_material(ogremat, mat)
-                self._imported_assets[material] = bmat
-        except CONNECTION_ERRORS:
-            if retries > 0:
-                return self.import_material(material, retries-1)
-        return bmat
-
-    def import_mesh(self, scenegroup):
-        """
-        Import mesh object from opensim scene.
-        """
-        logger.debug(("mesh", scenegroup["asset"]))
-        if scenegroup["asset"] in self._imported_assets:
-            return self._imported_assets[scenegroup["asset"]]
-        asset = self.gridinfo.getAsset(scenegroup["asset"])
-        if not asset["type"] == "43":
-            logger.debug("("+asset["type"]+")")
-            return
-        mesh = oimporter.parse(asset["data"])
-        if not mesh:
-            logger.debug("error loading",scenegroup["asset"])
-            return
-        try:
-            new_mesh = bpy.data.meshes[asset["name"]+scenegroup["asset"]]
-            new_mesh.faces.delete(1, range(len(new_mesh.faces)))
-            new_mesh.verts.delete(1, range(len(new_mesh.verts)))
-            new_mesh.materials = []
-            print("new mesh!")
-        except:
-            new_mesh = bpy.data.meshes.new(asset["name"]+scenegroup["asset"])
-            print("new mesh - bak!")
-        self._imported_assets[scenegroup["asset"]] = new_mesh
-        for vertex, vbuffer, indices, materialName in mesh:
-            self.import_submesh(new_mesh, vertex, vbuffer, indices, materialName)
+        if not len(new_mesh.faces):
+            logger.debug("mesh with no faces!!")
+        sys.stderr.write("*")
+        sys.stderr.flush()
         return new_mesh
 
+    def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
+                       offset_z=20.0):
+        obj.location = (pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+
+    def apply_scale(self, obj, scale):
+        obj.scale = (scale[0], scale[1], scale[2])
+
+    def unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
+                       offset_z=20.0):
+        return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
+
+
+    def unapply_rotation(self, euler):
+        #r = 180.0/math.pi
+        r = 1.0
+        euler = mathutils.Euler([-euler[0]*r, -euler[1]*r,
+                                        (euler[2]*r)+math.pi])
+        q = euler.to_quat()
+        return [q.x, q.y, q.z, q.w]
+        
+    def apply_rotation(self, obj, rot):
+        b_q = mathutils.Quaternion((rot[3], rot[0], rot[1],
+                                           rot[2]))
+        #b_q1 = b_q.cross(Blender.Mathutils.Quaternion([0,-1,0]))
+        #b_q2 = b_q1.cross(Blender.Mathutils.Quaternion([-1,0,0]))
+        #b_q3 = b_q2.cross(Blender.Mathutils.Quaternion([0,0,-1]))
+        r = 1.0
+        #r = math.pi/180.0;
+        if b_q:
+            b_q = mathutils.Quaternion((b_q.w, b_q.x, b_q.y, b_q.z))
+            euler = b_q.to_euler()
+            obj.rotation_euler = (-euler[0]*r, -euler[1]*r, (euler[2]-math.pi)*r)
+
+    def getcreate_object(self, obj_uuid, name, mesh_data):
+        logger.debug("create object")
+        obj = self.find_with_uuid(obj_uuid, bpy.data.objects,
+                             "objects")
+        if not obj:
+            obj = bpy.data.objects.new(name, mesh_data)
+        return obj
+
+    def create_texture(self, name, filename):
+        bim = bpy.data.images.load(filename)
+        btex = bpy.data.textures.new(name, 'IMAGE')
+        btex.image = bim
+        return btex
+
+    def get_current_scene(self):
+        return bpy.context.scene
+
+class Importer24(object):
     def import_submesh(self, new_mesh, vertex, vbuffer, indices, materialName):
         """
         Import submesh info and fill blender face and vertex information.
@@ -301,19 +280,28 @@ class Importer(object):
                 uv1 = get_uv(indices[idx], vbuffer, uvco_offset)
                 uv2 = get_uv(indices[idx+1], vbuffer, uvco_offset)
                 uv3 = get_uv(indices[idx+2], vbuffer, uvco_offset)
-                face.uv = (Blender.Mathutils.Vector(uv1),
-                           Blender.Mathutils.Vector(uv2),
-                           Blender.Mathutils.Vector(uv3))
+                face.uv = (mathutils.Vector(uv1),
+                           mathutils.Vector(uv2),
+                           mathutils.Vector(uv3))
         if not len(new_mesh.faces):
             logger.debug("mesh with no faces!!")
         sys.stderr.write("*")
         sys.stderr.flush()
         return new_mesh
 
+    def create_texture(self, name, filename):
+        bim = Blender.Image.Load(filename)
+        btex = Blender.Texture.New(name)
+        btex.setType('Image')
+        btex.image = bim
+        return btex
+
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0):
         obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
 
+    def apply_scale(self, obj, scale):
+        obj.setSize(scale[0], scale[1], scale[2])
     def unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0):
         return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
@@ -321,38 +309,273 @@ class Importer(object):
 
     def unapply_rotation(self, euler):
         r = 180.0/math.pi
-        euler = Blender.Mathutils.Euler([-euler[0]*r, -euler[1]*r,
+        euler = mathutils.Euler([-euler[0]*r, -euler[1]*r,
                                         (euler[2]*r)+180.0])
         q = euler.toQuat()
         return [q.x, q.y, q.z, q.w]
         
     def apply_rotation(self, obj, rot):
-        b_q = Blender.Mathutils.Quaternion(rot[3], rot[0], rot[1],
+        b_q = mathutils.Quaternion(rot[3], rot[0], rot[1],
                                            rot[2])
         #b_q1 = b_q.cross(Blender.Mathutils.Quaternion([0,-1,0]))
         #b_q2 = b_q1.cross(Blender.Mathutils.Quaternion([-1,0,0]))
         #b_q3 = b_q2.cross(Blender.Mathutils.Quaternion([0,0,-1]))
         r = math.pi/180.0;
         if b_q:
-            b_q = Blender.Mathutils.Quaternion(b_q.w, b_q.x, b_q.y, b_q.z)
+            b_q = mathutils.Quaternion(b_q.w, b_q.x, b_q.y, b_q.z)
             euler = b_q.toEuler()
             obj.setEuler(-euler[0]*r, -euler[1]*r, (euler[2]-180.0)*r)
 
-    def import_object(self, scenegroup, offset_x=128.0, offset_y=128.0,
+    def getcreate_object(self, obj_uuid, name, mesh_data):
+        obj = self.find_with_uuid(obj_uuid, bpy.data.objects,
+                             "objects")
+        if not obj:
+            obj = Blender.Object.New("Mesh", name)
+        obj.link(mesh_data)
+        return obj
+
+    def get_current_scene(self):
+        scene = Blender.Scene.GetCurrent ()
+        return scene
+
+
+# Common
+if bversion == 3:
+    ImporterBase = Importer25
+else:
+    ImporterBase = Importer24
+
+class Importer(ImporterBase):
+    def __init__(self, gridinfo):
+        self.gridinfo = gridinfo
+        self.init_structures()
+
+    def init_structures(self):
+        """
+        Initialize importer caches.
+
+        Can be called to avoid caching of results.
+        """
+        self._imported_assets = {}
+        self._imported_materials = {}
+        self._imported_ogre_materials = {}
+
+        self._objects = {}
+        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
+        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
+        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
+
+    def import_texture(self, texture):
+        """
+        Import the given texture from opensim.
+        """
+        logger.debug(("texture", texture))
+        if texture in self._imported_assets:
+            return self._imported_assets[texture]
+        else:
+            texture = texture.decode()
+            tex = self.gridinfo.getAsset(texture)
+            if "name" in tex:
+                tex_name = tex["name"]
+                try:
+                    btex = bpy.data.textures[tex_name]
+                    # XXX should update
+                    return btex
+                except:
+                    f = open("/tmp/"+texture+".1.jpg", "wb")
+                    f.write(tex["data"])
+                    f.close()
+                    split_name = tex_name.split("/")
+                    if len(split_name) > 2:
+                        tex_name = split_name[2]
+                    dest = "/tmp/"+tex_name
+                    if not dest[-3:] in ["png"]:
+                        dest = dest + ".png"
+                    try:
+                        subprocess.call(["convert",
+                                          "/tmp/"+texture+".1.jpg",
+                                          dest])
+                        btex = self.create_texture(tex_name, dest)
+                        self._imported_assets[texture] = btex
+                        return btex
+                    except:
+                        logger.error(("error opening:", dest))
+
+    def create_blender_material(self, ogremat, mat):
+        """
+        Create a blender material from ogre format.
+        """
+        logger.debug("create_blender_material")
+        textures = ogremat.textures
+        bmat = None
+        idx = 0
+        mat_name = mat["name"].split("/")[0]
+        try:
+            bmat = bpy.data.materials[mat_name]
+            if bversion == 3:
+                bmat.name = "tobedeleted"
+                bmat = bpy.data.materials.new(mat_name)
+        except:
+            bmat = bpy.data.materials.new(mat_name)
+        # material base properties
+        if ogremat.doambient:
+            if bversion == 2:
+                bmat.setAmb(ogremat.ambient)
+            else:
+                bmat.ambient = ogremat.ambient
+        if ogremat.specular:
+            if bversion == 2:
+                bmat.setSpec(1.0)
+                bmat.setSpecCol(ogremat.specular[:3])
+                bmat.setHardness(int(ogremat.specular[3]*4.0))
+            else:
+                bmat.specular_intensity = 1.0
+                ogremat.specular[:3]
+                bmat.specular_color = ogremat.specular[:3]
+                bmat.specular_hardness = int(ogremat.specular[3]*4.0)
+        if ogremat.alpha < 1.0:
+            bmat.alpha = ogremat.alpha
+        # specular
+        if bversion == 2:
+           layerMappings = {'normalMap':'NOR',
+                         'heightMap':'DISP',
+                         'reflectionMap':'REF',
+                         'opacityMap':'ALPHA',
+                         'lightMap':'AMB',
+                         'specularMap':'SPEC' }
+        elif bversion == 3:
+           layerMappings = {'normalMap':'use_map_normal',
+                         'heightMap':'use_map_displacement',
+                         'reflectionMap':'use_map_reflect',
+                         'opacityMap':'use_map_alpha',
+                         'lightMap':'use_map_ambient',
+                         'specularMap':'use_map_specular' }
+
+        for layerName, textureName in ogremat.layers.items():
+            if layerName == 'shadowMap':
+                if bversion == 2:
+                    bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
+                else:
+                    bmat.use_cast_buffer_shadows = True
+            if textureName:
+                btex = self.import_texture(textureName)
+                if btex:
+                    if bversion == 2:
+                        mapto = 'COL'
+                    else:
+                        mapto = 'use_map_color_diffuse'
+                    if layerName in layerMappings:
+                        mapto = layerMappings[layerName]
+                    if mapto in ['use_map_color_diffuse', 'COL']:
+                        ogremat.btex = btex
+                    if bversion == 2:
+                        if mapto:
+                            mapto = Blender.Texture.MapTo[mapto]
+                        bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
+                    if bversion == 3:
+                        new_slot = bmat.texture_slots.add()
+                        setattr(new_slot, mapto, True)
+                        new_slot.texture = btex
+                        new_slot.texture_coords = 'ORCO'
+
+
+                    idx += 1
+        self._imported_materials[mat["name"]] = bmat
+        return bmat
+
+    def import_material(self, material, retries):
+        """
+        Import a material from opensim.
+        """
+        logger.debug(("material", material))
+        btex = None
+        bmat = None
+        gridinfo = self.gridinfo
+        try:
+            if material in self._imported_assets:
+                bmat = self._imported_assets[material]
+            else:
+            # XXX should check on library and refresh if its there
+                mat = gridinfo.getAsset(material)
+                ogremat = OgreMaterial(mat)
+                self._imported_ogre_materials[mat["name"]] = ogremat
+                bmat = self.create_blender_material(ogremat, mat)
+                self._imported_assets[material] = bmat
+        except CONNECTION_ERRORS:
+            if retries > 0:
+                return self.import_material(material, retries-1)
+        return bmat
+
+    def import_mesh(self, scenegroup):
+        """
+        Import mesh object from opensim scene.
+        """
+        logger.debug(("mesh", scenegroup["asset"]))
+        if scenegroup["asset"] in self._imported_assets:
+            return self._imported_assets[scenegroup["asset"]]
+        asset = self.gridinfo.getAsset(scenegroup["asset"])
+        if not asset["type"] == "43":
+            logger.debug("("+asset["type"]+")")
+            return
+        mesh = oimporter.parse(asset["data"])
+        if not mesh:
+            logger.debug("error loading",scenegroup["asset"])
+            return
+        is_new = False
+        try:
+            new_mesh = bpy.data.meshes[asset["name"]+scenegroup["asset"]]
+        except:
+            new_mesh = bpy.data.meshes.new(asset["name"]+scenegroup["asset"])
+            is_new = True
+            print("new mesh - bak!")
+        if not is_new:
+            if bversion == 3:
+                new_mesh.name = "tobedeleted"
+                new_mesh = bpy.data.meshes.new(asset["name"]+scenegroup["asset"])
+            else:
+                new_mesh.faces.delete(1, range(len(new_mesh.faces)))
+                new_mesh.verts.delete(1, range(len(new_mesh.verts)))
+                new_mesh.materials = []
+            print("old mesh!")
+
+        self._imported_assets[scenegroup["asset"]] = new_mesh
+        for vertex, vbuffer, indices, materialName in mesh:
+            self.import_submesh(new_mesh, vertex, vbuffer, indices, materialName)
+        return new_mesh
+
+    def import_object(self, scenegroup, new_mesh, materials=None, offset_x=128.0, offset_y=128.0,
                       offset_z=20.0):
         """
         Import object properties and create the blender mesh object.
         """
+        logger.debug("import_object")
         pos = parse_vector(scenegroup["position"])
         scale = parse_vector(scenegroup["scale"])
-        obj = self.find_with_uuid(scenegroup["id"], bpy.data.objects,
-                             "objects")
-        if not obj:
-            obj = Blender.Object.New("Mesh", scenegroup["asset"])
+
+        obj = self.getcreate_object(scenegroup["id"], scenegroup["asset"], new_mesh)
         self.apply_position(obj, pos)
         self.apply_rotation(obj, parse_vector(scenegroup["rotation"]))
-        obj.setSize(scale[0], scale[1], scale[2])
+        self.apply_scale(obj, scale)
         self.set_uuid(obj, str(scenegroup["id"]))
+
+        # new_mesh properties have to be set here otherwise blender
+        # can crash!!
+        self.set_uuid(new_mesh, str(scenegroup["asset"]))
+        if materials:
+            if bversion == 3:
+                for mat in materials:
+                    new_mesh.materials.append(mat)
+            else:
+                new_mesh.materials = materials
+        scene = self.get_current_scene()
+        try:
+            scene.objects.link(obj)
+        except RuntimeError:
+            pass # object already in scene
+        new_mesh.update()
+        #obj.makeDisplayList()
+        #new_mesh.hasVertexColours(True) # for now we create them as blender does
+
         return obj
 
     def import_group(self, groupid, scenegroup, retries,
@@ -377,23 +600,8 @@ class Importer(object):
             if new_mesh:
                 sys.stderr.write(".")
                 sys.stderr.flush()
-                obj = self.import_object(scenegroup, offset_x, offset_y,
+                obj = self.import_object(scenegroup, new_mesh, materials, offset_x, offset_y,
                                          offset_z)
-                obj.link(new_mesh)
-                # new_mesh properties have to be set here otherwise blender
-                # can crash!!
-                self.set_uuid(new_mesh, str(scenegroup["asset"]))
-                scene = Blender.Scene.GetCurrent ()
-                if load_materials:
-                    new_mesh.materials = materials
-                    #new_mesh.setMaterials(materials)
-                try:
-                    scene.link(obj)
-                except RuntimeError:
-                    pass # object already in scene
-                new_mesh.update()
-                #obj.makeDisplayList()
-                #new_mesh.hasVertexColours(True) # for now we create them as blender does
                 return obj
         except CONNECTION_ERRORS:
             if retries > 0:
