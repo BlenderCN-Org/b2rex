@@ -3,7 +3,6 @@
 """
 
 import bpy
-import testthread
 
 class ConnectionPanel(bpy.types.Panel):
     bl_label = "b2rex" #baseapp.title
@@ -43,7 +42,15 @@ class ConnectionPanel(bpy.types.Panel):
         session = bpy.b2rex_session
 
         box = layout.box()
-        box.operator("b2rex.connect", text="Connect")
+        if session.connected and session.rt_support:
+            box_c = box.row()
+            col = box_c.column()
+            col.operator("b2rex.connect", text="Connect")
+            col = box_c.column()
+            col.alignment = 'RIGHT'
+            col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
+        else:
+            box.operator("b2rex.connect", text="Connect")
         box.operator("b2rex.export", text="Export")
         row = layout.row()
         row = box.row() 

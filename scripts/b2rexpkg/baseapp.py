@@ -19,6 +19,8 @@ logger = logging.getLogger('b2rex.baseapp')
 
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
+        self.rt_support = eventlet_present
+        self.connected = False
         self.positions = {}
         self.rotations = {}
         self.scales = {}
@@ -67,6 +69,7 @@ class BaseApplication(Importer, Exporter):
         else:
             logger.debug("no support for real time communications")
 
+        self.connected = True
         self.addStatus("Connected to " + griddata['gridnick'])
 
     def addRtCheckBox(self):

@@ -17,7 +17,8 @@ def get_uuid_str(ob):
 
 def image_tagger(im):
     uuid_str = get_uuid_str(im)
-    uuidexport.uuidexporter.add('textures', 'texture', ob.name, uuid_str)
+    name = os.path.basename(im.filepath)
+    uuidexport.uuidexporter.add('textures', 'texture', name, uuid_str)
 
 def meshobj_tagger(self, ob, *args, **kwargs):
     print(" * object: "+ob.name)

@@ -19,6 +19,9 @@ class B2RexMeshProps(B2RexBaseProps):
 class B2RexTextureProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
 
+class B2RexImageProps(B2RexBaseProps):
+    uuid = StringProperty(name='uuid', default='', description='')
+
 class B2RexMaterialProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
 
@@ -44,6 +47,7 @@ class B2RexProps(bpy.types.IDPropertyGroup):
                               min=0.0,
                               max=512.0)
     regenMaterials = BoolProperty(name="Regen Material", default=True)
+    rt_on = BoolProperty(name="RT", default=False)
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)

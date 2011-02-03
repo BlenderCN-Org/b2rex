@@ -57,6 +57,7 @@ else:
     from .b25.properties import B2RexRegions, B2RexProps
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
+    from .b25.properties import B2RexImageProps
     from .b25.app import B2Rex
 
 import bpy
@@ -71,6 +72,8 @@ def register():
                                                name="b2rex object props")
     bpy.types.Texture.opensim = PointerProperty(type=B2RexTextureProps,
                                                name="b2rex object props")
+    bpy.types.Image.opensim = PointerProperty(type=B2RexImageProps,
+                                               name="b2rex object props")
     bpy.b2rex_session = B2Rex(bpy.context.scene)
 #    register_keymaps()
 
@@ -78,6 +81,12 @@ def unregister():
     logger.debug("byez!-")
     del bpy.types.Scene.b2rex_props
     del bpy.b2rex_session
+    # XXX are we sure we want to do this?
+    del bpy.types.Object.opensim
+    del bpy.types.Mesh.opensim
+    del bpy.types.Material.opensim
+    del bpy.types.Texture.opensim
+    del bpy.types.Image.opensim
     #testthread.running = False
 #    unregister_keymaps()
 
