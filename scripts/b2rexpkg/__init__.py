@@ -48,7 +48,6 @@ IMMEDIATE = 2
 
 if sys.version_info[0] == 2:
     import Blender
-    from .b24.hooks import start, write
     from .b24 import hacks
 else:
     from bpy.props import PointerProperty
@@ -59,10 +58,6 @@ else:
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.app import B2Rex
-    def start(*args):
-        pass
-    def write(*args):
-        pass
 
 import bpy
 

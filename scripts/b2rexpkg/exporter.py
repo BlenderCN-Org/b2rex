@@ -7,19 +7,17 @@ import sys
 import logging
 import tempfile
 import shutil
-import b2rexpkg
 
-from b2rexpkg.siminfo import GridInfo
-from b2rexpkg.simconnection import SimConnection
+from b2rexpkg import uuidexport
+
+from .siminfo import GridInfo
+from .simconnection import SimConnection
+from .uuidexport import reset_uuids
+
 if sys.version_info[0] == 2:
-    from b2rexpkg.ogre_exporter import OgreExporter
-    from .b24.hooks import reset_uuids
+    from .b24.ogre_exporter import OgreExporter
 else:
-    class DummyExporter():
-        pass
-    from b2rexpkg.b25.ogre_exporter import OgreExporter
-    def reset_uuids(*args):
-        pass
+    from .b25.ogre_exporter import OgreExporter
 
 import bpy
 logger = logging.getLogger('b2rex.exporter')
@@ -63,18 +61,20 @@ class Exporter(object):
         """
         Export the scene to a zipfile.
         """
-        b2rexpkg.start()
+        uuidexport.start()
         if exportSettings.regenMaterials:
-                reset_uuids(bpy.data.materials)
+                uuidexport.reset_uuids(bpy.data.materials)
         if exportSettings.regenObjects:
-                reset_uuids(bpy.data.objects)
+                uuidexport.reset_uuids(bpy.data.objects)
         if exportSettings.regenTextures:
-                reset_uuids(bpy.data.textures)
+                uuidexport.reset_uuids(bpy.data.textures)
         if exportSettings.regenMeshes:
-                reset_uuids(bpy.data.meshes)
+                uuidexport.reset_uuids(bpy.data.meshes)
         self.ogre.export(path, pack_name, offset)
-        f = open(os.path.join(path, pack_name + ".uuids"), 'w')
-        b2rexpkg.write(f)
+        uuid_path = os.path.join(path, pack_name + ".uuids")
+        logger.debug('writing uuids to '+uuid_path)
+        f = open(uuid_path, 'w')
+        uuidexport.write(f)
         f.close()
 
     def doExport(self, exportSettings, location):

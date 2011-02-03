@@ -2,8 +2,11 @@
 Classes managing the ogre tools from blender 2.5
 """
 
+import os
 import bpy
-import addon_ogreDotScene
+
+# hooks to be able to export uuids on the fly
+import b2rexpkg.b25.uuidhooks
 
 # export meshes
 class OgreExporter(object):
@@ -11,6 +14,6 @@ class OgreExporter(object):
         """
         Export whole scene, including scene info and mesh info.
         """
-        bpy.ops.ogre.export(filepath="/tmp/bla.zip")
+        bpy.ops.ogre.export(filepath=os.path.join(path, pack_name))
 
 

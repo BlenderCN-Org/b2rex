@@ -7,6 +7,9 @@ import ogredotscene as sceneexport
 
 from ogrepkg.base import Log, View
 
+# hook up some ogre exporter functions.
+import b2rexpkg.b24.uuidhooks
+
 # kind of reporter	
 class Reporter(View):
 	def update(self):
