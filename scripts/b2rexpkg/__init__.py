@@ -33,7 +33,7 @@ bl_addon_info = {
         'Py/Scripts/System/Display_All_Icons',
     'tracker_url': 'http://projects.blender.org/tracker/index.php?'\
         'func=detail&aid=22011&group_id=153&atid=469',
-    'category': 'System'}
+    'category': 'B2Rex'}
 
 import sys
 import traceback
@@ -53,11 +53,16 @@ if sys.version_info[0] == 2:
 else:
     from bpy.props import PointerProperty
     from .b25.ops import Connect, Export, Import, Settings
+    from .b25.ops import Upload, ExportUpload, Sync, Check
     from .b25.panels.main import ConnectionPanel
     from .b25.properties import B2RexRegions, B2RexProps
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.app import B2Rex
+    def start(*args):
+        pass
+    def write(*args):
+        pass
 
 import bpy
 

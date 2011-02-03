@@ -55,7 +55,7 @@ class ConnectionPanel(bpy.types.Panel):
         if props.selected_region > -1:
             box = layout.row()
             col = box.column()
-            col.operator("b2rex.export", text="Export/Upload")
+            col.operator("b2rex.exportupload", text="Export/Upload")
             col = box.column()
             col.operator("b2rex.export", text="Upload")
             box = layout.row()
@@ -65,7 +65,7 @@ class ConnectionPanel(bpy.types.Panel):
             col.operator("b2rex.check", text="Check")
             box = layout.row()
             col = box.column()
-            col.operator("b2rex.import", text="Sync")
+            col.operator("b2rex.sync", text="Sync")
             col = box.column()
             col.operator("b2rex.import", text="Import")
 

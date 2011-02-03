@@ -33,7 +33,14 @@ class B2Rex(BaseApplication):
 
     def onExport(self, context):
         props = context.scene.b2rex_props
-        self.export()
+        self.doExport(props, props.loc)
+
+    def onExportUpload(self, context):
+        self.onExport(context)
+        self.onUpload(context)
+
+    def onUpload(self, context):
+        self.doUpload()
 
     def onImport(self, context):
         props = context.scene.b2rex_props
@@ -65,9 +72,6 @@ class B2Rex(BaseApplication):
         print('importing..')
         text = self.import_region(self.region_uuid)
         self.addStatus("Scene imported " + self.region_uuid)
-
-    def export(self):
-        print("conecttt")
 
     def settings(self):
         print("conecttt")

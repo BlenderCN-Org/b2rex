@@ -47,10 +47,10 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
-    expand = BoolProperty(default=False,
+    expand = BoolProperty(default=True,
                           description="Expand, to display settings")
     status = StringProperty(default="b2rex started", description="Expand, to diesply")
-    selected_region = IntProperty(default=-1, description="Expand, to diesply")
+    selected_region = IntProperty(default=-1, description="Expand, to display")
     regions = CollectionProperty(type=B2RexRegions,
                                  name='Regions',
                                  description='Sessions on the server')

@@ -29,7 +29,9 @@ class BaseApplication(Importer, Exporter):
         self.settings_visible = False
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
-        
+
+    def addStatus(self, text, priority=0):
+        pass
 
     def initGui(self, title):
         pass

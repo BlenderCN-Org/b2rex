@@ -102,18 +102,6 @@ class RealxtendExporterApplication(BaseApplication):
                                         "regionInfoSpace")
         self.regionInfoLayout.addWidget(Label("\n"+region_uuid), "regionInfo")
 
-    def packTo(self, from_path, to_zip):
-        """
-        Pack a directory to a file.
-        """
-        import zipfile
-        zfile = zipfile.ZipFile(to_zip, "w", zipfile.ZIP_DEFLATED)
-        for dirpath, dirnames, filenames in os.walk(from_path):
-            for name in filenames:
-                file_path = os.path.join(dirpath,  name)
-                zfile.write(file_path, file_path[len(from_path+"/"):])
-        zfile.close()
-
     def onCheckAction(self):
         """
         Check region contents against server.
@@ -157,57 +145,17 @@ class RealxtendExporterApplication(BaseApplication):
         """
         Upload Action
         """
-        base_url = self.exportSettings.server_url
-        pack_name = self.exportSettings.pack
-        if not self.region_uuid:
-            self.addStatus("Error: No region selected ", ERROR)
-            return
-        self.addStatus("Uploading to " + base_url, IMMEDIATE)
-        export_dir = self.getExportDir()
-        res = self.sim.sceneUpload(self.region_uuid,
-                                                           pack_name,
-                                   os.path.join(export_dir, "world_pack.zip"))
-        if res.has_key('success') and res['success'] == True:
-            self.addStatus("Uploaded to " + base_url)
-        else:
-            self.addStatus("Error: Something went wrong uploading", ERROR)
+        self.doUpload()
 
     def onExportAction(self):
         """
         Export Action
         """
-        tempfile.gettempdir()
-        base_url = self.exportSettings.server_url
-        pack_name = self.exportSettings.pack
-        export_dir = self.getExportDir()
-
-        self.addStatus("Exporting to " + export_dir, IMMEDIATE)
-
-        destfolder = os.path.join(export_dir, 'b2rx_export')
-        if not os.path.exists(destfolder):
-            os.makedirs(destfolder)
-        else:
-            shutil.rmtree(destfolder)
-            os.makedirs(destfolder)
-
         x = self.exportSettings.locX.getValue()
         y = self.exportSettings.locY.getValue()
         z = self.exportSettings.locZ.getValue()
 
-        self.export(destfolder, pack_name, [x, y, z], self.exportSettings)
-        dest_file = os.path.join(export_dir, "world_pack.zip")
-        self.packTo(destfolder, dest_file)
-
-        self.addStatus("Exported to " + dest_file)
-
-    def getExportDir(self):
-        """
-        Get export directory.
-        """
-        export_dir = self.exportSettings.path
-        if not export_dir:
-            export_dir = tempfile.tempdir
-        return export_dir
+        self.doExport(self.exportSettings, [x, y, z])
 
     class ExportUploadAction(Action):
         """

@@ -131,10 +131,6 @@ class Importer25(object):
                 blender_tface.uv3 = uv3
                 if image:
                     blender_tface.image = image
-
-                #face.uv = (mathutils.Vector(uv1),
-                #           mathutils.Vector(uv2),
-                #           mathutils.Vector(uv3)
         # UV
         if VES_TEXTURE_COORDINATES in vertex_legend:
             if image:
@@ -187,9 +183,6 @@ class Importer25(object):
     def apply_rotation(self, obj, rot):
         b_q = mathutils.Quaternion((rot[3], rot[0], rot[1],
                                            rot[2]))
-        #b_q1 = b_q.cross(Blender.Mathutils.Quaternion([0,-1,0]))
-        #b_q2 = b_q1.cross(Blender.Mathutils.Quaternion([-1,0,0]))
-        #b_q3 = b_q2.cross(Blender.Mathutils.Quaternion([0,0,-1]))
         r = 1.0
         #r = math.pi/180.0;
         if b_q:
@@ -251,9 +244,6 @@ class Importer24(object):
         for idx in range(len(indices)/3):
             idx = idx*3
             new_mesh.vertexUV = False
-            #face = [new_mesh.verts[indices_map[indices[idx]]],
-            #                    new_mesh.verts[indices_map[indices[idx+1]]],
-            #                    new_mesh.verts[indices_map[indices[idx+2]]]]
             face = [indices_map[indices[idx]],
                                 indices_map[indices[idx+1]],
                                 indices_map[indices[idx+2]]]

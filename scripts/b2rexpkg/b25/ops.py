@@ -18,6 +18,22 @@ class Export(bpy.types.Operator):
         bpy.b2rex_session.onExport(context)
         return {'FINISHED'}
 
+class Upload(bpy.types.Operator):
+    bl_idname = "b2rex.upload"
+    bl_label = "upload"
+
+    def execute(self, context):
+        bpy.b2rex_session.onUpload(context)
+        return {'FINISHED'}
+
+class ExportUpload(bpy.types.Operator):
+    bl_idname = "b2rex.exportupload"
+    bl_label = "export+upload"
+
+    def execute(self, context):
+        bpy.b2rex_session.onExportUpload(context)
+        return {'FINISHED'}
+
 class Import(bpy.types.Operator):
     bl_idname = "b2rex.import"
     bl_label = "import"
@@ -35,6 +51,13 @@ class Check(bpy.types.Operator):
         bpy.b2rex_session.onCheck(context)
         return {'FINISHED'}
 
+class Sync(bpy.types.Operator):
+    bl_idname = "b2rex.sync"
+    bl_label = "Sync"
+
+    def execute(self, context):
+        bpy.b2rex_session.onSync(context)
+        return {'FINISHED'}
 
 class Settings(bpy.types.Operator):
     bl_idname = "b2rex.settings"

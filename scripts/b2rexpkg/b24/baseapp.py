@@ -131,7 +131,7 @@ class Base24Application(Screen, BaseApplication):
         return str(Blender.Get('version'))
 
     def getSelected(self):
-        return Blender.Objects.GetSelected()
+        return Blender.Object.GetSelected()
 
     def queueRedraw(self, pars=None):
         if pars:
@@ -219,7 +219,7 @@ class Base24Application(Screen, BaseApplication):
                 self.cb()
 	    except:
                 traceback.print_exc()
-                self.app.addStatus("Error: couldnt rum. Check your settings to see they are ok", ERROR)
+                logger.error("Error: couldnt rum. Check your settings to see they are ok")
                 return False
 
     class QuitAction(Action):
