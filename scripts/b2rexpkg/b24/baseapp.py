@@ -1,6 +1,6 @@
 import traceback
 
-from b2rexpkg.settings import ExportSettings
+from .settings import ExportSettings
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 

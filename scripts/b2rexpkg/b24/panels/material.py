@@ -11,7 +11,7 @@ from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 import Blender
 
 from b2rexpkg.exporter import Exporter
-from b2rexpkg.settings import ExportSettings
+from b2rexpkg.b24.settings import ExportSettings
 
 from b2rexpkg.b24.material import RexMaterialExporter
 

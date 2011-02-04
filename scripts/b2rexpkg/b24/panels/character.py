@@ -11,7 +11,7 @@ from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 import Blender
 
 from b2rexpkg.charexporter import CharacterExporter
-from b2rexpkg.charsettings import CharacterSettings
+from b2rexpkg.b24.charsettings import CharacterSettings
 
 from ogredotscene import Screen, HorizontalLayout
 from ogredotscene import NumberView, Widget, CheckBox
