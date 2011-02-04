@@ -3,6 +3,6 @@
 """
 
 import ogrepkg.materialexport
-from b2rexpkg.material import RexMaterialExporter
+from .material import RexMaterialExporter
 
 ogrepkg.materialexport.GameEngineMaterial = RexMaterialExporter
