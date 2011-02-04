@@ -1,5 +1,5 @@
 """
-    Some ugly hooks to override behaviour from the ogre exporter.
+    Utils for uuid exporting.
 """
 
 import sys
