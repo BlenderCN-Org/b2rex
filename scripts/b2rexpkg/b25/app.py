@@ -18,6 +18,8 @@ class B2Rex(BaseApplication):
         #self.connect(props.server_url, props.username, props.password)
         self.exportSettings = props
         self.onConnectAction()
+        if not self.connected:
+            return False
         while(len(props.regions) > 0):
             props.regions.remove(0)
         for key, region in self.regions.items():
@@ -100,4 +102,9 @@ class B2Rex(BaseApplication):
         """
         obj.opensim.uuid = obj_uuid
 
+    def getBlenderVersion(self):
+        return str(bpy.app.version_string)
+
+    def getObjectProperties(self, obj):
+        return (obj.location, obj.rotation_euler, obj.scale)
 

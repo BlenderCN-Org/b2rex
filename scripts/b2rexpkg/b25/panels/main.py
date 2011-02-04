@@ -23,7 +23,8 @@ class ConnectionPanel(bpy.types.Panel):
 #        self.icon_list = create_icon_list()
     
     def __del__(self):
-        testthread.running = False
+        if bpy.b2rex_session.rt_on:
+            bpy.b2rex_session.onToggleRt()
         print("byez!")
 
     def draw_callback_view(self, context):
@@ -48,7 +49,11 @@ class ConnectionPanel(bpy.types.Panel):
             col.operator("b2rex.connect", text="Connect")
             col = box_c.column()
             col.alignment = 'RIGHT'
-            col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
+            if session.simrt and session.simrt.connected:
+                col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
+            else:
+                col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
+            #col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
         else:
             box.operator("b2rex.connect", text="Connect")
         box.operator("b2rex.export", text="Export")

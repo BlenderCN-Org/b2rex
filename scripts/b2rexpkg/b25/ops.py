@@ -10,6 +10,14 @@ class Connect(bpy.types.Operator):
         bpy.b2rex_session.onConnect(context)
         return {'FINISHED'}
 
+class ToggleRt(bpy.types.Operator):
+    bl_idname = "b2rex.toggle_rt"
+    bl_label = "RT"
+
+    def execute(self, context):
+        bpy.b2rex_session.onToggleRt(context)
+        return {'FINISHED'}
+
 class Export(bpy.types.Operator):
     bl_idname = "b2rex.export"
     bl_label = "export"

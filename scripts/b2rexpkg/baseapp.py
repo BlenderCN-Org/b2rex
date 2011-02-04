@@ -6,13 +6,12 @@ from b2rexpkg import IMMEDIATE, ERROR
 from .importer import Importer
 from .exporter import Exporter
 
-eventlet_present = False
+eventlet_present = True
 try:
     import eventlet
     from b2rexpkg import simrt
-    eventlet_present = True
 except:
-    pass
+    from b2rexpkg import threadrt as simrt
 
 import logging
 logger = logging.getLogger('b2rex.baseapp')
@@ -25,6 +24,7 @@ class BaseApplication(Importer, Exporter):
         self.rotations = {}
         self.scales = {}
         self.rt_on = False
+        self.simrt = None
         self.screen = self
         self.gridinfo = GridInfo()
         self.buttons = {}
@@ -75,17 +75,21 @@ class BaseApplication(Importer, Exporter):
     def addRtCheckBox(self):
         pass
 
-    def onToggleRt(self):
+    def onToggleRt(self, context=None):
+        if context:
+            self.exportSettings = context.scene.b2rex_props
         if self.rt_on:
             self.simrt.addCmd("quit")
             self.rt_on = False
+            self.simrt = None
         else:
             firstline = 'Blender '+ self.getBlenderVersion()
-            self.simrt = simrt.run_thread(self.exportSettings.server_url,
+            self.simrt = simrt.run_thread(context, self.exportSettings.server_url,
                                           self.exportSettings.username,
                                           self.exportSettings.password,
                                           firstline)
-            Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
+            if not context:
+                Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
 
     def processCommand(self, cmd, *args):
@@ -164,10 +168,5 @@ class BaseApplication(Importer, Exporter):
     def queueRedraw(self, pars=None):
         pass
 
-    def getObjectProperties(self, obj):
-        return (obj.location, obj.rotation_euler, obj.scale)
-
-    def getBlenderVersion(self):
-        return str(bpy.app.version_string)
 
 
