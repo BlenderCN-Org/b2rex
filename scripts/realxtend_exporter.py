@@ -16,7 +16,7 @@ __bpydoc__ = "Please see the external documentation that comes with the script."
 
 
 import b2rexpkg
-from b2rexpkg.app import RealxtendExporterApplication
+from b2rexpkg.b24.panels.main import RealxtendExporterApplication
 
 
 if __name__ == "__main__":
