@@ -5,10 +5,14 @@ import time
 import math
 import popen2
 import struct
+import urlparse
 from threading import Thread, RLock
 
 # related
+import eventlet
 from eventlet import api
+from jsonsocket import JsonSocket
+import socket
 
 # pyogp
 from pyogp.lib.base.helpers import Helpers
@@ -30,6 +34,15 @@ pyogp.lib.client.enums.AssetType.GAvatar = 46
 pyogp.lib.client.enums.InventoryType.OgreParticles = 41
 pyogp.lib.client.enums.InventoryType.FlashAnimation = 42
 pyogp.lib.client.enums.InventoryType.OgreMaterial = 41
+
+def v3_to_list(v3):
+    return [v3.X, v3.Y, v3.Z]
+def q_to_list(q):
+    return [q.X, q.Y, q.Z, q.W]
+def b_to_s(b):
+    return b.decode('utf-8')
+def uuid_to_s(b):
+    return str(b)
 
 class BlenderAgent(object):
     do_megahal = False
@@ -101,8 +114,18 @@ class BlenderAgent(object):
         # Now let's log it in
         region = 'Taiga'
         firstname, lastname = username.split(" ", 1)
-        if not server_url.endswith("/"):
-            server_url = server_url + "/"
+        parsed_url = urlparse.urlparse(server_url)
+        server_name, port = parsed_url.netloc.split(":")
+        try:
+            # reconstruct the url with the ip to avoid problems
+            server_name = socket.gethostbyname(server_name)
+            if server_name == '::1': # :-P
+                server_name = '127.0.0.1'
+        except:
+            pass
+        server_url = parsed_url.scheme + '://' + server_name + ':' + str(port) + '/'
+        #if not server_url.endswith("/"):
+            #    server_url = server_url + "/"
         loginuri = server_url
         api.spawn(client.login, loginuri, firstname, lastname, password,
                   start_location = region, connect_region = True)
@@ -240,34 +263,36 @@ class BlenderAgent(object):
         for ObjectData_block in packet['ObjectData']:
            #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
            objdata = ObjectData_block["ObjectData"]
+           obj_uuid = uuid_to_s(ObjectData_block["FullID"])
            if "Scale" in ObjectData_block.var_list:
                scale = ObjectData_block["Scale"]
                with out_lock:
-                   out_queue.append(['scale', ObjectData_block["FullID"], scale])
+                   out_queue.append(['scale', obj_uuid,
+                                     v3_to_list(scale)])
            if len(objdata) == 48:
                pos_vector = Vector3(objdata)
                vel = Vector3(objdata[12:])
                acc = Vector3(objdata[24:])
                rot = Quaternion(objdata[36:])
                with out_lock:
-                   out_queue.append(['pos',ObjectData_block["FullID"],pos_vector])
-                   out_queue.append(['rot',ObjectData_block["FullID"],rot])
+                   out_queue.append(['pos', obj_uuid, v3_to_list(pos_vector)])
+                   out_queue.append(['rot', obj_uuid, q_to_list(rot)])
            elif len(objdata) == 12:
                if True:
                    # position only packed as 3 floats
                    pos = Vector3(objdata)
                    with out_lock:
-                       out_queue.append(['pos',ObjectData_block["FullID"],pos])
+                       out_queue.append(['pos', obj_uuid, v3_to_list(pos)])
                elif ObjectData_block.Type in [4, 20, 12, 28]:
                    # position only packed as 3 floats
                    scale = Vector3(objdata)
                    with out_lock:
-                       out_queue.append(['scale',ObjectData_block["FullID"],scale])
+                       out_queue.append(['scale', obj_uuid, v3_to_list(scale)])
                elif ObjectData_block.Type in [2, 10]:
                    # rotation only packed as 3 floats
                    rot = Quaternion(objdata)
                    with out_lock:
-                       out_queue.append(['rot',ObjectData_block["FullID"],rot])
+                       out_queue.append(['rot', obj_uuid, q_to_list(rot)])
          
            else:
                 # missing sizes: 28, 40, 44, 64
@@ -385,11 +410,45 @@ def stop_thread():
     running.stop()
     running = None
 
+class ClientHandler(object):
+    def __init__(self):
+        self.current = None
+    def read_client(self, json_socket):
+        while True:
+            data = json_socket.recv()
+            if not data:
+                break
+            if data[0] == 'connect' and not self.current:
+                self.current = run_thread(*data[1:])
+                json_socket.send(["hihi"])
+            elif self.current:
+                self.current.addCmd(data)
+            api.sleep(0)
+        self.connected = False
+    def handle_client(self, json_socket, pool):
+        self.connected = True
+        pool.spawn_n(self.read_client, json_socket)
+        while self.connected:
+            api.sleep(0)
+            if self.current:
+                queue = self.current.getQueue()
+                for cmd in queue:
+                    json_socket.send(cmd)
+                    api.sleep(0)
+
 def main():
-    current = GreenletsThread(cmd_queue)
-    current.start()
-    while current.isAlive():
-        time.sleep(1)
+    server = eventlet.listen(('0.0.0.0', 11112))
+    pool = eventlet.GreenPool(10000)
+    while True:
+         new_sock, address = server.accept()
+         client_handler = ClientHandler()
+         pool.spawn_n(client_handler.handle_client, JsonSocket(new_sock), pool)
+         api.sleep(0)
+
+    #current = GreenletsThread(cmd_queue)
+    #current.start()
+    #while current.isAlive():
+        #    time.sleep(1)
 
 if __name__=="__main__":
     main()

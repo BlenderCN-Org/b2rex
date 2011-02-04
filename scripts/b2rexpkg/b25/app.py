@@ -11,6 +11,7 @@ import bpy
 class B2Rex(BaseApplication):
     def __init__(self, context):
         self.region_report = ''
+        self.cb_pixel = []
         BaseApplication.__init__(self)
 
     def onConnect(self, context):
@@ -36,6 +37,32 @@ class B2Rex(BaseApplication):
     def onExport(self, context):
         props = context.scene.b2rex_props
         self.doExport(props, props.loc)
+
+    def draw_callback_view(self, context):
+        self.processUpdates()
+
+    def register_draw_callbacks(self, context):
+        for area in context.screen.areas:
+            if area.type == 'VIEW_3D':
+                for region in area.regions:
+                    #if region.type == 'WINDOW': # gets updated every frame
+                    if region.type == 'TOOL_PROPS': # gets updated when finishing and operation
+                        self.cb_pixel.append(region.callback_add(self.draw_callback_view, 
+                                        (context, ),
+                                        'POST_PIXEL'))
+    def unregister_draw_callbacks(self, context):
+        for cb in self.cb_pixel:
+            context.region.callback_remove(cb)
+        self.cb_pixel = []
+
+    def onToggleRt(self, context=None):
+        if not context:
+            context = bpy.context
+        BaseApplication.onToggleRt(self, context)
+        if self.simrt:
+            self.register_draw_callbacks(context)
+        else:
+            self.unregister_draw_callbacks(context)
 
     def onExportUpload(self, context):
         self.onExport(context)

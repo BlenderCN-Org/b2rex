@@ -13,12 +13,11 @@ class ClientThread(Thread):
         while self.parent.alive:
             try:
                 data = self.parent.socket.recv()
+                self.parent.dataArrived(data)
                 if not data:
                     self.parent.disconnected()
                     self.cleanup()
                     return
-                else:
-                    print("received", data)
             except socket.timeout:
                 pass
             except socket.error as e:
@@ -40,21 +39,32 @@ class ProxyAgent(Thread):
         self.queue = []
         self.cmds = []
         self.alive = False
+    def dataArrived(self, data):
+        self.queue.append(data)
+        self.redraw()
     def addCmd(self, cmd):
         if cmd == 'quit':
             self.alive = False
-        elif self.running:
+        else:
+            print("add cmd to proxy", cmd)
             self.cmds.append(cmd)
     def getQueue(self):
         queue = list(self.queue)
         self.queue = []
         return queue
-    def apply_position(self, *args):
-        pass
-    def apply_scale(self, *args):
-        pass
-    def apply_rotation(self, *args):
-        pass
+
+    def apply_position(self, obj_uuid, pos, rot=0):
+        if rot:
+            cmd = ['pos', obj_uuid, [pos[0], pos[1], pos[2]], [rot[0], rot[1],
+                                                           rot[2], rot[3]]]
+        else:
+            cmd = ['pos', obj_uuid, [pos[0], pos[1], pos[2]], 0]
+        self.addCmd(cmd)
+
+    def apply_scale(self, obj_uuid, scale):
+        cmd = ['scale', obj_uuid, [scale[0], scale[1], scale[2]]]
+        self.addCmd(cmd)
+
     def redraw(self):
         for area in self.screen.areas:
             if not area.type == 'VIEW_3D':
@@ -83,6 +93,7 @@ class ProxyAgent(Thread):
                 cmds = list(self.cmds)
                 self.cmds = []
                 for cmd in cmds:
+                    print("sending by proxy", cmd)
                     self.socket.send(cmd)
             # try connecting every 2 seconds
             if time.time() - starttime > 2 and not self.running:
@@ -113,7 +124,7 @@ class ProxyAgent(Thread):
         # clean up the thread
         if self.running:
             self.running = False
-            self.receiver.join(5)
+            self.receiver.join(0.4)
             self.socket.close()
             self.connected = False
             self.redraw()
@@ -122,6 +133,7 @@ class ProxyAgent(Thread):
 
 def run_thread(context, server_url, username, password, firstline):
     running = ProxyAgent(context)
+    running.addCmd(["connect", server_url, username, password, firstline])
     running.start()
     return running
 

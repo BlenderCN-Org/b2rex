@@ -96,10 +96,6 @@ class Base24Application(Screen, BaseApplication):
     def _draw(self):
         Screen._draw(self)
         if self.rt_on:
-            cmds = self.simrt.getQueue()
-            if cmds:
-                for cmd in cmds:
-                    self.processCommand(*cmd)
             self.processUpdates()
             Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
 

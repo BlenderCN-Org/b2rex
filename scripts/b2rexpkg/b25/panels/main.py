@@ -32,7 +32,7 @@ class ConnectionPanel(bpy.types.Panel):
         # from dying all the time so we keep it for now
 
     def draw(self, context):
-        if self.cb_pixel == None:
+        if self.cb_view == None:
             # callback is important so object doesnt die ?
             self.cb_view = context.region.callback_add(self.draw_callback_view, 
                                         (context, ),

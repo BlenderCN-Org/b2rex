@@ -1,3 +1,4 @@
+import time
 import traceback
 
 from b2rexpkg.siminfo import GridInfo
@@ -5,6 +6,8 @@ from b2rexpkg import IMMEDIATE, ERROR
 
 from .importer import Importer
 from .exporter import Exporter
+
+import bpy
 
 eventlet_present = True
 try:
@@ -93,6 +96,7 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = True
 
     def processCommand(self, cmd, *args):
+        print("process command", cmd)
         if cmd == 'pos':
             self.processPosCommand(*args)
         elif cmd == 'rot':
@@ -105,41 +109,45 @@ class BaseApplication(Importer, Exporter):
     def processMsgCommand(self, username, message):
         self.addStatus("message from "+username+": "+message)
 
-    def findWithUUID(self):
+    def findWithUUID(self, objId):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if not obj:
             obj = self.find_with_uuid(str(objId), bpy.data.meshes, "meshes")
         return obj
 
     def processPosCommand(self, objId, pos):
-        obj = self.findWithUUID()
+        obj = self.findWithUUID(objId)
         if obj:
-            self.apply_position(obj, [pos.X, pos.Y, pos.Z])
+            self.apply_position(obj, pos)
             self.positions[str(objId)] = list(obj.getLocation())
             self.queueRedraw()
             logger.debug(("IN_CMDS",pos.X,obj))
 
     def processScaleCommand(self, objId, scale):
-        obj = self.findWithUUID()
+        obj = self.findWithUUID(objId)
         if obj:
             prev_scale = list(obj.getSize())
             if not prev_scale == scale:
-                obj.setSize(scale.X, scale.Y, scale.Z)
+                obj.setSize(*scale)
                 self.scales[str(objId)] = list(obj.getSize())
                 self.queueRedraw()
 
 
     def processRotCommand(self, objId, rot):
-        obj = self.findWithUUID()
+        obj = self.findWithUUID(objId)
         if obj:
-            self.apply_rotation(obj, [rot.X, rot.Y, rot.Z, rot.W])
+            self.apply_rotation(obj, rot)
             self.rotations[str(objId)] = list(obj.getEuler())
             self.queueRedraw()
 
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
+        obj_uuid = "fake"
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
+            pos = list(pos)
+            rot = list(rot)
+            scale = list(scale)
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
                 self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
                 self.rotations[obj_uuid] = rot
@@ -149,9 +157,17 @@ class BaseApplication(Importer, Exporter):
                 self.positions[obj_uuid] = pos
             if not obj_uuid in self.scales or not scale == self.scales[obj_uuid]:
                 self.simrt.apply_scale(obj_uuid, scale)
+                self.scales[obj_uuid] = scale
 
 
     def processUpdates(self):
+        cmds = self.simrt.getQueue()
+        if cmds:
+            for cmd in cmds:
+                self.processCommand(*cmd)
+
+        t = time.time()
+        print("processUpdates", t)
         selected = self.getSelected()
         for obj in selected:
             self.processUpdate(obj)
