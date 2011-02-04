@@ -21,7 +21,7 @@ ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
-from .compatibility import BaseApplication
+from b2rexpkg.compatibility import BaseApplication
 
 class RealxtendExporterApplication(BaseApplication):
     def __init__(self):

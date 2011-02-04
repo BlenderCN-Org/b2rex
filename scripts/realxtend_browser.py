@@ -16,7 +16,7 @@ __bpydoc__ = "Please see the external documentation that comes with the script."
 
 
 import b2rexpkg
-from b2rexpkg.browserapp import RealxtendBrowserApplication
+from b2rexpkg.b24.panels.browser import RealxtendBrowserApplication
 
 if __name__ == "__main__":
     application = RealxtendBrowserApplication()
