@@ -1,3 +1,12 @@
+"""
+A simple socket wrapper that sends and receives json.
+
+ s = JsonSocket()
+ s.connect(('localhost', 11112))
+ s.send({'foo':'bar', 'val': 2.4})
+
+"""
+
 import socket
 import json
 import struct
@@ -31,13 +40,19 @@ class JsonSocket(object):
             totalsent += sent
     def recv(self):
         data = self.sock.recv(8)
+        if len(data) < 8:
+            return None
         sec_code, datalen = struct.unpack("<ll", data)
         if not sec_code == SEC_CODE:
             return None
         #raise RuntimeError("socket connection broken")
         msg = b''
-        while len(msg) < datalen:
-            msg += self.sock.recv(datalen-len(msg))
+        currlen = 0
+        while currlen < datalen:
+            msg += self.sock.recv(datalen-currlen)
+            if len(msg) == currlen:
+                return None
+            currlen = len(msg)
         return json.loads(msg.decode('utf-8'))
 
 
