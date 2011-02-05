@@ -65,7 +65,7 @@ class ConnectionPanel(bpy.types.Panel):
         row.label(text="Status: "+session.status)
         if session.simrt:
             row = box.row() 
-            row.label(text="Updates: in:%d out:%d fin:%d"%tuple(session.stats[:3]))
+            row.label(text="Stats: in:%d out:%d fin:%d"%tuple(session.stats[:3]))
 
         if len(props.regions):
             row = layout.row() 
@@ -108,8 +108,6 @@ class ConnectionPanel(bpy.types.Panel):
         row = layout.row()
         if not bpy.context.scene.b2rex_props.expand:
             row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
-            row = layout.row()
-            row.operator("b2rex.export", text="Export")
             for prop in ["pack", "path", "server_url", "username", "password",
                          "loc"]:
                 row = layout.row()
