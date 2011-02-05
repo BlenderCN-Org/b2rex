@@ -182,6 +182,8 @@ class BlenderAgent(object):
                     api.sleep(0)
                     if cmd[0] == "quit":
                         client.logout()
+                    elif cmd[0] == "msg":
+                        client.say(cmd[1])
                     elif cmd[0] == "scale":
                         cmd_type = 12
                         obj = client.region.objects.get_object_from_store(FullID=cmd[1])

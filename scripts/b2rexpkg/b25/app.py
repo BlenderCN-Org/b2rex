@@ -163,4 +163,10 @@ class B2Rex(BaseApplication):
             self.rotations[str(objId)] = list(obj.rotation_euler)
             self.queueRedraw()
 
-
+    def processMsgCommand(self, username, message):
+        props = bpy.context.scene.b2rex_props
+        self.addStatus("message from "+username+": "+message)
+        props.chat.add()
+        regionss = props.chat[-1]
+        regionss.name = username+" "+message
+        props.selected_chat = len(props.chat)-1

@@ -6,6 +6,8 @@ from bpy.props import FloatVectorProperty
 
 class B2RexRegions(bpy.types.IDPropertyGroup):
     pass
+class B2RexChatLine(bpy.types.IDPropertyGroup):
+    pass
 
 class B2RexBaseProps(bpy.types.IDPropertyGroup):
     uuid = StringProperty(name='uuid', default='', description='')
@@ -57,6 +59,13 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     regions = CollectionProperty(type=B2RexRegions,
                                  name='Regions',
                                  description='Sessions on the server')
+    chat = CollectionProperty(type=B2RexChatLine,
+                                 name='Chat',
+                                 description='Chat with the server')
+    selected_chat = IntProperty(default=-1, description="Expand, to display")
+    next_chat = StringProperty(name='next_chat',
+                              default='',
+                              description='')
 #    B2RexProps.regions.name = StringProperty(name='Name', description='Name of the session', maxlen=128, default='[session]')
 
 

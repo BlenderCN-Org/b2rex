@@ -66,10 +66,21 @@ class ConnectionPanel(bpy.types.Panel):
         if session.simrt:
             row = box.row() 
             row.label(text="Updates: in:%d out:%d fin:%d"%tuple(session.stats[:3]))
-        row = layout.row() 
 
         if len(props.regions):
-            row.template_list(props, 'regions', props, 'selected_region', rows=2)
+            row = layout.row() 
+            row.template_list(props, 'regions', props, 'selected_region')
+        if len(props.chat):
+            row = layout.row() 
+            row.label(text="Chat")
+            row = layout.row() 
+            row.template_list(props, 'chat', props, 'selected_chat',
+                              rows=5)
+            if props.next_chat:
+                session.simrt.addCmd(["msg", props.next_chat])
+                props.next_chat = ""
+            row = layout.row()
+            row.prop(props, 'next_chat')
         if props.selected_region > -1:
             box = layout.row()
             col = box.column()

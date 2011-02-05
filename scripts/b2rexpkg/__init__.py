@@ -54,6 +54,7 @@ else:
     from .b25.ops import Connect, Export, Import, Settings
     from .b25.ops import Upload, ExportUpload, Sync, Check, ProcessQueue
     from .b25.panels.main import ConnectionPanel
+    from .b25.panels.object import ObjectPropertiesPanel
     from .b25.properties import B2RexRegions, B2RexProps
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
