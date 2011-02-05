@@ -155,7 +155,6 @@ class B2Rex(BaseApplication):
             self.apply_position(obj, pos)
             self.positions[str(objId)] = list(obj.location)
             self.queueRedraw()
-            logger.debug(("IN_CMDS",pos[0],obj))
 
     def processRotCommand(self, objId, rot):
         obj = self.findWithUUID(objId)

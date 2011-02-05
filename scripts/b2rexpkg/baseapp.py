@@ -123,7 +123,6 @@ class BaseApplication(Importer, Exporter):
             self.apply_position(obj, pos)
             self.positions[str(objId)] = list(obj.getLocation())
             self.queueRedraw()
-            logger.debug(("IN_CMDS",pos.X,obj))
 
     def processScaleCommand(self, objId, scale):
         obj = self.findWithUUID(objId)
@@ -144,7 +143,6 @@ class BaseApplication(Importer, Exporter):
 
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
-        print("process_update",obj_uuid)
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
             pos = list(pos)

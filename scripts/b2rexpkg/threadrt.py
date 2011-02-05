@@ -46,7 +46,6 @@ class ProxyAgent(Thread):
         if cmd[0] == 'quit':
             self.alive = False
         else:
-            print("add cmd to proxy", cmd)
             self.cmds.append(cmd)
     def getQueue(self):
         queue = list(self.queue)
@@ -93,7 +92,6 @@ class ProxyAgent(Thread):
                 cmds = list(self.cmds)
                 self.cmds = []
                 for cmd in cmds:
-                    print("sending by proxy", cmd)
                     self.socket.send(cmd)
             # try connecting every 2 seconds
             if time.time() - starttime > 2 and not self.running:
