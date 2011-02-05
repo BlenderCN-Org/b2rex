@@ -63,18 +63,22 @@ class BlenderAgent(object):
         self.logger.debug("REXPRIMDATA "+str(len(rexdata)))
         if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
-        drawType = struct.unpack("<b", rexdata[0])[0]
-        RexIsVisible = struct.unpack("<?", rexdata[1])[0]
-        RexCastShadows = struct.unpack("<?", rexdata[2])[0]
-        RexLightCreatesShadows = struct.unpack("<?", rexdata[3])[0]
-        RexDescriptionTexture = struct.unpack("<?", rexdata[4])[0]
-        RexScaleToPrim = struct.unpack("<?", rexdata[5])[0]
-        RexDrawDistance = struct.unpack("<f", rexdata[6:6+4])[0]
-        RexLOD = struct.unpack("<f", rexdata[10:10+4])[0]
-        RexMeshUUID = UUID(bytes=rexdata[14:14+16])
-        RexCollisionMeshUUID = UUID(bytes=rexdata[30:30+16])
-        RexParticleScriptUUID = UUID(bytes=rexdata[46:46+16])
-        RexAnimationPackageUUID = UUID(bytes=rexdata[62:62+16])
+        obj_uuid = str(UUID(packet[0]["Parameter"]))
+        pars = {}
+        pars["drawType"] = struct.unpack("<b", rexdata[0])[0]
+        pars["RexIsVisible "]= struct.unpack("<?", rexdata[1])[0]
+        pars["RexCastShadows "]= struct.unpack("<?", rexdata[2])[0]
+        pars["RexLightCreatesShadows "]= struct.unpack("<?", rexdata[3])[0]
+        pars["RexDescriptionTexture"] = struct.unpack("<?", rexdata[4])[0]
+        pars["RexScaleToPrim "]= struct.unpack("<?", rexdata[5])[0]
+        pars["RexDrawDistance "]= struct.unpack("<f", rexdata[6:6+4])[0]
+        pars["RexLOD "]= struct.unpack("<f", rexdata[10:10+4])[0]
+        pars["RexMeshUUID "]= str(UUID(bytes=rexdata[14:14+16]))
+        pars["RexCollisionMeshUUID "]= str(UUID(bytes=rexdata[30:30+16]))
+        pars["RexParticleScriptUUID "]= str(UUID(bytes=rexdata[46:46+16]))
+        pars["RexAnimationPackageUUID "]= str(UUID(bytes=rexdata[62:62+16]))
+        with self.out_lock:
+            self.out_queue.append(['RexPrimData', obj_uuid, pars])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -123,15 +127,26 @@ class BlenderAgent(object):
         region = 'Taiga'
         firstname, lastname = username.split(" ", 1)
         parsed_url = urlparse.urlparse(server_url)
-        server_name, port = parsed_url.netloc.split(":")
+        split_netloc = parsed_url.netloc.split(":")
+        if len(split_netloc) == 2:
+            server_name, port = split_netloc
+        else:
+            server_name = parsed_url.netloc
+            port = None
         try:
             # reconstruct the url with the ip to avoid problems
-            server_name = socket.gethostbyname(server_name)
-            if server_name == '::1': # :-P
-                server_name = '127.0.0.1'
+            res_server_name = socket.gethostbyname(server_name)
+            if res_server_name == '::1': # :-P
+                res_server_name = '127.0.0.1'
+            if res_server_name in ['127.0.01', '::1']:
+                server_name = res_server_name
         except:
             pass
-        server_url = parsed_url.scheme + '://' + server_name + ':' + str(port) + '/'
+        if port:
+            server_name = server_name + ":" + port
+        else:
+            server_name = server_name + '/xml-rpc.php'
+        server_url = parsed_url.scheme + '://' + server_name
         #if not server_url.endswith("/"):
             #    server_url = server_url + "/"
         loginuri = server_url
@@ -464,6 +479,7 @@ class ClientHandler(object):
             if self.current:
                 queue = self.current.getQueue()
                 for cmd in queue:
+                    print(cmd)
                     json_socket.send(cmd)
                     api.sleep(0)
         if running:

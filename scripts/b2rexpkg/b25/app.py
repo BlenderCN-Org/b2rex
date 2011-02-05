@@ -84,24 +84,6 @@ class B2Rex(BaseApplication):
     def onSettings(self, context):
         self.settings()
 
-    def connect(self, base_url, username="", password=""):
-   #     self.sim.connect(base_url)
-        self.addStatus("Connecting to " + base_url, IMMEDIATE)
-        self.gridinfo.connect(base_url, username, password)
-        self.region_uuid = ''
-        self.regionLayout = None
-        try:
-            self.regions = self.gridinfo.getRegions()
-            self.griddata = self.gridinfo.getGridInfo()
-        except:
-            self.addStatus("Error: couldnt connect to " + base_url, ERROR)
-            traceback.print_exc()
-            return
-#        self.addRegionsPanel(regions, griddata)
-        # create the regions panel
-        self.addStatus("Connected to " + self.griddata['gridnick'])
-        logger.debug("conecttt")
-
     def _import(self):
         print('importing..')
         text = self.import_region(self.region_uuid)

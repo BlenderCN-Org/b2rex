@@ -52,8 +52,15 @@ class BaseApplication(Importer, Exporter):
         """
         Connect to an opensim instance
         """
-        self.gridinfo.connect(base_url, username, password)
-        #self.sim.connect(base_url)
+        self.sim.connect(base_url+'/xml-rpc.php')
+        firstname, lastname = username.split()
+        coninfo = self.sim.login(firstname, lastname, password)
+        self._sim_port = coninfo['sim_port']
+        self._sim_ip = coninfo['sim_ip']
+        self._sim_url = 'http://'+str(self._sim_ip)+':'+str(self._sim_port)
+        print("reconnect to", self._sim_url)
+        self.gridinfo.connect(self._sim_url, username, password)
+        self.sim.connect(self._sim_url)
 
     def onConnectAction(self):
         """
@@ -66,21 +73,21 @@ class BaseApplication(Importer, Exporter):
         self.region_uuid = ''
         self.regionLayout = None
         try:
-            regions = self.gridinfo.getRegions()
-            griddata = self.gridinfo.getGridInfo()
+            self.regions = self.gridinfo.getRegions()
+            self.griddata = self.gridinfo.getGridInfo()
         except:
             self.addStatus("Error: couldnt connect to " + base_url, ERROR)
             traceback.print_exc()
             return
         # create the regions panel
-        self.addRegionsPanel(regions, griddata)
+        self.addRegionsPanel(self.regions, self.griddata)
         if eventlet_present:
             self.addRtCheckBox()
         else:
             logger.debug("no support for real time communications")
 
         self.connected = True
-        self.addStatus("Connected to " + griddata['gridnick'])
+        self.addStatus("Connected to " + self.griddata['gridnick'])
 
     def addRtCheckBox(self):
         pass
@@ -112,6 +119,11 @@ class BaseApplication(Importer, Exporter):
             self.processScaleCommand(*args)
         elif cmd == 'msg':
             self.processMsgCommand(*args)
+        elif cmd == 'RexPrimData':
+            self.processRexPrimDataCommand(*args)
+
+    def processRexPrimDataCommand(self, objId, pars):
+        print("ReXPrimData!!!")
 
     def processMsgCommand(self, username, message):
         self.addStatus("message from "+username+": "+message)
