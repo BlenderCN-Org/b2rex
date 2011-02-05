@@ -9,12 +9,17 @@ from .exporter import Exporter
 
 import bpy
 
-eventlet_present = True
+eventlet_present = False
 try:
     import eventlet
-    from b2rexpkg import simrt
+    try:
+        from b2rexpkg import simrt
+        eventlet_present = True
+    except:
+        traceback.print_exc()
 except:
     from b2rexpkg import threadrt as simrt
+    eventlet_present = True
 
 import logging
 logger = logging.getLogger('b2rex.baseapp')

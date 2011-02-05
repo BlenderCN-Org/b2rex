@@ -11,7 +11,10 @@ from threading import Thread, RLock
 # related
 import eventlet
 from eventlet import api
-from jsonsocket import JsonSocket
+try:
+    from jsonsocket import JsonSocket
+except:
+    from b2rexpkg.tools.jsonsocket import JsonSocket
 import socket
 
 # pyogp
@@ -102,6 +105,10 @@ class BlenderAgent(object):
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
 
+    def onObjectPermissions(self, packet):
+        self.logger.debug("PERMISSIONS!!!")
+    def onObjectProperties(self, packet):
+        self.logger.debug("PERMISSIONS!!!")
 
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
@@ -155,6 +162,10 @@ class BlenderAgent(object):
         res.subscribe(self.onRexPrimData)
         res = client.region.message_handler.register("GenericMessage")
         res.subscribe(self.onGenericMessage)
+        res = client.region.message_handler.register("ObjectPermissions")
+        res.subscribe(self.onObjectPermissions)
+        res = client.region.message_handler.register("ObjectProperties")
+        res.subscribe(self.onObjectPermissions)
         res = client.region.objects.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
 
@@ -267,6 +278,9 @@ class BlenderAgent(object):
            #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
            objdata = ObjectData_block["ObjectData"]
            obj_uuid = uuid_to_s(ObjectData_block["FullID"])
+           with out_lock:
+                out_queue.append(['props', obj_uuid,
+                                  {"OwnerID": str(ObjectData_block["OwnerID"])}])
            if "Scale" in ObjectData_block.var_list:
                scale = ObjectData_block["Scale"]
                with out_lock:
@@ -400,7 +414,7 @@ class GreenletsThread(Thread):
 
 running = False
 
-def run_thread(server_url, username, password, firstline):
+def run_thread(context, server_url, username, password, firstline):
     global running
     running = GreenletsThread(server_url, username, password, firstline)
     running.start()

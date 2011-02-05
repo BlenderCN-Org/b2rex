@@ -8,7 +8,7 @@ import Blender
 from Blender import Registry
 
 from ogredotscene import BoundedValueModel
-from .tools.passmanager import PasswordManager
+from b2rexpkg.tools.passmanager import PasswordManager
 
 #from ogredotscene import BoundedValueModel
 class ExportSettings:
