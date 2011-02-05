@@ -429,6 +429,7 @@ class ClientHandler(object):
                 json_socket.send(["hihi"])
             elif self.current:
                 # forward command
+                print("forward command", data)
                 self.current.addCmd(data)
             api.sleep(0)
         # exit

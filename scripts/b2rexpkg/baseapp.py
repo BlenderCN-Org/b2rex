@@ -98,7 +98,6 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = True
 
     def processCommand(self, cmd, *args):
-        print("process command", cmd)
         self.stats[0] += 1
         if cmd == 'pos':
             self.processPosCommand(*args)
@@ -145,6 +144,7 @@ class BaseApplication(Importer, Exporter):
 
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
+        print("process_update",obj_uuid)
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
             pos = list(pos)
@@ -172,6 +172,7 @@ class BaseApplication(Importer, Exporter):
             for cmd in cmds:
                 self.processCommand(*cmd)
 
+    def processView(self):
         t = time.time()
         selected = self.getSelected()
         for obj in selected:

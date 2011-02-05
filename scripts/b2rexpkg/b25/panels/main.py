@@ -54,7 +54,8 @@ class ConnectionPanel(bpy.types.Panel):
             else:
                 col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
             if session.simrt:
-                session.processUpdates()
+                session.processView()
+                bpy.ops.b2rex.processqueue()
             #col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
         else:
             box.operator("b2rex.connect", text="Connect")

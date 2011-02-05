@@ -34,12 +34,17 @@ class B2Rex(BaseApplication):
         self.region_uuid = list(self.regions.keys())[props.selected_region]
         self.do_check()
 
+    def onProcessQueue(self, context):
+        self.processUpdates()
+
     def onExport(self, context):
         props = context.scene.b2rex_props
         self.doExport(props, props.loc)
 
     def draw_callback_view(self, context):
-        self.processUpdates()
+        self.processView()
+        bpy.ops.b2rex.processqueue()
+        pass
 
     def register_draw_callbacks(self, context):
         for area in context.screen.areas:
@@ -134,4 +139,29 @@ class B2Rex(BaseApplication):
 
     def getObjectProperties(self, obj):
         return (obj.location, obj.rotation_euler, obj.scale)
+
+    def processScaleCommand(self, objId, scale):
+        obj = self.findWithUUID(objId)
+        if obj:
+            prev_scale = list(obj.scale)
+            if not prev_scale == scale:
+                obj.scale = scale
+                self.scales[str(objId)] = list(obj.scale)
+                self.queueRedraw()
+
+    def processPosCommand(self, objId, pos):
+        obj = self.findWithUUID(objId)
+        if obj:
+            self.apply_position(obj, pos)
+            self.positions[str(objId)] = list(obj.location)
+            self.queueRedraw()
+            logger.debug(("IN_CMDS",pos[0],obj))
+
+    def processRotCommand(self, objId, rot):
+        obj = self.findWithUUID(objId)
+        if obj:
+            self.apply_rotation(obj, rot)
+            self.rotations[str(objId)] = list(obj.rotation_euler)
+            self.queueRedraw()
+
 

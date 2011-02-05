@@ -26,6 +26,15 @@ class Export(bpy.types.Operator):
         bpy.b2rex_session.onExport(context)
         return {'FINISHED'}
 
+class ProcessQueue(bpy.types.Operator):
+    bl_idname = "b2rex.processqueue"
+    bl_label = "processqueue"
+
+    def execute(self, context):
+        bpy.b2rex_session.onProcessQueue(context)
+        return {'FINISHED'}
+
+
 class Upload(bpy.types.Operator):
     bl_idname = "b2rex.upload"
     bl_label = "upload"
