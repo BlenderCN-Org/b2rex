@@ -43,7 +43,7 @@ class ProxyAgent(Thread):
         self.queue.append(data)
         self.redraw()
     def addCmd(self, cmd):
-        if cmd == 'quit':
+        if cmd[0] == 'quit':
             self.alive = False
         else:
             print("add cmd to proxy", cmd)

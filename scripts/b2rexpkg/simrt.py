@@ -15,6 +15,7 @@ from jsonsocket import JsonSocket
 import socket
 
 # pyogp
+from pyogp.lib.base.exc import LoginError
 from pyogp.lib.base.helpers import Helpers
 from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
 
@@ -382,8 +383,6 @@ class GreenletsThread(Thread):
         self.running = False
 
     def addCmd(self, cmd):
-        if isinstance(cmd, str):
-            cmd = [cmd]
         with self.cmd_in_lock:
             if not cmd in self.cmd_in_queue:
                 self.cmd_in_queue.append(cmd)
@@ -410,24 +409,39 @@ def stop_thread():
     running.stop()
     running = None
 
+
+# the following is to run in stand alone mode
 class ClientHandler(object):
     def __init__(self):
         self.current = None
-    def read_client(self, json_socket):
+    def read_client(self, json_socket, pool):
+        global running
         while True:
             data = json_socket.recv()
             if not data:
+                # client disconnected, bail out
                 break
-            if data[0] == 'connect' and not self.current:
-                self.current = run_thread(*data[1:])
+            if data[0] == 'connect' and not running:
+                # initial connect command
+                running = GreenletsThread(*data[1:])
+                self.current = running
+                pool.spawn_n(running.run)
                 json_socket.send(["hihi"])
             elif self.current:
+                # forward command
                 self.current.addCmd(data)
             api.sleep(0)
+        # exit
         self.connected = False
     def handle_client(self, json_socket, pool):
+        global running
+        global run_main
         self.connected = True
-        pool.spawn_n(self.read_client, json_socket)
+        pool.spawn_n(self.read_client, json_socket, pool)
+        if running:
+            json_socket.send(["state", "connected"])
+        else:
+            json_socket.send(["state", "idle"])
         while self.connected:
             api.sleep(0)
             if self.current:
@@ -435,11 +449,16 @@ class ClientHandler(object):
                 for cmd in queue:
                     json_socket.send(cmd)
                     api.sleep(0)
+        if running:
+            running.addCmd(["quit"])
+            run_main = False
+            sys.exit()
 
+run_main = True
 def main():
     server = eventlet.listen(('0.0.0.0', 11112))
     pool = eventlet.GreenPool(10000)
-    while True:
+    while run_main:
          new_sock, address = server.accept()
          client_handler = ClientHandler()
          pool.spawn_n(client_handler.handle_client, JsonSocket(new_sock), pool)

@@ -110,7 +110,7 @@ class B2Rex(BaseApplication):
         self.region_report = self.check_region(self.region_uuid)
 
     def addStatus(self, status, level=0):
-        bpy.context.scene.b2rex_props.status = status
+        self.status = status
 
     def getSelected(self):
         return bpy.context.selected_objects

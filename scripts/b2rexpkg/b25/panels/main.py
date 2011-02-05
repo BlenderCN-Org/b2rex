@@ -53,13 +53,18 @@ class ConnectionPanel(bpy.types.Panel):
                 col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
             else:
                 col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
+            if session.simrt:
+                session.processUpdates()
             #col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
         else:
             box.operator("b2rex.connect", text="Connect")
         box.operator("b2rex.export", text="Export")
         row = layout.row()
         row = box.row() 
-        row.label(text="Status: "+bpy.context.scene.b2rex_props.status)
+        row.label(text="Status: "+session.status)
+        if session.simrt:
+            row = box.row() 
+            row.label(text="Updates: in:%d out:%d fin:%d"%tuple(session.stats[:3]))
         row = layout.row() 
 
         if len(props.regions):
@@ -93,18 +98,10 @@ class ConnectionPanel(bpy.types.Panel):
             row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
             row = layout.row()
             row.operator("b2rex.export", text="Export")
-            row = layout.row()
-            row.prop(bpy.context.scene.b2rex_props,"pack")
-            row = layout.row()
-            row.prop(bpy.context.scene.b2rex_props,"path")
-            row = layout.row()
-            row.prop(bpy.context.scene.b2rex_props,"server_url")
-            row = layout.row()
-            row.prop(bpy.context.scene.b2rex_props,"username")
-            row = layout.row()
-            row.prop(bpy.context.scene.b2rex_props,"password")
-            box = layout.row()
-            box.prop(bpy.context.scene.b2rex_props,"loc")
+            for prop in ["pack", "path", "server_url", "username", "password",
+                         "loc"]:
+                row = layout.row()
+                row.prop(bpy.context.scene.b2rex_props, prop)
 
             box = layout.row()
             col = box.column()

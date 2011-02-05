@@ -22,6 +22,8 @@ logger = logging.getLogger('b2rex.baseapp')
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.rt_support = eventlet_present
+        self.stats = [0,0,0,0,0]
+        self.status = "b2rex started"
         self.connected = False
         self.positions = {}
         self.rotations = {}
@@ -82,7 +84,7 @@ class BaseApplication(Importer, Exporter):
         if context:
             self.exportSettings = context.scene.b2rex_props
         if self.rt_on:
-            self.simrt.addCmd("quit")
+            self.simrt.addCmd(["quit"])
             self.rt_on = False
             self.simrt = None
         else:
@@ -97,6 +99,7 @@ class BaseApplication(Importer, Exporter):
 
     def processCommand(self, cmd, *args):
         print("process command", cmd)
+        self.stats[0] += 1
         if cmd == 'pos':
             self.processPosCommand(*args)
         elif cmd == 'rot':
@@ -142,20 +145,22 @@ class BaseApplication(Importer, Exporter):
 
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
-        obj_uuid = "fake"
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
             pos = list(pos)
             rot = list(rot)
             scale = list(scale)
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
+                self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
                 self.rotations[obj_uuid] = rot
                 self.positions[obj_uuid] = pos
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
+                self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
                 self.positions[obj_uuid] = pos
             if not obj_uuid in self.scales or not scale == self.scales[obj_uuid]:
+                self.stats[1] += 1
                 self.simrt.apply_scale(obj_uuid, scale)
                 self.scales[obj_uuid] = scale
 
@@ -163,11 +168,11 @@ class BaseApplication(Importer, Exporter):
     def processUpdates(self):
         cmds = self.simrt.getQueue()
         if cmds:
+            self.stats[2] += 1
             for cmd in cmds:
                 self.processCommand(*cmd)
 
         t = time.time()
-        print("processUpdates", t)
         selected = self.getSelected()
         for obj in selected:
             self.processUpdate(obj)
