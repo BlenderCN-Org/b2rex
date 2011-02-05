@@ -122,28 +122,22 @@ class B2Rex(BaseApplication):
     def getObjectProperties(self, obj):
         return (obj.location, obj.rotation_euler, obj.scale)
 
-    def processScaleCommand(self, objId, scale):
-        obj = self.findWithUUID(objId)
-        if obj:
-            prev_scale = list(obj.scale)
-            if not prev_scale == scale:
-                obj.scale = scale
-                self.scales[str(objId)] = list(obj.scale)
-                self.queueRedraw()
-
-    def processPosCommand(self, objId, pos):
-        obj = self.findWithUUID(objId)
-        if obj:
-            self.apply_position(obj, pos)
-            self.positions[str(objId)] = list(obj.location)
+    def _processScaleCommand(self, obj, objId, scale):
+        prev_scale = list(obj.scale)
+        if not prev_scale == scale:
+            obj.scale = scale
+            self.scales[objId] = list(obj.scale)
             self.queueRedraw()
 
-    def processRotCommand(self, objId, rot):
-        obj = self.findWithUUID(objId)
-        if obj:
-            self.apply_rotation(obj, rot)
-            self.rotations[str(objId)] = list(obj.rotation_euler)
-            self.queueRedraw()
+    def _processPosCommand(self, obj, objId, pos):
+        self.apply_position(obj, pos)
+        self.positions[objId] = list(obj.location)
+        self.queueRedraw()
+
+    def _processRotCommand(self, obj, objId, rot):
+        self.apply_rotation(obj, rot)
+        self.rotations[objId] = list(obj.rotation_euler)
+        self.queueRedraw()
 
     def processMsgCommand(self, username, message):
         props = bpy.context.scene.b2rex_props

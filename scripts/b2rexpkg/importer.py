@@ -507,28 +507,31 @@ class Importer(ImporterBase):
         if not asset["type"] == "43":
             logger.debug("("+asset["type"]+")")
             return
-        mesh = oimporter.parse(asset["data"])
+        return self.create_mesh_frombinary(scenegroup["asset"], asset["name"], asset["data"])
+
+    def create_mesh_frombinary(self, meshId, meshName, data):
+        mesh = oimporter.parse(data)
         if not mesh:
-            logger.debug("error loading",scenegroup["asset"])
+            logger.debug("error loading",meshId)
             return
         is_new = False
         try:
-            new_mesh = bpy.data.meshes[asset["name"]+scenegroup["asset"]]
+            new_mesh = bpy.data.meshes[meshName+meshId]
         except:
-            new_mesh = bpy.data.meshes.new(asset["name"]+scenegroup["asset"])
+            new_mesh = bpy.data.meshes.new(meshName+meshId)
             is_new = True
             print("new mesh - bak!")
         if not is_new:
             if bversion == 3:
                 new_mesh.name = "tobedeleted"
-                new_mesh = bpy.data.meshes.new(asset["name"]+scenegroup["asset"])
+                new_mesh = bpy.data.meshes.new(meshName+meshId)
             else:
                 new_mesh.faces.delete(1, range(len(new_mesh.faces)))
                 new_mesh.verts.delete(1, range(len(new_mesh.verts)))
                 new_mesh.materials = []
             print("old mesh!")
 
-        self._imported_assets[scenegroup["asset"]] = new_mesh
+        self._imported_assets[meshId] = new_mesh
         for vertex, vbuffer, indices, materialName in mesh:
             self.import_submesh(new_mesh, vertex, vbuffer, indices, materialName)
         return new_mesh

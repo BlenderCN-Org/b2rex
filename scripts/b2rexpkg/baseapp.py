@@ -1,13 +1,22 @@
+import sys
 import time
 import traceback
 
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 
+from .tools.threadpool import ThreadPool, NoResultsPending
+
 from .importer import Importer
 from .exporter import Exporter
 
 import bpy
+
+if sys.version_info[0] == 3:
+        import urllib.request as urllib2
+else:
+        import urllib2
+
 
 eventlet_present = False
 try:
@@ -29,6 +38,7 @@ class BaseApplication(Importer, Exporter):
         self.rt_support = eventlet_present
         self.stats = [0,0,0,0,0]
         self.status = "b2rex started"
+        self.pool = ThreadPool(10)
         self.connected = False
         self.positions = {}
         self.rotations = {}
@@ -41,6 +51,36 @@ class BaseApplication(Importer, Exporter):
         self.settings_visible = False
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
+
+        #self.pool.addRequest(self.start_thread, range(100), self.print_thread,
+        #                 self.error_thread)
+
+
+    def default_error_db(self, request, error):
+        logger.error("error downloading "+str(request)+": "+str(error))
+
+    def addDownload(self, objId, meshId, http_url, cb, error_cb=None):
+        if not error_cb:
+            _error_cb = self.default_error_db
+        else:
+            def _error_cb(request, result):
+                error_cb(result)
+        def _cb(request, result):
+            cb(objId, meshId, result)
+        self.pool.addRequest(self.doDownload, [http_url], _cb, _error_cb)
+
+    def doDownload(self, http_url):
+        req = urllib2.urlopen(http_url)
+        return req.read()
+
+    def start_thread(self, bla):
+        time.sleep(10)
+
+    def print_thread(self, request, result):
+        print(result)
+
+    def error_thread(self, request, error):
+        print(error)
 
     def addStatus(self, text, priority=0):
         pass
@@ -59,7 +99,7 @@ class BaseApplication(Importer, Exporter):
         self._sim_ip = coninfo['sim_ip']
         self._sim_url = 'http://'+str(self._sim_ip)+':'+str(self._sim_port)
         print("reconnect to", self._sim_url)
-        self.gridinfo.connect(self._sim_url, username, password)
+        self.gridinfo.connect('http://'+str(self._sim_ip)+':'+str(9000), username, password)
         self.sim.connect(self._sim_url)
 
     def onConnectAction(self):
@@ -123,7 +163,32 @@ class BaseApplication(Importer, Exporter):
             self.processRexPrimDataCommand(*args)
 
     def processRexPrimDataCommand(self, objId, pars):
-        print("ReXPrimData!!!")
+        print("ReXPrimData for ", pars["MeshUrl"])
+        self.stats[3] += 1
+        self.addDownload(objId, pars["RexMeshUUID"], pars["MeshUrl"], self.meshArrived)
+
+    def meshArrived(self, objId, meshId, data):
+        self.stats[4] += 1
+        obj = self.findWithUUID(objId)
+        if obj:
+            return
+        new_mesh = self.create_mesh_frombinary(meshId, "opensim", data)
+        if new_mesh:
+            obj = self.getcreate_object(objId, "opensim", new_mesh)
+            if objId in self.positions:
+                pos = self.positions[objId]
+                self.apply_position(obj, pos)
+            if objId in self.rotations:
+                rot = self.rotations[objId]
+                self.apply_rotation(obj, rot)
+            if objId in self.scales:
+                scale = self.scales[objId]
+                self.apply_scale(obj, scale)
+            self.set_uuid(obj, objId)
+            self.set_uuid(new_mesh, meshId)
+            scene = self.get_current_scene()
+            scene.objects.link(obj)
+            new_mesh.update()
 
     def processMsgCommand(self, username, message):
         self.addStatus("message from "+username+": "+message)
@@ -137,27 +202,24 @@ class BaseApplication(Importer, Exporter):
     def processPosCommand(self, objId, pos):
         obj = self.findWithUUID(objId)
         if obj:
-            self.apply_position(obj, pos)
-            self.positions[str(objId)] = list(obj.getLocation())
-            self.queueRedraw()
+            self._processPosCommand(obj, objId, pos)
+        else:
+            self.positions[str(objId)] = pos
 
     def processScaleCommand(self, objId, scale):
         obj = self.findWithUUID(objId)
         if obj:
-            prev_scale = list(obj.getSize())
-            if not prev_scale == scale:
-                obj.setSize(*scale)
-                self.scales[str(objId)] = list(obj.getSize())
-                self.queueRedraw()
-
+            self._processScaleCommand(obj, objId, scale)
+        else:
+            self.scales[str(objId)] = scale
 
     def processRotCommand(self, objId, rot):
         obj = self.findWithUUID(objId)
         if obj:
-            self.apply_rotation(obj, rot)
-            self.rotations[str(objId)] = list(obj.getEuler())
-            self.queueRedraw()
-
+            self._processRotCommand(obj, objId, rot)
+        else:
+            self.rotations[str(objId)] = rot
+            
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
         if obj_uuid:
@@ -168,8 +230,8 @@ class BaseApplication(Importer, Exporter):
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
                 self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
-                self.rotations[obj_uuid] = rot
                 self.positions[obj_uuid] = pos
+                self.rotations[obj_uuid] = rot
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
                 self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
@@ -181,6 +243,10 @@ class BaseApplication(Importer, Exporter):
 
 
     def processUpdates(self):
+        try:
+            self.pool.poll()
+        except NoResultsPending:
+            pass
         cmds = self.simrt.getQueue()
         if cmds:
             self.stats[2] += 1

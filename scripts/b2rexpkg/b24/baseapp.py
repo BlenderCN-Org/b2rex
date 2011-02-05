@@ -245,3 +245,23 @@ class Base24Application(Screen, BaseApplication):
         rot = list(obj.getEuler())
         scale = list(obj.getSize())
         return pos, rot, scale
+
+    def _processPosCommand(self, obj, objId, pos):
+        self.apply_position(obj, pos)
+        self.positions[str(objId)] = list(obj.getLocation())
+        self.queueRedraw()
+
+    def _processScaleCommand(self, obj, objId, scale):
+        prev_scale = list(obj.getSize())
+        if not prev_scale == scale:
+            obj.setSize(*scale)
+            self.scales[str(objId)] = list(obj.getSize())
+            self.queueRedraw()
+
+
+    def _processRotCommand(self, obj, objId, rot):
+        self.apply_rotation(obj, rot)
+        self.rotations[str(objId)] = list(obj.getEuler())
+        self.queueRedraw()
+
+

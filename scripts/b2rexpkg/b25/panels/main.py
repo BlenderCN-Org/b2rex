@@ -65,7 +65,9 @@ class ConnectionPanel(bpy.types.Panel):
         row.label(text="Status: "+session.status)
         if session.simrt:
             row = box.row() 
-            row.label(text="Stats: in:%d out:%d fin:%d"%tuple(session.stats[:3]))
+            row.label(text="cmds in: %d out: %d updates: %d"%tuple(session.stats[:3]))
+            row = box.row() 
+            row.label(text="http req: %d ok: %d"%tuple(session.stats[3:5]))
 
         if len(props.regions):
             row = layout.row() 

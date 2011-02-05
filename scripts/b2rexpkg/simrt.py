@@ -66,17 +66,19 @@ class BlenderAgent(object):
         obj_uuid = str(UUID(packet[0]["Parameter"]))
         pars = {}
         pars["drawType"] = struct.unpack("<b", rexdata[0])[0]
-        pars["RexIsVisible "]= struct.unpack("<?", rexdata[1])[0]
-        pars["RexCastShadows "]= struct.unpack("<?", rexdata[2])[0]
-        pars["RexLightCreatesShadows "]= struct.unpack("<?", rexdata[3])[0]
+        pars["RexIsVisible"]= struct.unpack("<?", rexdata[1])[0]
+        pars["RexCastShadows"]= struct.unpack("<?", rexdata[2])[0]
+        pars["RexLightCreatesShadows"]= struct.unpack("<?", rexdata[3])[0]
         pars["RexDescriptionTexture"] = struct.unpack("<?", rexdata[4])[0]
-        pars["RexScaleToPrim "]= struct.unpack("<?", rexdata[5])[0]
-        pars["RexDrawDistance "]= struct.unpack("<f", rexdata[6:6+4])[0]
-        pars["RexLOD "]= struct.unpack("<f", rexdata[10:10+4])[0]
-        pars["RexMeshUUID "]= str(UUID(bytes=rexdata[14:14+16]))
-        pars["RexCollisionMeshUUID "]= str(UUID(bytes=rexdata[30:30+16]))
-        pars["RexParticleScriptUUID "]= str(UUID(bytes=rexdata[46:46+16]))
-        pars["RexAnimationPackageUUID "]= str(UUID(bytes=rexdata[62:62+16]))
+        pars["RexScaleToPrim"]= struct.unpack("<?", rexdata[5])[0]
+        pars["RexDrawDistance"]= struct.unpack("<f", rexdata[6:6+4])[0]
+        pars["RexLOD"]= struct.unpack("<f", rexdata[10:10+4])[0]
+        meshurl = str(self.client.region.capabilities['GetTexture'].public_url)+'?texture_id='+str(UUID(bytes=rexdata[14:14+16]))
+        pars["MeshUrl"] = meshurl
+        pars["RexMeshUUID"]= str(UUID(bytes=rexdata[14:14+16]))
+        pars["RexCollisionMeshUUID"]= str(UUID(bytes=rexdata[30:30+16]))
+        pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
+        pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
         with self.out_lock:
             self.out_queue.append(['RexPrimData', obj_uuid, pars])
         animname = ""
@@ -138,8 +140,8 @@ class BlenderAgent(object):
             res_server_name = socket.gethostbyname(server_name)
             if res_server_name == '::1': # :-P
                 res_server_name = '127.0.0.1'
-            if res_server_name in ['127.0.01', '::1']:
-                server_name = res_server_name
+                #if res_server_name in ['127.0.01', '::1']:
+            server_name = res_server_name
         except:
             pass
         if port:
