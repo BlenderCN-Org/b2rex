@@ -35,9 +35,12 @@ logger = logging.getLogger('b2rex.baseapp')
 
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
+        self.agent_id = ""
+        self.agent_access = ""
         self.rt_support = eventlet_present
-        self.stats = [0,0,0,0,0]
+        self.stats = [0,0,0,0,0,0,0,0]
         self.status = "b2rex started"
+        self.selected = set()
         self.pool = ThreadPool(10)
         self.connected = False
         self.positions = {}
@@ -161,11 +164,27 @@ class BaseApplication(Importer, Exporter):
             self.processMsgCommand(*args)
         elif cmd == 'RexPrimData':
             self.processRexPrimDataCommand(*args)
+        elif cmd == 'ObjectProperties':
+            self.processObjectPropertiesCommand(*args)
+        elif cmd == 'connected':
+            self.agent_id = args[0]
+            self.agent_access = args[1]
 
     def processRexPrimDataCommand(self, objId, pars):
         print("ReXPrimData for ", pars["MeshUrl"])
         self.stats[3] += 1
         self.addDownload(objId, pars["RexMeshUUID"], pars["MeshUrl"], self.meshArrived)
+
+    def processObjectPropertiesCommand(self, objId, pars):
+        print("ObjectProperties for", objId, pars)
+        obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
+        if obj:
+            print("Found obj!")
+            self.applyObjectProperties(obj, pars)
+        self.stats[5] += 1
+
+    def applyObjectProperties(self, obj, pars):
+        pass
 
     def meshArrived(self, objId, meshId, data):
         self.stats[4] += 1
@@ -240,6 +259,7 @@ class BaseApplication(Importer, Exporter):
                 self.stats[1] += 1
                 self.simrt.apply_scale(obj_uuid, scale)
                 self.scales[obj_uuid] = scale
+            return obj_uuid
 
 
     def processUpdates(self):
@@ -256,8 +276,14 @@ class BaseApplication(Importer, Exporter):
     def processView(self):
         t = time.time()
         selected = self.getSelected()
+        all_selected = set()
         for obj in selected:
-            self.processUpdate(obj)
+            obj_id = self.processUpdate(obj)
+            if obj_id:
+                all_selected.add(obj_id)
+        if not all_selected == self.selected:
+            self.simrt.addCmd(["select"]+list(all_selected))
+            self.selected = all_selected
 
     def go(self):
         """

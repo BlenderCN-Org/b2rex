@@ -1,5 +1,6 @@
 # standard
 import re
+import uuid
 import getpass, sys, logging
 import time
 import math
@@ -25,6 +26,7 @@ from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
 from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.enums import PCodeEnum
+from pyogp.lib.base.message.message import Message, Block
 
 # Extra asset and inventory types for rex
 import pyogp.lib.client.enums
@@ -38,6 +40,12 @@ pyogp.lib.client.enums.AssetType.GAvatar = 46
 pyogp.lib.client.enums.InventoryType.OgreParticles = 41
 pyogp.lib.client.enums.InventoryType.FlashAnimation = 42
 pyogp.lib.client.enums.InventoryType.OgreMaterial = 41
+
+class LayerTypes:
+    LayerLand = 1
+    LayerWater = 2
+    LayerWind = 3
+    LayerCloud = 4
 
 def v3_to_list(v3):
     return [v3.X, v3.Y, v3.Z]
@@ -58,9 +66,99 @@ class BlenderAgent(object):
         self.out_lock = out_lock
         self.initialize_logger()
 
+    def onRequestXfer(self, packet):
+        xfer_id = packet["XferID"][0]["ID"]
+        print(packet, xfer_id)
+        ongoing = 0x80000000
+        packet = Message('SendXferPacket',
+                        Block('XferID',
+                                ID = xfer_id,
+                                Packet = ongoing|1),
+                        Block('DataPacket', Data=b'x'*1024))
+        self.client.region.enqueue_message(packet)
+
+    def onAssetUploadComplete(self, packet):
+        print("AssetUploadComplete")
+
+    def onConfirmXferPacket(self, packet):
+        print("ConfirmXferPacket")
+
+    def onRegionHandshake(self, packet):
+        # some region info
+        pass
+
+    def createObject(self, objId, pars):
+        RayTargetID = UUID()
+        self.client.objects.object_add(self.client.agent_id, self.agent.session_id,
+                        PCodeEnum.Primitive, 
+                        Material = 3, AddFlags = 2, PathCurve = 16,
+                        ProfileCurve = 1, PathBegin = 0, PathEnd = 0,
+                        PathScaleX = 100, PathScaleY = 100, PathShearX = 0,
+                        PathShearY = 0, PathTwist = 0, PathTwistBegin = 0,
+                        PathRadiusOffset = 0, PathTaperX = 0, PathTaperY = 0,
+                        PathRevolutions = 0, PathSkew = 0, ProfileBegin = 0,
+                        ProfileEnd = 0, ProfileHollow = 0, BypassRaycast = 1,
+                        RayStart = location_to_rez, RayEnd = location_to_rez,
+                        RayTargetID = RayTargetID, RayEndIsIntersection = 0,
+                        Scale = (0.5, 0.5, 0.5), Rotation = (0, 0, 0, 1),
+                        State = 0)
+
+    def onAgentMovementComplete(self, packet):
+        # some region info
+        self.logger.debug(packet)
+
+    def onLayerData(self, packet):
+        # some region info
+        # self.logger.debug(packet)
+        data = packet["LayerData"][0]["Data"]
+        stride = struct.unpack("<H", data[0:2])[0]
+        patchSize = struct.unpack("<B", data[2])[0]
+        layerType = struct.unpack("<B", data[3])[0]
+        if layerType == LayerTypes.LayerLand:
+            data = data[4:]
+            # patches = self.decompressLand(data, stride, patchSize) # tricky
+            # stuff... (check naali/EnvironmentModule)
+
+    def onParcelOverlay(self, packet):
+        # some region info
+        self.logger.debug(packet)
+
+    def sendRexPrimData(self, args):
+        agent_id = str(self.client.agent_id)
+        session_id = str(self.client.session_id)
+        t_id = str(uuid.uuid4())
+        invoice_id = str(uuid.UUID())
+        data = b''
+        # drawType (1 byte)
+        data += struct.pack('<b', args['drawType'])
+        # bool properties
+        for prop in ['RexIsVisible', 'RexCastShadows', 'RexCastShadows',
+                     'RexLightCreatesShadows', 'RexDescriptionTexture',
+                     'RexDescriptionTexture']:
+            data += struct.pack('<?', args[prop])
+        # float properties
+        for prop in ['RexDrawDistance', 'RexLOD']:
+            data += struct.pack('<f', args[prop])
+        # uuid properties
+        for prop in ['RexMesh', 'RexCollisionMesh',
+                     'RexParticleScript', 'RexAnimationPackage']:
+            data += bytes(uuid.UUID(args[prop+'UUID']).bytes)
+        # prepare packet
+        packet = Message('GenericMessage',
+                        Block('AgentData',
+                                AgentID = agent_id,
+                                SessionID = session_id,
+                             TransactionID = t_id),
+                        Block('MethodData',
+                                Method = 'RexPrimData',
+                                Invoice = invoice_id),
+                        Block('ParamList', Parameter=data))
+        # send
+        self.client.region.enqueue_message(packet)
+
     def onRexPrimData(self, packet):
         rexdata = packet[1]["Parameter"]
-        self.logger.debug("REXPRIMDATA "+str(len(rexdata)))
+        #self.logger.debug("REXPRIMDATA "+str(len(rexdata)))
         if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
         obj_uuid = str(UUID(packet[0]["Parameter"]))
@@ -97,24 +195,43 @@ class BlenderAgent(object):
             matindex = struct.unpack("<b", rexdata[pos+17])[0]
             pos = pos + 18
         if not len(rexdata) > pos:
-            self.logger.debug("RexPrimData: no more data")
+            #self.logger.debug("RexPrimData: no more data")
             return
         idx = pos
         while rexdata[idx] != '\0':
               idx += 1
         RexClassName = rexdata[pos:idx+1]
-        self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
+        #self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
 
     def onGenericMessage(self, packet):
         if packet["MethodData"][0]["Method"] == "RexPrimData":
             self.onRexPrimData(packet["ParamList"])
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
+            print(packet)
 
     def onObjectPermissions(self, packet):
         self.logger.debug("PERMISSIONS!!!")
+
     def onObjectProperties(self, packet):
         self.logger.debug("PERMISSIONS!!!")
+        pars = {}
+        value_pars = ['CreationDate', 'EveryoneMask', 'NextOwnerMask',
+                      'OwnershipCost', 'SaleType', 'SalePrice',
+                      'AggregatePerms', 'AggregatePermTextures',
+                      'AggregatePermTexturesOwner', 'Category',
+                      'InventorySerial', 'Name', 'Description', 'TouchName',
+                      'SitName', 'TextureID']
+        uuid_pars = ['ObjectID', 'CreatorID', 'OwnerID', 'GroupID', 'ItemID',
+                     'FolderID', 'FromTaskID', 'LastOwnerID']
+        for block in packet["ObjectData"]:
+            for par in value_pars:
+                pars[par] = block[par]
+            for par in uuid_pars:
+                pars[par] = str(block[par])
+            obj_uuid = str(pars['ObjectID'])
+            with self.out_lock:
+                self.out_queue.append(["ObjectProperties", obj_uuid, pars])
 
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
@@ -161,15 +278,23 @@ class BlenderAgent(object):
         while client.connected == False:
             api.sleep(0)
 
-        while client.region.connected == False:
-            api.sleep(0)
-
-        # script specific stuff here
-        client.say(str(firstline))
-
+        res = client.region.message_handler.register("AssetUploadComplete")
+        res.subscribe(self.onAssetUploadComplete)
+        res = client.region.message_handler.register("ConfirmXferPacket")
+        res.subscribe(self.onConfirmXferPacket)
+        res = client.region.message_handler.register("RequestXfer")
+        res.subscribe(self.onRequestXfer)
+        res = client.region.message_handler.register("GenericMessage")
+        res.subscribe(self.onGenericMessage)
+        res = client.region.message_handler.register("ParcelOverlay")
+        res.subscribe(self.onParcelOverlay)
+        res = client.region.message_handler.register("RegionHandshake")
+        res.subscribe(self.onRegionHandshake)
+        res = client.region.message_handler.register("AgentMovementComplete")
+        res.subscribe(self.onAgentMovementComplete)
+        res = client.region.message_handler.register("LayerData")
+        res.subscribe(self.onLayerData)
         res = client.region.message_handler.register("ChatFromSimulator")
-        queue = []
-
         res.subscribe(self.onChatFromViewer)
         res = client.region.objects.message_handler.register("ObjectUpdate")
         res.subscribe(self.onObjectUpdate)
@@ -177,14 +302,20 @@ class BlenderAgent(object):
         res.subscribe(self.onSimStats)
         res = client.region.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
-        res = client.region.message_handler.register("GenericMessage")
-        res.subscribe(self.onGenericMessage)
         res = client.region.message_handler.register("ObjectPermissions")
         res.subscribe(self.onObjectPermissions)
         res = client.region.message_handler.register("ObjectProperties")
-        res.subscribe(self.onObjectPermissions)
+        res.subscribe(self.onObjectProperties)
         res = client.region.objects.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
+
+        while client.region.connected == False:
+            api.sleep(0)
+
+        queue = []
+
+        # script specific stuff here
+        client.say(str(firstline))
 
         # wait 30 seconds for some object data to come in
         now = time.time()
@@ -195,8 +326,17 @@ class BlenderAgent(object):
 
         client.say("going on")
         client.stand()
+        print(client.region.capabilities)
+        new_uuid = uuid.uuid4()
+        print("transfer", new_uuid)
+        client.asset_manager.upload_asset(new_uuid, 41, False, False,
+                                   b'jkladasdjklasdjkl')
 
         # main loop for the agent
+        with out_lock:
+            out_queue.append(["connected", str(client.agent_id),
+                             str(client.agent_access)])
+        selected = set()
         while client.running == True:
             api.sleep(0)
             with in_lock:
@@ -210,6 +350,19 @@ class BlenderAgent(object):
                     api.sleep(0)
                     if cmd[0] == "quit":
                         client.logout()
+                    elif cmd[0] == "select":
+                        selected_cmd = set(cmd[1:])
+                        newselected = selected_cmd.difference(selected)
+                        deselected = selected.difference(selected_cmd)
+                        for obj_id in newselected:
+                            obj = client.region.objects.get_object_from_store(FullID=obj_id)
+                            if obj:
+                                obj.select(client)
+                        for obj_id in deselected:
+                            obj = client.region.objects.get_object_from_store(FullID=obj_id)
+                            if obj:
+                                obj.deselect(client)
+                        selected = selected_cmd
                     elif cmd[0] == "msg":
                         client.say(cmd[1])
                     elif cmd[0] == "scale":
@@ -462,7 +615,6 @@ class ClientHandler(object):
                 json_socket.send(["hihi"])
             elif self.current:
                 # forward command
-                print("forward command", data)
                 self.current.addCmd(data)
             api.sleep(0)
         # exit
@@ -481,7 +633,6 @@ class ClientHandler(object):
             if self.current:
                 queue = self.current.getQueue()
                 for cmd in queue:
-                    print(cmd)
                     json_socket.send(cmd)
                     api.sleep(0)
         if running:

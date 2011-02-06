@@ -3,6 +3,11 @@ import traceback
 from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
+from .properties import B2RexObjectProps
+
+from bpy.props import StringProperty, PointerProperty, IntProperty
+from bpy.props import BoolProperty, FloatProperty, CollectionProperty
+from bpy.props import FloatVectorProperty
 
 from b2rexpkg import IMMEDIATE, ERROR
 
@@ -145,3 +150,24 @@ class B2Rex(BaseApplication):
         regionss = props.chat[-1]
         regionss.name = username+" "+message
         props.selected_chat = len(props.chat)-1
+
+    def applyObjectProperties(self, obj, pars):
+        for key, value in pars.items():
+            if hasattr(obj.opensim, key):
+                setattr(obj.opensim, key, value)
+            else:
+                if isinstance(value, str):
+                    prop = StringProperty(name=key)
+                elif isinstance(value, bool):
+                    prop = BoolProperty(name=key)
+                elif isinstance(value, int):
+                    prop = IntProperty(name=key)
+                elif isinstance(value, float):
+                    prop = FloatProperty(name=key)
+                if prop:
+                    setattr(B2RexObjectProps, key, prop)
+                    setattr(obj.opensim, key, value)
+        self.queueRedraw()
+
+        for area in bpy.context.screen.areas:
+            area.tag_redraw()
