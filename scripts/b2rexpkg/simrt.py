@@ -7,11 +7,12 @@ import math
 import popen2
 import struct
 import urlparse
-from threading import Thread, RLock
+from threading import Thread
 
 # related
 import eventlet
 from eventlet import api
+from eventlet import Queue
 try:
     from jsonsocket import JsonSocket
 except:
@@ -58,12 +59,10 @@ def uuid_to_s(b):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = True
-    def __init__(self, in_queue, in_lock, out_queue, out_lock):
+    verbose = False
+    def __init__(self, in_queue, out_queue):
         self.in_queue = in_queue
-        self.in_lock = in_lock
         self.out_queue = out_queue
-        self.out_lock = out_lock
         self.initialize_logger()
 
     def onRequestXfer(self, packet):
@@ -177,8 +176,7 @@ class BlenderAgent(object):
         pars["RexCollisionMeshUUID"]= str(UUID(bytes=rexdata[30:30+16]))
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
         pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
-        with self.out_lock:
-            self.out_queue.append(['RexPrimData', obj_uuid, pars])
+        self.out_queue.put(['RexPrimData', obj_uuid, pars])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -230,15 +228,12 @@ class BlenderAgent(object):
             for par in uuid_pars:
                 pars[par] = str(block[par])
             obj_uuid = str(pars['ObjectID'])
-            with self.out_lock:
-                self.out_queue.append(["ObjectProperties", obj_uuid, pars])
+            self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
         out_queue = self.out_queue
-        in_lock = self.in_lock
-        out_lock = self.out_lock
 
         client = self.initialize_agent()
 
@@ -327,81 +322,75 @@ class BlenderAgent(object):
         client.say("going on")
         client.stand()
         print(client.region.capabilities)
-        new_uuid = uuid.uuid4()
-        print("transfer", new_uuid)
-        client.asset_manager.upload_asset(new_uuid, 41, False, False,
-                                   b'jkladasdjklasdjkl')
+        #new_uuid = uuid.uuid4()
+        #print("transfer", new_uuid)
+        #client.asset_manager.upload_asset(new_uuid, 41, False, False,
+        #                           b'jkladasdjklasdjkl')
 
         # main loop for the agent
-        with out_lock:
-            out_queue.append(["connected", str(client.agent_id),
+        out_queue.put(["connected", str(client.agent_id),
                              str(client.agent_access)])
         selected = set()
         while client.running == True:
-            api.sleep(0)
-            with in_lock:
-                cmds = list(in_queue)
-                while len(in_queue):
-                    in_queue.pop()
-            if cmds:
-                cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
-                # 10-rot
-                for cmd in cmds:
-                    api.sleep(0)
-                    if cmd[0] == "quit":
-                        client.logout()
-                    elif cmd[0] == "select":
-                        selected_cmd = set(cmd[1:])
-                        newselected = selected_cmd.difference(selected)
-                        deselected = selected.difference(selected_cmd)
-                        for obj_id in newselected:
-                            obj = client.region.objects.get_object_from_store(FullID=obj_id)
-                            if obj:
-                                obj.select(client)
-                        for obj_id in deselected:
-                            obj = client.region.objects.get_object_from_store(FullID=obj_id)
-                            if obj:
-                                obj.deselect(client)
-                        selected = selected_cmd
-                    elif cmd[0] == "msg":
-                        client.say(cmd[1])
-                    elif cmd[0] == "scale":
-                        cmd_type = 12
-                        obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                        if obj:
-                            data = cmd[2]
-                            client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
-                                                      client.session_id,
-                                                      obj.LocalID, data, cmd_type)
-                    elif cmd[0] == "pos":
-                        obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                        if obj:
-                            pos = cmd[2]
-                            rot = cmd[3]
-                            if rot:
-                                X = rot[0]
-                                Y = rot[1]
-                                Z = rot[2]
-                                W = rot[3]
-                                norm = math.sqrt((X*X)+(Y*Y)+(Z*Z)+(W*W))
-                                if norm == 0:
-                                    data = [pos[0], pos[1], pos[2]]
-                                else:
-                                    norm = 1.0 / norm
-                                    if W < 0:
-                                        X = -X
-                                        Y = -Y
-                                        Z = -Z
-                                    data = [pos[0], pos[1], pos[2],
-                                            #0.0,0.0,0.0,
-                                            #0.0,0.0,0.0,
-                                            X*norm, Y*norm, Z*norm]
-                                    cmd_type = 11 # PrimGroupRotation
-                            else:
-                                data = [pos[0], pos[1], pos[2]]
-                            client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
-                                                      client.session_id,
-                                                      obj.LocalID, data, cmd_type)
+            cmd = in_queue.get()
+            cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
+            #   # 10-rot
+            if cmd[0] == "quit":
+                out_queue.put(["quit"])
+                client.logout()
+                return
+            elif cmd[0] == "select":
+                selected_cmd = set(cmd[1:])
+                newselected = selected_cmd.difference(selected)
+                deselected = selected.difference(selected_cmd)
+                for obj_id in newselected:
+                    obj = client.region.objects.get_object_from_store(FullID=obj_id)
+                    if obj:
+                        obj.select(client)
+                for obj_id in deselected:
+                    obj = client.region.objects.get_object_from_store(FullID=obj_id)
+                    if obj:
+                        obj.deselect(client)
+                selected = selected_cmd
+            elif cmd[0] == "msg":
+                client.say(cmd[1])
+            elif cmd[0] == "scale":
+                cmd_type = 12
+                obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                if obj:
+                    data = cmd[2]
+                    client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
+                                              client.session_id,
+                                              obj.LocalID, data, cmd_type)
+            elif cmd[0] == "pos":
+                obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                if obj:
+                    pos = cmd[2]
+                    rot = cmd[3]
+                    if rot:
+                        X = rot[0]
+                        Y = rot[1]
+                        Z = rot[2]
+                        W = rot[3]
+                        norm = math.sqrt((X*X)+(Y*Y)+(Z*Z)+(W*W))
+                        if norm == 0:
+                            data = [pos[0], pos[1], pos[2]]
+                        else:
+                            norm = 1.0 / norm
+                            if W < 0:
+                                X = -X
+                                Y = -Y
+                                Z = -Z
+                            data = [pos[0], pos[1], pos[2],
+                                    #0.0,0.0,0.0,
+                                    #0.0,0.0,0.0,
+                                    X*norm, Y*norm, Z*norm]
+                            cmd_type = 11 # PrimGroupRotation
+                    else:
+                        data = [pos[0], pos[1], pos[2]]
+                    client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
+                                              client.session_id,
+                                              obj.LocalID, data, cmd_type)
     def initialize_logger(self):
         self.logger = logging.getLogger("b2rex.simrt")
 
@@ -443,43 +432,36 @@ class BlenderAgent(object):
 
     def onObjectUpdate(self, packet):
         out_queue = self.out_queue
-        out_lock = self.out_lock
         for ObjectData_block in packet['ObjectData']:
            #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
            objdata = ObjectData_block["ObjectData"]
            obj_uuid = uuid_to_s(ObjectData_block["FullID"])
-           with out_lock:
-                out_queue.append(['props', obj_uuid,
+           out_queue.put(['props', obj_uuid,
                                   {"OwnerID": str(ObjectData_block["OwnerID"])}])
            if "Scale" in ObjectData_block.var_list:
                scale = ObjectData_block["Scale"]
-               with out_lock:
-                   out_queue.append(['scale', obj_uuid,
+               out_queue.put(['scale', obj_uuid,
                                      v3_to_list(scale)])
            if len(objdata) == 48:
                pos_vector = Vector3(objdata)
                vel = Vector3(objdata[12:])
                acc = Vector3(objdata[24:])
                rot = Quaternion(objdata[36:])
-               with out_lock:
-                   out_queue.append(['pos', obj_uuid, v3_to_list(pos_vector)])
-                   out_queue.append(['rot', obj_uuid, q_to_list(rot)])
+               out_queue.put(['pos', obj_uuid, v3_to_list(pos_vector)])
+               out_queue.put(['rot', obj_uuid, q_to_list(rot)])
            elif len(objdata) == 12:
                if True:
                    # position only packed as 3 floats
                    pos = Vector3(objdata)
-                   with out_lock:
-                       out_queue.append(['pos', obj_uuid, v3_to_list(pos)])
+                   out_queue.put(['pos', obj_uuid, v3_to_list(pos)])
                elif ObjectData_block.Type in [4, 20, 12, 28]:
                    # position only packed as 3 floats
                    scale = Vector3(objdata)
-                   with out_lock:
-                       out_queue.append(['scale', obj_uuid, v3_to_list(scale)])
+                   out_queue.put(['scale', obj_uuid, v3_to_list(scale)])
                elif ObjectData_block.Type in [2, 10]:
                    # rotation only packed as 3 floats
                    rot = Quaternion(objdata)
-                   with out_lock:
-                       out_queue.append(['rot', obj_uuid, q_to_list(rot)])
+                   out_queue.put(['rot', obj_uuid, q_to_list(rot)])
          
            else:
                 # missing sizes: 28, 40, 44, 64
@@ -487,12 +469,10 @@ class BlenderAgent(object):
 
     def onChatFromViewer(self, packet):
         client = self.client
-        out_lock = self.out_lock
         out_queue = self.out_queue
         fromname = packet["ChatData"][0]["FromName"].split(" ")[0]
         message = packet["ChatData"][0]["Message"]
-        with out_lock:
-            out_queue.append(['msg',fromname, message])
+        out_queue.put(['msg',fromname, message])
         if message.startswith("#"):
             return
         if fromname.strip() == client.firstname:
@@ -540,8 +520,8 @@ class GreenletsThread(Thread):
         self.running = True
         self.cmd_out_queue = []
         self.cmd_in_queue = []
-        self.cmd_out_lock = RLock()
-        self.cmd_in_lock = RLock()
+        self.out_queue = Queue()
+        self.in_queue = Queue()
         self.server_url = server_url
         self.username = username
         self.password = password
@@ -557,10 +537,8 @@ class GreenletsThread(Thread):
         self.addCmd(cmd)
 
     def run(self):
-        agent = BlenderAgent(self.cmd_in_queue,
-                   self.cmd_in_lock,
-                   self.cmd_out_queue,
-                   self.cmd_out_lock)
+        agent = BlenderAgent(self.in_queue,
+                   self.out_queue)
         agent.login(self.server_url,
                     self.username,
                     self.password,
@@ -569,18 +547,13 @@ class GreenletsThread(Thread):
         self.running = False
 
     def addCmd(self, cmd):
-        with self.cmd_in_lock:
-            if not cmd in self.cmd_in_queue:
-                self.cmd_in_queue.append(cmd)
+        self.in_queue.put(cmd)
 
     def getQueue(self):
-        with self.cmd_out_lock:
-            cmd_out = list(self.cmd_out_queue)
-            while len(self.cmd_out_queue):
-                self.cmd_out_queue.pop()
-        return cmd_out
-
-
+        out_queue = []
+        while self.out_queue.qsize():
+            out_queue.append(self.out_queue.get())
+        return out_queue
 
 running = False
 
@@ -606,6 +579,7 @@ class ClientHandler(object):
             data = json_socket.recv()
             if not data:
                 # client disconnected, bail out
+                self.current.in_queue.put(["quit"])
                 break
             if data[0] == 'connect' and not running:
                 # initial connect command
@@ -616,7 +590,7 @@ class ClientHandler(object):
             elif self.current:
                 # forward command
                 self.current.addCmd(data)
-            api.sleep(0)
+        print("exit read client")
         # exit
         self.connected = False
     def handle_client(self, json_socket, pool):
@@ -628,22 +602,30 @@ class ClientHandler(object):
             json_socket.send(["state", "connected"])
         else:
             json_socket.send(["state", "idle"])
+        starttime = time.time()
         while self.connected:
-            api.sleep(0)
             if self.current:
-                queue = self.current.getQueue()
-                for cmd in queue:
+                cmd = self.current.out_queue.get()
+                if cmd[0] == "quit":
+                    print("quit on handle client")
+                    break;
+                else:
                     json_socket.send(cmd)
-                    api.sleep(0)
+                #for cmd in self.current.queue.get():
+                    #    json_socket.send(cmd)
+                    #api.sleep(0)
+            else:
+                api.sleep(0)
+        json_socket.close()
         if running:
             running.addCmd(["quit"])
             run_main = False
-            sys.exit()
+        raise eventlet.StopServe
 
 run_main = True
 def main():
     server = eventlet.listen(('0.0.0.0', 11112))
-    pool = eventlet.GreenPool(10000)
+    pool = eventlet.GreenPool(1000)
     while run_main:
          new_sock, address = server.accept()
          client_handler = ClientHandler()
