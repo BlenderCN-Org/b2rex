@@ -42,8 +42,8 @@ def mat_findtextures(material):
             basemap = False
     return textures
 
-def get_vcoords(vbuffer, idx, pos_offset):
-    v = vbuffer[idx*32:(idx+1)*32]
+def get_vcoords(vbuffer, idx, pos_offset, stride=32):
+    v = vbuffer[idx*stride:(idx+1)*stride]
     if v:
         v1 = arr2float(v[pos_offset+0:pos_offset+4])
         v2 = arr2float(v[pos_offset+4:pos_offset+8])

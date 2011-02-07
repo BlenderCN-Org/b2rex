@@ -12,7 +12,7 @@ from  .oserializer import Serializer
 from .otypes import MeshChunkID, MeshCids, GeomCids, SubMeshCids
 
 import logging
-logging.getLogger("b2rex.oimporter")
+logger = logging.getLogger("b2rex.oimporter")
 
 class MeshImporter(oserializer.Serializer):
     """
@@ -98,7 +98,9 @@ class MeshImporter(oserializer.Serializer):
                 raise Exception("Missing geometry data")
             vertex, vbuffer = self.ReadGeometry(reader)
         else:
-            logger.debug("no shared!")
+            vertex = vertex = self.vertex
+            vbuffer = self.vbuffer
+            logger.debug("shared!")
         cid = self.ReadChunk(reader)
         while not self.IsEOF(reader) and cid in SubMeshCids:
             if cid == MeshChunkID.SubMeshOperation:
@@ -126,7 +128,13 @@ class MeshImporter(oserializer.Serializer):
             if cid == MeshChunkID.SubMesh:
                 sys.stderr.write("s")
                 submeshes.append(self.ReadSubMesh(reader))
+            elif cid == MeshChunkID.Geometry:
+                sys.stderr.write("g")
+                vertex, vbuffer = self.ReadGeometry(reader)
+                self.vertex = vertex
+                self.vbuffer = vbuffer
             else:
+                print("unhandled chunk", cid)
                 sys.stderr.write("i")
                 self.IgnoreCurrentChunk(reader)
             cid = self.ReadChunk(reader)
@@ -143,11 +151,16 @@ class MeshImporter(oserializer.Serializer):
         if self.ReadShort(reader) == MeshChunkID.Header:
             fileVersion = self.ReadString(reader)
             while not self.IsEOF(reader):
-                cid = self.ReadChunk(reader)
+                try:
+                    cid = self.ReadChunk(reader)
+                except:
+                    print("hit end of file while reading!!")
+                    if meshes:
+                        return meshes[0]
                 if cid == MeshChunkID.Mesh:
                     meshes.append(self.ReadMesh(reader))
                 else:
-                    #print "ignoring",cid
+                    print("ignoring", cid)
                     self.IgnoreCurrentChunk(reader)
                     #else:
                         #print "incorrect cid", cid
