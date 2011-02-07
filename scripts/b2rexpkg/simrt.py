@@ -332,10 +332,25 @@ class BlenderAgent(object):
                                           True,
                                           None)
 
-        # send xfer
-        # send rex properties
-        # send new prim
-        pass
+    def cloneObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
+                     scale):
+        # create asset
+        obj_uuid = UUID(obj_uuid_str)
+
+        print("CLONING OBJECT")
+        tok = UUID(str(uuid.uuid4()))
+        def finish_creating(real_uuid):
+            args = {"RexMeshUUID": mesh_uuid_str,
+                    "RexIsVisible": True}
+            self.sendRexPrimData(real_uuid, args)
+            self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
+                                str(real_uuid), mesh_uuid_str])
+            self.creating = False
+            self.creating_cb = False
+        self.creating = tok
+        self.creating_cb = finish_creating
+        self.sendCreateObject(obj_uuid, pos, rot, scale)
+
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
@@ -450,6 +465,8 @@ class BlenderAgent(object):
                 return
             elif cmd[0] == "create":
                 self.createObject(*cmd[1:])
+            elif cmd[0] == "clone":
+                self.cloneObject(*cmd[1:])
             elif cmd[0] == "select":
                 selected_cmd = set(cmd[1:])
                 newselected = selected_cmd.difference(selected)
@@ -552,6 +569,9 @@ class BlenderAgent(object):
         self.logger.debug("received sim stats!"+str(packet))
 
     def onObjectUpdate(self, packet):
+        if self.creating:
+            self.creating_cb(ObjectData_block["FullID"])
+            return
         out_queue = self.out_queue
         for ObjectData_block in packet['ObjectData']:
            #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
@@ -587,8 +607,6 @@ class BlenderAgent(object):
            else:
                 # missing sizes: 28, 40, 44, 64
                 self.logger.debug("Unparsed update of size "+str(len(objdata)))
-           if self.creating:
-                self.creating_cb(ObjectData_block["FullID"])
 
     def onChatFromViewer(self, packet):
         client = self.client

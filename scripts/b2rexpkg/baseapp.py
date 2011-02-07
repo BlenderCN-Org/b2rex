@@ -1,5 +1,6 @@
 import sys
 import time
+import uuid
 import traceback
 import base64
 from collections import defaultdict
@@ -37,12 +38,13 @@ logger = logging.getLogger('b2rex.baseapp')
 
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
+        self.selected = set()
         self.agent_id = ""
         self.agent_access = ""
         self.rt_support = eventlet_present
         self.stats = [0,0,0,0,0,0,0,0]
         self.status = "b2rex started"
-        self.selected = set()
+        self.selected = {}
         self.pool = ThreadPool(10)
         self.connected = False
         self.positions = {}
@@ -243,6 +245,20 @@ class BaseApplication(Importer, Exporter):
                 self.doRtObjectUpload(context, selected)
                 return
 
+    def sendObjectClone(self, obj):
+        obj_name = obj.name
+        mesh = obj.data
+        if not obj.opensim.uuid:
+            obj.opensim.uuid = str(uuid.uuid4())
+        obj_uuid = obj.opensim.uuid
+        mesh_name = mesh.name
+        mesh_uuid = mesh.opensim.uuid
+        pos, rot, scale = self.getObjectProperties(obj)
+        
+        self.simrt.addCmd(['clone', obj_name, obj_uuid, mesh_name, mesh_uuid,
+                           self.unapply_position(pos),
+                           self.unapply_rotation(rot), list(scale)])
+
     def sendObjectUpload(self, obj, mesh, data):
         b64data = base64.urlsafe_b64encode(data).decode('ascii')
         obj_name = obj.name
@@ -256,12 +272,16 @@ class BaseApplication(Importer, Exporter):
                            self.unapply_position(pos),
                            self.unapply_rotation(rot), list(scale), b64data])
 
-    def doRtObjectUpload(self, context, selected):
-        mesh = selected.data
+    def doRtObjectUpload(self, context, obj):
+        mesh = obj.data
+        has_mesh_uuid = mesh.opensim.uuid
+        if has_mesh_uuid:
+            self.sendObjectClone(obj)
+            return
         def finish_upload(data):
-            self.sendObjectUpload(selected, mesh, data)
+            self.sendObjectUpload(obj, mesh, data)
         # export mesh
-        self.doAsyncExportMesh(context, selected, finish_upload)
+        self.doAsyncExportMesh(context, obj, finish_upload)
         # upload prim
         # self.sendObjectUpload(selected, mesh, data)
         # send new prim
@@ -340,6 +360,30 @@ class BaseApplication(Importer, Exporter):
 
     def checkUuidConsistency(self, selected):
         # look for duplicates
+        selected = set(self.getSelected())
+        oldselected = self.selected
+        newselected = {}
+        isobjcopy = True
+        for obj in selected:
+            obj_uuid = obj.opensim.uuid
+            if obj.type == 'MESH' and obj_uuid:
+                mesh_uuid = obj.data.opensim.uuid
+                newselected[obj_uuid] = obj.as_pointer()
+                newselected[mesh_uuid] = obj.data.as_pointer()
+                if obj.opensim.uuid in oldselected and not oldselected[obj_uuid] == obj.as_pointer():
+                    # copy or clone
+                    if obj.data.opensim.uuid in oldselected and not oldselected[mesh_uuid] == obj.data.as_pointer():
+                        # copy
+                        ismeshcopy = True
+                        obj.data.opensim.uuid = ""
+                        print("copied")
+                    else:
+                        # clone
+                        print("cloned")
+                    obj.opensim.uuid = ""
+        self.selected = newselected
+        return
+
         uuids = map(lambda s: s.opensim.uuid, selected)
         uuids = list(filter(lambda s: s, uuids))
         uuids_set = set(uuids)
@@ -378,7 +422,6 @@ class BaseApplication(Importer, Exporter):
                 all_selected.add(obj_id)
         if not all_selected == self.selected:
             self.simrt.addCmd(["select"]+list(all_selected))
-            self.selected = all_selected
 
     def go(self):
         """
