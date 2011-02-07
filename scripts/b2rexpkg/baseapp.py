@@ -2,6 +2,7 @@ import sys
 import time
 import traceback
 import base64
+from collections import defaultdict
 
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
@@ -173,18 +174,25 @@ class BaseApplication(Importer, Exporter):
         elif cmd == 'meshcreated':
             self.processMeshCreated(*args)
 
-    def processMeshCreated(self, obj_uuid, mesh_uuid, asset_id):
+    def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
         foundobject = False
+        foundmesh = False
         for obj in self.getSelected():
-            if obj.type == 'MESH' and obj.data.opensim.uuid == mesh_uuid:
+            if obj.type == 'MESH' and obj.opensim.uuid == new_obj_uuid:
                 foundobject = obj
+            if obj.type == 'MESH' and obj.data.opensim.uuid == mesh_uuid:
+                foundmesh = obj.data
 
-        if not foundobject:
-            foundobject = self.find_with_uuid(mesh_uuid,
+        if not foundmesh:
+            foundmesh = self.find_with_uuid(mesh_uuid,
                                               bpy.data.meshes, "meshes")
+        if not foundobject:
+            foundobject = self.find_with_uuid(obj_uuid,
+                                              bpy.data.objects, "objects")
         if foundobject:
-            foundobject.data.opensim.uuid = asset_id
-            self.addStatus("Mesh uploaded " + asset_id)
+            foundobject.opensim.uuid = new_obj_uuid
+        if foundmesh:
+            foundmesh.opensim.uuid = asset_id
 
     def processRexPrimDataCommand(self, objId, pars):
         print("ReXPrimData for ", pars["MeshUrl"])
@@ -294,17 +302,20 @@ class BaseApplication(Importer, Exporter):
             
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
+        print("process update for ", obj_uuid)
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
             pos = list(pos)
             rot = list(rot)
             scale = list(scale)
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
+                print("posrot update")
                 self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
                 self.positions[obj_uuid] = pos
                 self.rotations[obj_uuid] = rot
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
+                print("rot update")
                 self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
                 self.positions[obj_uuid] = pos
@@ -320,17 +331,48 @@ class BaseApplication(Importer, Exporter):
             self.pool.poll()
         except NoResultsPending:
             pass
+        self.checkUuidConsistency(self.getSelected())
         cmds = self.simrt.getQueue()
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
                 self.processCommand(*cmd)
 
+    def checkUuidConsistency(self, selected):
+        # look for duplicates
+        uuids = map(lambda s: s.opensim.uuid, selected)
+        uuids = list(filter(lambda s: s, uuids))
+        uuids_set = set(uuids)
+        if len(uuids) == len(uuids_set):
+            return
+        seen = []
+        seen_meshes = {}
+        for obj in selected:
+            obj_uuid = obj.opensim.uuid
+            if obj_uuid and obj_uuid not in seen:
+                # didnt see this obj uuid, so just add to cache
+                seen.append(obj_uuid)
+            elif obj_uuid:
+                # mark the object as unsynced
+                obj.opensim.uuid = ""
+            if obj.type == 'MESH':
+                mesh_uuid = obj.data.opensim.uuid
+                if mesh_uuid:
+                    if mesh_uuid in seen_meshes:
+                        if obj.data.as_pointer() != seen_meshes[mesh_uuid]:
+                            obj.data.opensim.uuid = ""
+                    else:
+                        seen_meshes[mesh_uuid] = obj.data.as_pointer()
+
+                    seen_meshes[mesh_uuid] = obj.data.as_pointer()
+
     def processView(self):
         t = time.time()
         selected = self.getSelected()
         all_selected = set()
+        # look for changes in objects
         for obj in selected:
+            print("process update for "+obj.name)
             obj_id = self.processUpdate(obj)
             if obj_id:
                 all_selected.add(obj_id)

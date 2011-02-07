@@ -83,13 +83,13 @@ class BlenderAgent(object):
     do_megahal = False
     verbose = True
     def __init__(self, in_queue, out_queue):
+        self.creating = False
         self.in_queue = in_queue
         self.out_queue = out_queue
         self.initialize_logger()
 
     def onRequestXfer(self, packet):
         xfer_id = packet["XferID"][0]["ID"]
-        print(packet, xfer_id)
         ongoing = 0x80000000
         packet = Message('SendXferPacket',
                         Block('XferID',
@@ -220,8 +220,8 @@ class BlenderAgent(object):
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
         pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
         self.out_queue.put(['RexPrimData', obj_uuid, pars])
-        self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
-                          "+str(len(rexdata))+" "+pars["RexMeshUUID"])
+        #self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
+                #                  "+str(len(rexdata))+" "+pars["RexMeshUUID"])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -249,7 +249,6 @@ class BlenderAgent(object):
     def onGenericMessage(self, packet):
         if packet["MethodData"][0]["Method"] == "RexPrimData":
             self.onRexPrimData(packet["ParamList"])
-            print(packet)
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
             print(packet)
@@ -312,13 +311,18 @@ class BlenderAgent(object):
             print("ASSET READY CREATING OBJECT")
             self.tosend = None
             self.onuploadfinished = None
+            tok = UUID(str(uuid.uuid4()))
+            def finish_creating(real_uuid):
+                args = {"RexMeshUUID": str(asset_id),
+                        "RexIsVisible": True}
+                self.sendRexPrimData(real_uuid, args)
+                self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
+                                    str(real_uuid), str(asset_id)])
+                self.creating = False
+                self.creating_cb = False
+            self.creating = tok
+            self.creating_cb = finish_creating
             self.sendCreateObject(obj_uuid, pos, rot, scale)
-            obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid_str)
-            args = {"RexMeshUUID": str(asset_id),
-                    "RexIsVisible": True}
-            self.sendRexPrimData(obj_uuid, args)
-            self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
-                                str(asset_id)])
 
         self.tosend = data # hack for now
         self.onuploadfinished = finishupload
@@ -437,6 +441,7 @@ class BlenderAgent(object):
         selected = set()
         while client.running == True:
             cmd = in_queue.get()
+            print(" ** cmd", cmd)
             cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
             #   # 10-rot
             if cmd[0] == "quit":
@@ -453,6 +458,8 @@ class BlenderAgent(object):
                     obj = client.region.objects.get_object_from_store(FullID=obj_id)
                     if obj:
                         obj.select(client)
+                    else:
+                        print("cant find "+obj_id)
                 for obj_id in deselected:
                     obj = client.region.objects.get_object_from_store(FullID=obj_id)
                     if obj:
@@ -470,12 +477,15 @@ class BlenderAgent(object):
                                               obj.LocalID, data, cmd_type)
             elif cmd[0] == "pos":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                print("Try Position update for ", cmd[1])
                 if obj:
+                    print("Position update for ", cmd[1])
                     pos = cmd[2]
                     rot = cmd[3]
                     self.sendPositionUpdate(obj, pos, rot)
 
     def sendPositionUpdate(self, obj, pos, rot):
+        cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
         client = self.client
         if rot:
             X = rot[0]
@@ -498,6 +508,7 @@ class BlenderAgent(object):
                 cmd_type = 11 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
+        print("Sending position update")
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
@@ -576,6 +587,8 @@ class BlenderAgent(object):
            else:
                 # missing sizes: 28, 40, 44, 64
                 self.logger.debug("Unparsed update of size "+str(len(objdata)))
+           if self.creating:
+                self.creating_cb(ObjectData_block["FullID"])
 
     def onChatFromViewer(self, packet):
         client = self.client
