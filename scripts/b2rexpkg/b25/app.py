@@ -75,8 +75,11 @@ class B2Rex(BaseApplication):
             self.unregister_draw_callbacks(context)
 
     def onExportUpload(self, context):
-        self.onExport(context)
-        self.onUpload(context)
+        if self.simrt:
+            self.doRtUpload(context)
+        else:
+            self.onExport(context)
+            self.onUpload(context)
 
     def onUpload(self, context):
         self.doUpload()

@@ -32,6 +32,7 @@ import struct
 import subprocess
 import math
 from .tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDINATES
+from .tools.oimporter.otypes import type2size
 from .tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
 from .tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
 from .tools.oimporter.omaterial import OgreMaterial
@@ -69,13 +70,16 @@ class Importer25(object):
                 image = ogremat.btex.image
             if image:
                 logger.debug("found image")
+        stride = 0
+        for layer in vertex_legend.values():
+            stride += type2size[layer[2]]
         if VES_TEXTURE_COORDINATES in vertex_legend:
             uvco_offset = vertex_legend[VES_TEXTURE_COORDINATES][1]
         vertmaps = {}
         indices_map = []
         # vertices
         for idx in range(max(indices)+1):
-            coords = get_vcoords(vbuffer, idx, pos_offset)
+            coords = get_vcoords(vbuffer, idx, pos_offset, stride)
             if coords:
                 if not coords in vertmaps:
                     new_mesh.vertices.add(1)
@@ -161,8 +165,12 @@ class Importer25(object):
         return new_mesh
 
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
-                       offset_z=20.0):
-        obj.location = (pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+                       offset_z=20.0, raw=False):
+        if raw:
+            obj.location = pos
+        else:
+            obj.location = self._apply_position(pos, offset_x, offset_y,
+                                                    offset_z)
 
     def apply_scale(self, obj, scale):
         obj.scale = (scale[0], scale[1], scale[2])
@@ -180,15 +188,11 @@ class Importer25(object):
         q = euler.to_quat()
         return [q.x, q.y, q.z, q.w]
         
-    def apply_rotation(self, obj, rot):
-        b_q = mathutils.Quaternion((rot[3], rot[0], rot[1],
-                                           rot[2]))
-        r = 1.0
-        #r = math.pi/180.0;
-        if b_q:
-            b_q = mathutils.Quaternion((b_q.w, b_q.x, b_q.y, b_q.z))
-            euler = b_q.to_euler()
-            obj.rotation_euler = (-euler[0]*r, -euler[1]*r, (euler[2]-math.pi)*r)
+    def apply_rotation(self, obj, rot, raw=False):
+        if raw:
+            obj.rotation_euler = rot
+        else:
+            obj.rotation_euler = self._apply_rotation(rot)
 
     def getcreate_object(self, obj_uuid, name, mesh_data):
         logger.debug("create object")
@@ -287,8 +291,11 @@ class Importer24(object):
         return btex
 
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
-                       offset_z=20.0):
-        obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+                       offset_z=20.0, raw=False):
+        if raw:
+            obj.setLocation(*pos)
+        else:
+            obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
 
     def apply_scale(self, obj, scale):
         obj.setSize(scale[0], scale[1], scale[2])
@@ -304,7 +311,13 @@ class Importer24(object):
         q = euler.toQuat()
         return [q.x, q.y, q.z, q.w]
         
-    def apply_rotation(self, obj, rot):
+    def apply_rotation(self, obj, rot, raw=False):
+        if raw:
+            obj.setEuler(*rot)
+        else:
+            obj.setEuler(*self._apply_rotation(rot))
+
+    def _apply_rotation(self, rot):
         b_q = mathutils.Quaternion(rot[3], rot[0], rot[1],
                                            rot[2])
         #b_q1 = b_q.cross(Blender.Mathutils.Quaternion([0,-1,0]))
@@ -314,7 +327,7 @@ class Importer24(object):
         if b_q:
             b_q = mathutils.Quaternion(b_q.w, b_q.x, b_q.y, b_q.z)
             euler = b_q.toEuler()
-            obj.setEuler(-euler[0]*r, -euler[1]*r, (euler[2]-180.0)*r)
+            return (euler[0]*r, -euler[1]*r, (euler[2]-180.0)*r)
 
     def getcreate_object(self, obj_uuid, name, mesh_data):
         obj = self.find_with_uuid(obj_uuid, bpy.data.objects,
@@ -704,6 +717,18 @@ class Importer(ImporterBase):
         for groupid, scenegroup in scenedata['res'].items():
             getattr(self, action+"_group")(groupid, scenegroup, 10)
             self.queueRedraw('VIEW3D')
+
+    def _apply_position(self, pos, offset_x=128.0, offset_y=128.0,
+                       offset_z=20.0):
+        return (pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+
+    def _apply_rotation(self, rot):
+        b_q = mathutils.Quaternion((rot[3], rot[0], rot[1],
+                                           rot[2]))
+        r = 1.0
+        b_q = mathutils.Quaternion((b_q.w, b_q.x, b_q.y, b_q.z))
+        euler = b_q.to_euler()
+        return (-euler[0]*r, -euler[1]*r, (euler[2]-math.pi)*r)
 
 
 if __name__ == '__main__':

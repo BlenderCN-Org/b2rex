@@ -5,6 +5,7 @@ import getpass, sys, logging
 import time
 import math
 import popen2
+import base64
 import struct
 import urlparse
 from threading import Thread
@@ -56,10 +57,31 @@ def b_to_s(b):
     return b.decode('utf-8')
 def uuid_to_s(b):
     return str(b)
+def unpack_q(data, offset):
+    min = -1.0
+    max = 1.0
+    q = Quaternion(X=Helpers.packed_u16_to_float(data, offset,
+                                                     min, max),
+                        Y=Helpers.packed_u16_to_float(data, offset+2,
+                                                     min, max),
+                        Z=Helpers.packed_u16_to_float(data, offset+4,
+                                                     min, max),
+                        W=Helpers.packed_u16_to_float(data, offset+6,
+                                                     min, max))
+    return q
+
+def unpack_v3(data, offset, min, max):
+    vector3 = Vector3(X=Helpers.packed_u16_to_float(data, offset,
+                                                     min, max),
+                        Y=Helpers.packed_u16_to_float(data, offset+2,
+                                                     min, max),
+                        Z=Helpers.packed_u16_to_float(data, offset+4,
+                                                     min, max))
+    return vector3
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self.in_queue = in_queue
         self.out_queue = out_queue
@@ -73,11 +95,15 @@ class BlenderAgent(object):
                         Block('XferID',
                                 ID = xfer_id,
                                 Packet = ongoing|1),
-                        Block('DataPacket', Data=b'x'*1024))
+                         # first packet needs 4 bytes padding if we dont
+                         # bootstrap some data ???
+                        Block('DataPacket', Data=b'\0\0\0\0'+self.tosend))
         self.client.region.enqueue_message(packet)
 
     def onAssetUploadComplete(self, packet):
         print("AssetUploadComplete")
+        if self.onuploadfinished:
+            self.onuploadfinished(packet['AssetBlock'][0]['UUID'])
 
     def onConfirmXferPacket(self, packet):
         print("ConfirmXferPacket")
@@ -86,9 +112,10 @@ class BlenderAgent(object):
         # some region info
         pass
 
-    def createObject(self, objId, pars):
+    def sendCreateObject(self, objId, pos, rot, scale):
         RayTargetID = UUID()
-        self.client.objects.object_add(self.client.agent_id, self.agent.session_id,
+
+        self.client.region.objects.object_add(self.client.agent_id, self.client.session_id,
                         PCodeEnum.Primitive, 
                         Material = 3, AddFlags = 2, PathCurve = 16,
                         ProfileCurve = 1, PathBegin = 0, PathEnd = 0,
@@ -97,9 +124,9 @@ class BlenderAgent(object):
                         PathRadiusOffset = 0, PathTaperX = 0, PathTaperY = 0,
                         PathRevolutions = 0, PathSkew = 0, ProfileBegin = 0,
                         ProfileEnd = 0, ProfileHollow = 0, BypassRaycast = 1,
-                        RayStart = location_to_rez, RayEnd = location_to_rez,
+                        RayStart = pos, RayEnd = pos,
                         RayTargetID = RayTargetID, RayEndIsIntersection = 0,
-                        Scale = (0.5, 0.5, 0.5), Rotation = (0, 0, 0, 1),
+                        Scale = scale, Rotation = rot,
                         State = 0)
 
     def onAgentMovementComplete(self, packet):
@@ -122,26 +149,40 @@ class BlenderAgent(object):
         # some region info
         self.logger.debug(packet)
 
-    def sendRexPrimData(self, args):
-        agent_id = str(self.client.agent_id)
-        session_id = str(self.client.session_id)
-        t_id = str(uuid.uuid4())
-        invoice_id = str(uuid.UUID())
+    def sendRexPrimData(self, obj_uuid, args):
+        agent_id = self.client.agent_id
+        session_id = self.client.session_id
+        t_id = uuid.uuid4()
+        invoice_id = UUID()
         data = b''
         # drawType (1 byte)
-        data += struct.pack('<b', args['drawType'])
+        if 'drawType' in args:
+            data += struct.pack('<b', args['drawType'])
+        else:
+            data += struct.pack('<b', pyogp.lib.client.enums.AssetType.OgreMesh)
         # bool properties
-        for prop in ['RexIsVisible', 'RexCastShadows', 'RexCastShadows',
+        for prop in ['RexIsVisible', 'RexCastShadows',
                      'RexLightCreatesShadows', 'RexDescriptionTexture',
                      'RexDescriptionTexture']:
-            data += struct.pack('<?', args[prop])
+            if prop in args:
+                data += struct.pack('<?', args[prop])
+            else:
+                data += struct.pack('<?', False)
         # float properties
         for prop in ['RexDrawDistance', 'RexLOD']:
-            data += struct.pack('<f', args[prop])
+            if prop in args:
+                data += struct.pack('<f', args[prop])
+            else:
+                data += struct.pack('<f', 0.0)
         # uuid properties
         for prop in ['RexMesh', 'RexCollisionMesh',
                      'RexParticleScript', 'RexAnimationPackage']:
-            data += bytes(uuid.UUID(args[prop+'UUID']).bytes)
+            prop = prop+'UUID'
+            if prop in args:
+                data += bytes(UUID(args[prop]).data().bytes)
+            else:
+                data += bytes(UUID().data().bytes)
+        data += b'\0'*(200-len(data))
         # prepare packet
         packet = Message('GenericMessage',
                         Block('AgentData',
@@ -151,18 +192,20 @@ class BlenderAgent(object):
                         Block('MethodData',
                                 Method = 'RexPrimData',
                                 Invoice = invoice_id),
+                        Block('ParamList', Parameter=str(obj_uuid)),
                         Block('ParamList', Parameter=data))
+        print(packet, len(data))
         # send
         self.client.region.enqueue_message(packet)
 
     def onRexPrimData(self, packet):
         rexdata = packet[1]["Parameter"]
-        #self.logger.debug("REXPRIMDATA "+str(len(rexdata)))
         if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
         obj_uuid = str(UUID(packet[0]["Parameter"]))
         pars = {}
         pars["drawType"] = struct.unpack("<b", rexdata[0])[0]
+
         pars["RexIsVisible"]= struct.unpack("<?", rexdata[1])[0]
         pars["RexCastShadows"]= struct.unpack("<?", rexdata[2])[0]
         pars["RexLightCreatesShadows"]= struct.unpack("<?", rexdata[3])[0]
@@ -177,6 +220,8 @@ class BlenderAgent(object):
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
         pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
         self.out_queue.put(['RexPrimData', obj_uuid, pars])
+        self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
+                          "+str(len(rexdata))+" "+pars["RexMeshUUID"])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -204,9 +249,36 @@ class BlenderAgent(object):
     def onGenericMessage(self, packet):
         if packet["MethodData"][0]["Method"] == "RexPrimData":
             self.onRexPrimData(packet["ParamList"])
+            print(packet)
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
             print(packet)
+
+    def onImprovedTerseObjectUpdate(self, packet):
+        for packet_ObjectData in packet['ObjectData']:
+            data = packet_ObjectData['Data']
+            print("onImprovedTerseObjectUpdate", len(data))
+            localID = struct.unpack("<I", data[0:4])[0]
+            attachPoint = struct.unpack("<b", data[4])[0]
+            hasPlane = struct.unpack("<?", data[5])[0]
+            idx = 6
+            if hasPlane:
+                collisionPlane = Quaternion(data[idx:idx+16])
+                idx += 16
+            minlen = idx+12+6+6+6+8
+            if len(data) < minlen:
+                data = data + ('\0'*(minlen-len(data)))
+            pos = Vector3(data[idx:idx+12])
+            idx = idx+12
+            vel = unpack_v3(data, idx, -128.0, 128.0)
+            accel = unpack_v3(data, idx+6, -64.0, 64.0)
+            rot = unpack_q(data, idx+12)
+            angular_vel = unpack_v3(data, idx+20, -64.0, 64.0)
+            obj = self.client.region.objects.get_object_from_store(LocalID = localID)
+            print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
+            if obj:
+                obj_uuid = str(obj.FullID)
+                self.out_queue.put(['pos', obj_uuid, v3_to_list(pos), q_to_list(rot)])
 
     def onObjectPermissions(self, packet):
         self.logger.debug("PERMISSIONS!!!")
@@ -230,6 +302,36 @@ class BlenderAgent(object):
             obj_uuid = str(pars['ObjectID'])
             self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
+    def createObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
+                     scale, b64data):
+        # create asset
+        obj_uuid = UUID(obj_uuid_str)
+        mesh_uuid = uuid.UUID(mesh_uuid_str)
+        data = base64.urlsafe_b64decode(b64data.encode('ascii'))
+        def finishupload(asset_id):
+            print("ASSET READY CREATING OBJECT")
+            self.tosend = None
+            self.onuploadfinished = None
+            self.sendCreateObject(obj_uuid, pos, rot, scale)
+            obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid_str)
+            args = {"RexMeshUUID": str(asset_id),
+                    "RexIsVisible": True}
+            self.sendRexPrimData(obj_uuid, args)
+            self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
+                                str(asset_id)])
+
+        self.tosend = data # hack for now
+        self.onuploadfinished = finishupload
+        self.client.asset_manager.upload_asset(mesh_uuid,
+                                          pyogp.lib.client.enums.AssetType.OgreMesh,
+                                          False,
+                                          True,
+                                          None)
+
+        # send xfer
+        # send rex properties
+        # send new prim
+        pass
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
@@ -273,6 +375,8 @@ class BlenderAgent(object):
         while client.connected == False:
             api.sleep(0)
 
+        res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
+        res.subscribe(self.onImprovedTerseObjectUpdate)
         res = client.region.message_handler.register("AssetUploadComplete")
         res.subscribe(self.onAssetUploadComplete)
         res = client.region.message_handler.register("ConfirmXferPacket")
@@ -339,6 +443,8 @@ class BlenderAgent(object):
                 out_queue.put(["quit"])
                 client.logout()
                 return
+            elif cmd[0] == "create":
+                self.createObject(*cmd[1:])
             elif cmd[0] == "select":
                 selected_cmd = set(cmd[1:])
                 newselected = selected_cmd.difference(selected)
@@ -367,30 +473,34 @@ class BlenderAgent(object):
                 if obj:
                     pos = cmd[2]
                     rot = cmd[3]
-                    if rot:
-                        X = rot[0]
-                        Y = rot[1]
-                        Z = rot[2]
-                        W = rot[3]
-                        norm = math.sqrt((X*X)+(Y*Y)+(Z*Z)+(W*W))
-                        if norm == 0:
-                            data = [pos[0], pos[1], pos[2]]
-                        else:
-                            norm = 1.0 / norm
-                            if W < 0:
-                                X = -X
-                                Y = -Y
-                                Z = -Z
-                            data = [pos[0], pos[1], pos[2],
-                                    #0.0,0.0,0.0,
-                                    #0.0,0.0,0.0,
-                                    X*norm, Y*norm, Z*norm]
-                            cmd_type = 11 # PrimGroupRotation
-                    else:
-                        data = [pos[0], pos[1], pos[2]]
-                    client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
-                                              client.session_id,
-                                              obj.LocalID, data, cmd_type)
+                    self.sendPositionUpdate(obj, pos, rot)
+
+    def sendPositionUpdate(self, obj, pos, rot):
+        client = self.client
+        if rot:
+            X = rot[0]
+            Y = rot[1]
+            Z = rot[2]
+            W = rot[3]
+            norm = math.sqrt((X*X)+(Y*Y)+(Z*Z)+(W*W))
+            if norm == 0:
+                data = [pos[0], pos[1], pos[2]]
+            else:
+                norm = 1.0 / norm
+                if W < 0:
+                    X = -X
+                    Y = -Y
+                    Z = -Z
+                data = [pos[0], pos[1], pos[2],
+                        #0.0,0.0,0.0,
+                        #0.0,0.0,0.0,
+                        X*norm, Y*norm, Z*norm]
+                cmd_type = 11 # PrimGroupRotation
+        else:
+            data = [pos[0], pos[1], pos[2]]
+        client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
+                                  client.session_id,
+                                  obj.LocalID, data, cmd_type)
     def initialize_logger(self):
         self.logger = logging.getLogger("b2rex.simrt")
 
@@ -447,8 +557,8 @@ class BlenderAgent(object):
                vel = Vector3(objdata[12:])
                acc = Vector3(objdata[24:])
                rot = Quaternion(objdata[36:])
-               out_queue.put(['pos', obj_uuid, v3_to_list(pos_vector)])
-               out_queue.put(['rot', obj_uuid, q_to_list(rot)])
+               out_queue.put(['pos', obj_uuid, v3_to_list(pos_vector),
+                              q_to_list(rot)])
            elif len(objdata) == 12:
                if True:
                    # position only packed as 3 floats

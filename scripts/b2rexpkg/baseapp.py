@@ -1,6 +1,7 @@
 import sys
 import time
 import traceback
+import base64
 
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
@@ -169,6 +170,21 @@ class BaseApplication(Importer, Exporter):
         elif cmd == 'connected':
             self.agent_id = args[0]
             self.agent_access = args[1]
+        elif cmd == 'meshcreated':
+            self.processMeshCreated(*args)
+
+    def processMeshCreated(self, obj_uuid, mesh_uuid, asset_id):
+        foundobject = False
+        for obj in self.getSelected():
+            if obj.type == 'MESH' and obj.data.opensim.uuid == mesh_uuid:
+                foundobject = obj
+
+        if not foundobject:
+            foundobject = self.find_with_uuid(mesh_uuid,
+                                              bpy.data.meshes, "meshes")
+        if foundobject:
+            foundobject.data.opensim.uuid = asset_id
+            self.addStatus("Mesh uploaded " + asset_id)
 
     def processRexPrimDataCommand(self, objId, pars):
         print("ReXPrimData for ", pars["MeshUrl"])
@@ -196,10 +212,10 @@ class BaseApplication(Importer, Exporter):
             obj = self.getcreate_object(objId, "opensim", new_mesh)
             if objId in self.positions:
                 pos = self.positions[objId]
-                self.apply_position(obj, pos)
+                self.apply_position(obj, pos, raw=True)
             if objId in self.rotations:
                 rot = self.rotations[objId]
-                self.apply_rotation(obj, rot)
+                self.apply_rotation(obj, rot, raw=True)
             if objId in self.scales:
                 scale = self.scales[objId]
                 self.apply_scale(obj, scale)
@@ -208,6 +224,39 @@ class BaseApplication(Importer, Exporter):
             scene = self.get_current_scene()
             scene.objects.link(obj)
             new_mesh.update()
+
+    def doRtUpload(self, context):
+        print("doRtUpload")
+        selected = bpy.context.selected_objects
+        if selected:
+            # just the first for now
+            selected = selected[0]
+            if not selected.opensim.uuid:
+                self.doRtObjectUpload(context, selected)
+                return
+
+    def sendObjectUpload(self, obj, mesh, data):
+        b64data = base64.urlsafe_b64encode(data).decode('ascii')
+        obj_name = obj.name
+        obj_uuid = obj.opensim.uuid
+        mesh_name = mesh.name
+        mesh_uuid = mesh.opensim.uuid
+        print("finishing upload for", obj_uuid, mesh_uuid)
+        pos, rot, scale = self.getObjectProperties(obj)
+        
+        self.simrt.addCmd(['create', obj_name, obj_uuid, mesh_name, mesh_uuid,
+                           self.unapply_position(pos),
+                           self.unapply_rotation(rot), list(scale), b64data])
+
+    def doRtObjectUpload(self, context, selected):
+        mesh = selected.data
+        def finish_upload(data):
+            self.sendObjectUpload(selected, mesh, data)
+        # export mesh
+        self.doAsyncExportMesh(context, selected, finish_upload)
+        # upload prim
+        # self.sendObjectUpload(selected, mesh, data)
+        # send new prim
 
     def processMsgCommand(self, username, message):
         self.addStatus("message from "+username+": "+message)
@@ -218,12 +267,16 @@ class BaseApplication(Importer, Exporter):
             obj = self.find_with_uuid(str(objId), bpy.data.meshes, "meshes")
         return obj
 
-    def processPosCommand(self, objId, pos):
+    def processPosCommand(self, objId, pos, rot=None):
         obj = self.findWithUUID(objId)
         if obj:
             self._processPosCommand(obj, objId, pos)
+            if rot:
+                self._processRotCommand(obj, objId, rot)
         else:
-            self.positions[str(objId)] = pos
+            self.positions[str(objId)] = self._apply_position(pos)
+            if rot:
+                self.rotations[str(objId)] = self._apply_rotation(rot)
 
     def processScaleCommand(self, objId, scale):
         obj = self.findWithUUID(objId)
@@ -237,7 +290,7 @@ class BaseApplication(Importer, Exporter):
         if obj:
             self._processRotCommand(obj, objId, rot)
         else:
-            self.rotations[str(objId)] = rot
+            self.rotations[str(objId)] = self._apply_rotation(rot)
             
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)

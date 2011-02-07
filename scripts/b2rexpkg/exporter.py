@@ -77,7 +77,15 @@ class Exporter(object):
         uuidexport.write(f)
         f.close()
 
-    def doExport(self, exportSettings, location):
+    def doAsyncExportMesh(self, context, selected, finish_upload):
+        self.doExport(context.scene.b2rex_props, list(selected.location))
+        f = open(os.path.join(self.getExportDir(), 'b2rx_export',
+                              selected.data.name+'.mesh'), 'rb')
+        data = f.read()
+        f.close()
+        finish_upload(data)
+
+    def doExport(self, exportSettings, location, pack=True):
         """
         Export Action
         """
@@ -99,8 +107,9 @@ class Exporter(object):
         x, y, z = location
 
         self.export(destfolder, pack_name, [x, y, z], self.exportSettings)
-        dest_file = os.path.join(export_dir, "world_pack.zip")
-        self.packTo(destfolder, dest_file)
+        if pack:
+            dest_file = os.path.join(export_dir, "world_pack.zip")
+            self.packTo(destfolder, dest_file)
 
         self.addStatus("Exported to " + dest_file)
 

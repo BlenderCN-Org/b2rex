@@ -75,7 +75,6 @@ class ProxyAgent(Thread):
         self.socket.close()
         self.socket = JsonSocket()
     def run(self):
-        i = 0
         self.running = False
         self.alive = True
         self.socket = JsonSocket()
@@ -85,7 +84,6 @@ class ProxyAgent(Thread):
         blinkstart = time.time()
         while self.alive:
             time.sleep(0.04)
-            i += 1
             found = False
             # msg queue
             if self.cmds and self.running:
