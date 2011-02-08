@@ -130,6 +130,8 @@ class ConnectionPanel(bpy.types.Panel):
             col.prop(bpy.context.scene.b2rex_props,"regenTextures")
             col = box.column()
             col.prop(bpy.context.scene.b2rex_props,"regenMeshes")
+            box = layout.row()
+            box.prop(bpy.context.scene.b2rex_props, "kbytesPerSecond")
             
         else:
             row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)

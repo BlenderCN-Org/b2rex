@@ -141,6 +141,7 @@ class ProxyAgent(Thread):
                     self.socket.close()
                     break
                 try:
+                    print("send",cmd[0])
                     self.socket.send(cmd)
                 except socket.error as e:
                     if e.errno == 32: # broken pipe

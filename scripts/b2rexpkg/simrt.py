@@ -84,6 +84,8 @@ class BlenderAgent(object):
     verbose = False
     def __init__(self, in_queue, out_queue):
         self.creating = False
+        self.client = None
+        self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
         self.out_queue = out_queue
         self.initialize_logger()
@@ -129,7 +131,16 @@ class BlenderAgent(object):
             #print("PROCEEDING WITH DELETE")
         self.old_kill_object(packet)
 
-    def sendAgentThrottlePacket(self, bps=1000000):
+    def setThrottle(self, bps):
+        print("SET THROTTLE TO", bps)
+        if not bps == self.bps:
+            self.bps = bps
+            client = self.client
+            if client and client.connected and client.region.connected:
+                self.sendThrottle(bps)
+    def sendThrottle(self, bps=None):
+        if not bps:
+            bps = self.bps
         bps = bps*8 # we use bytes per second :)
         data = b''
         data += struct.pack('<f', bps*0.1) # resend
@@ -525,7 +536,7 @@ class BlenderAgent(object):
 
         while client.region.connected == False:
             api.sleep(0)
-        self.sendAgentThrottlePacket(100000.0)
+        self.sendThrottle()
 
         queue = []
 
@@ -560,6 +571,8 @@ class BlenderAgent(object):
                 out_queue.put(["quit"])
                 client.logout()
                 return
+            elif cmd[0] == "throttle":
+                self.setThrottle(*cmd[1:])
             elif cmd[0] == "bootstrap":
                 self.bootstrapClient()
             elif cmd[0] == "create":
@@ -826,6 +839,7 @@ def stop_thread():
 class ClientHandler(object):
     def __init__(self):
         self.current = None
+        self.deferred_cmds = []
     def read_client(self, json_socket, pool):
         global running
         while True:
@@ -840,12 +854,18 @@ class ClientHandler(object):
                     running = GreenletsThread(*data[1:])
                     self.current = running
                     pool.spawn_n(running.run)
+                    for cmd in self.deferred_cmds:
+                        running.addCmd(cmd)
+                    self.deferred_cmds = []
                     json_socket.send(["hihi"])
                 else:
                     running.addCmd(["bootstrap"])
             elif self.current:
                 # forward command
                 self.current.addCmd(data)
+            else:
+                if data[0] in ["throttle"]:
+                    self.deferred_cmds.append(data)
         print("exit read client")
         # exit
         self.connected = False

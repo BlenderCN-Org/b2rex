@@ -152,6 +152,7 @@ class BaseApplication(Importer, Exporter):
                                           self.exportSettings.username,
                                           self.exportSettings.password,
                                           firstline)
+            self.simrt.addCmd(["throttle", self.exportSettings.kbytesPerSecond*1024])
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
