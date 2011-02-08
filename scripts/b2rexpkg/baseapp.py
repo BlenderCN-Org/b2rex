@@ -180,7 +180,7 @@ class BaseApplication(Importer, Exporter):
         foundobject = False
         foundmesh = False
         for obj in self.getSelected():
-            if obj.type == 'MESH' and obj.opensim.uuid == new_obj_uuid:
+            if obj.type == 'MESH' and obj.opensim.uuid == obj_uuid:
                 foundobject = obj
             if obj.type == 'MESH' and obj.data.opensim.uuid == mesh_uuid:
                 foundmesh = obj.data
@@ -193,13 +193,22 @@ class BaseApplication(Importer, Exporter):
                                               bpy.data.objects, "objects")
         if foundobject:
             foundobject.opensim.uuid = new_obj_uuid
+        else:
+            print("Could not find object for meshcreated")
         if foundmesh:
             foundmesh.opensim.uuid = asset_id
+        else:
+            print("Could not find mesh for meshcreated")
 
     def processRexPrimDataCommand(self, objId, pars):
         print("ReXPrimData for ", pars["MeshUrl"])
         self.stats[3] += 1
-        self.addDownload(objId, pars["RexMeshUUID"], pars["MeshUrl"], self.meshArrived)
+        meshId = pars["RexMeshUUID"]
+        mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
+        if mesh:
+            self.createObjectWithMesh(mesh, objId, meshId)
+        else:
+            self.addDownload(objId, meshId, pars["MeshUrl"], self.meshArrived)
 
     def processObjectPropertiesCommand(self, objId, pars):
         print("ObjectProperties for", objId, pars)
@@ -219,21 +228,26 @@ class BaseApplication(Importer, Exporter):
             return
         new_mesh = self.create_mesh_frombinary(meshId, "opensim", data)
         if new_mesh:
-            obj = self.getcreate_object(objId, "opensim", new_mesh)
-            if objId in self.positions:
-                pos = self.positions[objId]
-                self.apply_position(obj, pos, raw=True)
-            if objId in self.rotations:
-                rot = self.rotations[objId]
-                self.apply_rotation(obj, rot, raw=True)
-            if objId in self.scales:
-                scale = self.scales[objId]
-                self.apply_scale(obj, scale)
-            self.set_uuid(obj, objId)
-            self.set_uuid(new_mesh, meshId)
-            scene = self.get_current_scene()
+            self.createObjectWithMesh(new_mesh, objId, meshId)
+
+    def createObjectWithMesh(self, new_mesh, objId, meshId):
+        obj = self.getcreate_object(objId, "opensim", new_mesh)
+        if objId in self.positions:
+            pos = self.positions[objId]
+            self.apply_position(obj, pos, raw=True)
+        if objId in self.rotations:
+            rot = self.rotations[objId]
+            self.apply_rotation(obj, rot, raw=True)
+        if objId in self.scales:
+            scale = self.scales[objId]
+            self.apply_scale(obj, scale)
+        self.set_uuid(obj, objId)
+        self.set_uuid(new_mesh, meshId)
+        scene = self.get_current_scene()
+        if not obj.name in scene.objects:
             scene.objects.link(obj)
             new_mesh.update()
+
 
     def doRtUpload(self, context):
         print("doRtUpload")
@@ -416,10 +430,11 @@ class BaseApplication(Importer, Exporter):
         all_selected = set()
         # look for changes in objects
         for obj in selected:
-            print("process update for "+obj.name)
-            obj_id = self.processUpdate(obj)
-            if obj_id:
-                all_selected.add(obj_id)
+            if obj.opensim.uuid in self.selected and obj.as_pointer() == self.selected[obj.opensim.uuid]:
+                print("process update for "+obj.name)
+                obj_id = self.processUpdate(obj)
+                if obj_id:
+                    all_selected.add(obj_id)
         if not all_selected == self.selected:
             self.simrt.addCmd(["select"]+list(all_selected))
 

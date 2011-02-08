@@ -81,7 +81,7 @@ def unpack_v3(data, offset, min, max):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = True
+    verbose = False
     def __init__(self, in_queue, out_queue):
         self.creating = False
         self.in_queue = in_queue
@@ -194,7 +194,6 @@ class BlenderAgent(object):
                                 Invoice = invoice_id),
                         Block('ParamList', Parameter=str(obj_uuid)),
                         Block('ParamList', Parameter=data))
-        print(packet, len(data))
         # send
         self.client.region.enqueue_message(packet)
 
@@ -256,7 +255,6 @@ class BlenderAgent(object):
     def onImprovedTerseObjectUpdate(self, packet):
         for packet_ObjectData in packet['ObjectData']:
             data = packet_ObjectData['Data']
-            print("onImprovedTerseObjectUpdate", len(data))
             localID = struct.unpack("<I", data[0:4])[0]
             attachPoint = struct.unpack("<b", data[4])[0]
             hasPlane = struct.unpack("<?", data[5])[0]
@@ -283,7 +281,7 @@ class BlenderAgent(object):
         self.logger.debug("PERMISSIONS!!!")
 
     def onObjectProperties(self, packet):
-        self.logger.debug("PERMISSIONS!!!")
+        self.logger.debug("ObjectProperties!!!")
         pars = {}
         value_pars = ['CreationDate', 'EveryoneMask', 'NextOwnerMask',
                       'OwnershipCost', 'SaleType', 'SalePrice',
@@ -340,6 +338,7 @@ class BlenderAgent(object):
         print("CLONING OBJECT")
         tok = UUID(str(uuid.uuid4()))
         def finish_creating(real_uuid):
+            print("FINISH CLONING OBJECT")
             args = {"RexMeshUUID": mesh_uuid_str,
                     "RexIsVisible": True}
             self.sendRexPrimData(real_uuid, args)
@@ -456,7 +455,6 @@ class BlenderAgent(object):
         selected = set()
         while client.running == True:
             cmd = in_queue.get()
-            print(" ** cmd", cmd)
             cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
             #   # 10-rot
             if cmd[0] == "quit":
@@ -570,7 +568,8 @@ class BlenderAgent(object):
 
     def onObjectUpdate(self, packet):
         if self.creating:
-            self.creating_cb(ObjectData_block["FullID"])
+            for ObjectData_block in packet['ObjectData']:
+                self.creating_cb(ObjectData_block["FullID"])
             return
         out_queue = self.out_queue
         for ObjectData_block in packet['ObjectData']:
