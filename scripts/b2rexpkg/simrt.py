@@ -83,13 +83,13 @@ class BlenderAgent(object):
     do_megahal = False
     verbose = True
     def __init__(self, in_queue, out_queue):
+        self.creating = False
         self.in_queue = in_queue
         self.out_queue = out_queue
         self.initialize_logger()
 
     def onRequestXfer(self, packet):
         xfer_id = packet["XferID"][0]["ID"]
-        print(packet, xfer_id)
         ongoing = 0x80000000
         packet = Message('SendXferPacket',
                         Block('XferID',
@@ -104,6 +104,17 @@ class BlenderAgent(object):
         print("AssetUploadComplete")
         if self.onuploadfinished:
             self.onuploadfinished(packet['AssetBlock'][0]['UUID'])
+
+    def onKillObject(self, packet):
+        localID = packet["ObjectData"][0]["ID"]
+        obj = self.client.region.objects.get_object_from_store(LocalID = localID)
+        if obj:
+            #print("DELETE ARRIVED FOR OBJECT", obj.FullID, localID)
+            self.out_queue.put(["delete", str(obj.FullID)])
+            #else:
+            #print("CANT FIND OBJECT TO DELETE", localID)
+            #print("PROCEEDING WITH DELETE")
+        self.old_kill_object(packet)
 
     def onConfirmXferPacket(self, packet):
         print("ConfirmXferPacket")
@@ -194,7 +205,6 @@ class BlenderAgent(object):
                                 Invoice = invoice_id),
                         Block('ParamList', Parameter=str(obj_uuid)),
                         Block('ParamList', Parameter=data))
-        print(packet, len(data))
         # send
         self.client.region.enqueue_message(packet)
 
@@ -220,8 +230,8 @@ class BlenderAgent(object):
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
         pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
         self.out_queue.put(['RexPrimData', obj_uuid, pars])
-        self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
-                          "+str(len(rexdata))+" "+pars["RexMeshUUID"])
+        #self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
+                #                  "+str(len(rexdata))+" "+pars["RexMeshUUID"])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -249,7 +259,6 @@ class BlenderAgent(object):
     def onGenericMessage(self, packet):
         if packet["MethodData"][0]["Method"] == "RexPrimData":
             self.onRexPrimData(packet["ParamList"])
-            print(packet)
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
             print(packet)
@@ -257,7 +266,6 @@ class BlenderAgent(object):
     def onImprovedTerseObjectUpdate(self, packet):
         for packet_ObjectData in packet['ObjectData']:
             data = packet_ObjectData['Data']
-            print("onImprovedTerseObjectUpdate", len(data))
             localID = struct.unpack("<I", data[0:4])[0]
             attachPoint = struct.unpack("<b", data[4])[0]
             hasPlane = struct.unpack("<?", data[5])[0]
@@ -284,9 +292,10 @@ class BlenderAgent(object):
         self.logger.debug("PERMISSIONS!!!")
 
     def onObjectProperties(self, packet):
-        self.logger.debug("PERMISSIONS!!!")
+        self.logger.debug("ObjectProperties!!!")
         pars = {}
-        value_pars = ['CreationDate', 'EveryoneMask', 'NextOwnerMask',
+        value_pars = ['CreationDate', 'EveryoneMask', 'BaseMask',
+                      'OwnerMask', 'GroupMask' , 'NextOwnerMask',
                       'OwnershipCost', 'SaleType', 'SalePrice',
                       'AggregatePerms', 'AggregatePermTextures',
                       'AggregatePermTexturesOwner', 'Category',
@@ -302,6 +311,41 @@ class BlenderAgent(object):
             obj_uuid = str(pars['ObjectID'])
             self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
+    def deleteObject(self, obj_id):
+        obj = self.client.region.objects.get_object_from_store(FullID=obj_id)
+        # SaveToExistingUserInventoryItem = 0,
+        # TakeCopy = 1,
+        # Take = 4,
+        # GodTakeCopy = 5,
+        # Delete = 6,
+        # Return = 9
+
+        tr_id = UUID(str(uuid.uuid4()))
+        packet = Message('DeRezObject',
+                        Block('AgentData',
+                                AgentID = self.client.agent_id,
+                                SessionID = self.client.session_id),
+                        Block('AgentBlock',
+                                 GroupID = UUID(),
+                                 Destination = 6,
+                                 DestinationID = UUID(),
+                                 TransactionID = tr_id,
+                                 PacketCount = 1,
+                                 PacketNumber = 0),
+                        Block('ObjectData',
+                                ObjectLocalID = obj.LocalID))
+        """
+        packet = Message('ObjectDelete',
+                        Block('AgentData',
+                                AgentID = self.client.agent_id,
+                                SessionID = self.client.session_id,
+                                Force = False),
+                        Block('ObjectData',
+                                ObjectLocalID = obj.LocalID))
+        """
+        # send
+        self.client.region.enqueue_message(packet)
+
     def createObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
                      scale, b64data):
         # create asset
@@ -312,13 +356,18 @@ class BlenderAgent(object):
             print("ASSET READY CREATING OBJECT")
             self.tosend = None
             self.onuploadfinished = None
+            tok = UUID(str(uuid.uuid4()))
+            def finish_creating(real_uuid):
+                args = {"RexMeshUUID": str(asset_id),
+                        "RexIsVisible": True}
+                self.sendRexPrimData(real_uuid, args)
+                self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
+                                    str(real_uuid), str(asset_id)])
+                self.creating = False
+                self.creating_cb = False
+            self.creating = tok
+            self.creating_cb = finish_creating
             self.sendCreateObject(obj_uuid, pos, rot, scale)
-            obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid_str)
-            args = {"RexMeshUUID": str(asset_id),
-                    "RexIsVisible": True}
-            self.sendRexPrimData(obj_uuid, args)
-            self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
-                                str(asset_id)])
 
         self.tosend = data # hack for now
         self.onuploadfinished = finishupload
@@ -328,10 +377,26 @@ class BlenderAgent(object):
                                           True,
                                           None)
 
-        # send xfer
-        # send rex properties
-        # send new prim
-        pass
+    def cloneObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
+                     scale):
+        # create asset
+        obj_uuid = UUID(obj_uuid_str)
+
+        print("CLONING OBJECT")
+        tok = UUID(str(uuid.uuid4()))
+        def finish_creating(real_uuid):
+            print("FINISH CLONING OBJECT")
+            args = {"RexMeshUUID": mesh_uuid_str,
+                    "RexIsVisible": True}
+            self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
+                                str(real_uuid), mesh_uuid_str])
+            self.sendRexPrimData(real_uuid, args)
+            self.creating = False
+            self.creating_cb = False
+        self.creating = tok
+        self.creating_cb = finish_creating
+        self.sendCreateObject(obj_uuid, pos, rot, scale)
+
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
@@ -374,6 +439,13 @@ class BlenderAgent(object):
         # wait for the agent to connect to it's region
         while client.connected == False:
             api.sleep(0)
+
+        # we pre-hook KillObject in a special way because we need to use the
+        # cache one last time
+        self.old_kill_object = self.client.region.objects.onKillObject
+        self.client.region.objects.onKillObject = self.onKillObject
+        #res = client.region.message_handler.register("KillObject")
+        #res.subscribe(self.onKillObject)
 
         res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
         res.subscribe(self.onImprovedTerseObjectUpdate)
@@ -445,6 +517,10 @@ class BlenderAgent(object):
                 return
             elif cmd[0] == "create":
                 self.createObject(*cmd[1:])
+            elif cmd[0] == "delete":
+                self.deleteObject(*cmd[1:])
+            elif cmd[0] == "clone":
+                self.cloneObject(*cmd[1:])
             elif cmd[0] == "select":
                 selected_cmd = set(cmd[1:])
                 newselected = selected_cmd.difference(selected)
@@ -453,6 +529,8 @@ class BlenderAgent(object):
                     obj = client.region.objects.get_object_from_store(FullID=obj_id)
                     if obj:
                         obj.select(client)
+                    else:
+                        print("cant find "+obj_id)
                 for obj_id in deselected:
                     obj = client.region.objects.get_object_from_store(FullID=obj_id)
                     if obj:
@@ -470,12 +548,15 @@ class BlenderAgent(object):
                                               obj.LocalID, data, cmd_type)
             elif cmd[0] == "pos":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                print("Try Position update for ", cmd[1])
                 if obj:
+                    print("Position update for ", cmd[1])
                     pos = cmd[2]
                     rot = cmd[3]
                     self.sendPositionUpdate(obj, pos, rot)
 
     def sendPositionUpdate(self, obj, pos, rot):
+        cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
         client = self.client
         if rot:
             X = rot[0]
@@ -498,6 +579,7 @@ class BlenderAgent(object):
                 cmd_type = 11 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
+        print("Sending position update")
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
@@ -541,6 +623,10 @@ class BlenderAgent(object):
         self.logger.debug("received sim stats!"+str(packet))
 
     def onObjectUpdate(self, packet):
+        if self.creating:
+            for ObjectData_block in packet['ObjectData']:
+                self.creating_cb(ObjectData_block["FullID"])
+            return
         out_queue = self.out_queue
         for ObjectData_block in packet['ObjectData']:
            #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")

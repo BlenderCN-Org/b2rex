@@ -34,6 +34,14 @@ class ProcessQueue(bpy.types.Operator):
         bpy.b2rex_session.onProcessQueue(context)
         return {'FINISHED'}
 
+class Delete(bpy.types.Operator):
+    bl_idname = "b2rex.delete"
+    bl_label = "delete"
+
+    def execute(self, context):
+        bpy.b2rex_session.onDelete(context)
+        return {'FINISHED'}
+
 
 class Upload(bpy.types.Operator):
     bl_idname = "b2rex.upload"

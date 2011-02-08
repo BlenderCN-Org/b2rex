@@ -42,6 +42,9 @@ class B2Rex(BaseApplication):
     def onProcessQueue(self, context):
         self.processUpdates()
 
+    def onDelete(self, context):
+        self.doDelete()
+
     def onExport(self, context):
         props = context.scene.b2rex_props
         self.doExport(props, props.loc)
