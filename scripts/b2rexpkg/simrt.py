@@ -269,8 +269,6 @@ class BlenderAgent(object):
         pars["RexScaleToPrim"]= struct.unpack("<?", rexdata[5])[0]
         pars["RexDrawDistance"]= struct.unpack("<f", rexdata[6:6+4])[0]
         pars["RexLOD"]= struct.unpack("<f", rexdata[10:10+4])[0]
-        meshurl = str(self.client.region.capabilities['GetTexture'].public_url)+'?texture_id='+str(UUID(bytes=rexdata[14:14+16]))
-        pars["MeshUrl"] = meshurl
         pars["RexMeshUUID"]= str(UUID(bytes=rexdata[14:14+16]))
         pars["RexCollisionMeshUUID"]= str(UUID(bytes=rexdata[30:30+16]))
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
@@ -290,12 +288,15 @@ class BlenderAgent(object):
         RexAnimationRate = struct.unpack("<f", rexdata[pos:pos+4])[0]
         materialsCount = struct.unpack("<b", rexdata[pos+4])[0]
         pos = pos+5
+        materials = []
         for i in range(materialsCount):
             assettype = struct.unpack("<b", rexdata[pos])[0]
             matuuid_b = rexdata[pos+1:pos+1+16]
             matuuid = UUID(bytes=matuuid_b)
             matindex = struct.unpack("<b", rexdata[pos+17])[0]
+            materials.append([matindex, str(matuuid), assettype])
             pos = pos + 18
+        pars["Materials"] = materials
         if not len(rexdata) > pos:
             #self.logger.debug("RexPrimData: no more data")
             return
@@ -344,6 +345,7 @@ class BlenderAgent(object):
 
     def onObjectProperties(self, packet):
         self.logger.debug("ObjectProperties!!!")
+        print(packet)
         pars = {}
         value_pars = ['CreationDate', 'EveryoneMask', 'BaseMask',
                       'OwnerMask', 'GroupMask' , 'NextOwnerMask',
@@ -534,33 +536,31 @@ class BlenderAgent(object):
         res = client.region.objects.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
 
+        caps_sent = False
+        caps = {}
+
+        # wait until the client is connected
         while client.region.connected == False:
+            # look for GetTexture and send to client as soon as possible
+            if not caps_sent and "GetTexture" in client.region.capabilities:
+                for cap in client.region.capabilities:
+                    caps[cap] = client.region.capabilities[cap].public_url
+                self.out_queue.put(["capabilities", caps])
+                caps_sent = True
             api.sleep(0)
+
+        api.sleep(0.3)
+
         self.sendThrottle()
 
-        queue = []
-
-        # script specific stuff here
+        # speak up the first line
         client.say(str(firstline))
 
-        # wait 30 seconds for some object data to come in
-        now = time.time()
-        start = now
-        #while now - start < 30 and client.running:
-            #    api.sleep(0)
-            #now = time.time()
-
-        client.say("going on")
-        client.stand()
-        print(client.region.capabilities)
-        #new_uuid = uuid.uuid4()
-        #print("transfer", new_uuid)
-        #client.asset_manager.upload_asset(new_uuid, 41, False, False,
-        #                           b'jkladasdjklasdjkl')
-
-        # main loop for the agent
+        # inform our client of connection success
         out_queue.put(["connected", str(client.agent_id),
                              str(client.agent_access)])
+
+        # main loop for the agent
         selected = set()
         while client.running == True:
             cmd = in_queue.get()
@@ -608,9 +608,7 @@ class BlenderAgent(object):
                                               obj.LocalID, data, cmd_type)
             elif cmd[0] == "pos":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                print("Try Position update for ", cmd[1])
                 if obj:
-                    print("Position update for ", cmd[1])
                     pos = cmd[2]
                     rot = cmd[3]
                     self.sendPositionUpdate(obj, pos, rot)
@@ -639,7 +637,6 @@ class BlenderAgent(object):
                 cmd_type = 11 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
-        #print("Sending position update")
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
