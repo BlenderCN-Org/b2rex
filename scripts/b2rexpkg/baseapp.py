@@ -206,6 +206,7 @@ class BaseApplication(Importer, Exporter):
         obj = self.findWithUUID(objId)
         if obj:
             obj.opensim.uuid = ""
+            self.queueRedraw()
 
     def processRexPrimDataCommand(self, objId, pars):
         print("ReXPrimData for ", pars["MeshUrl"])
@@ -214,6 +215,7 @@ class BaseApplication(Importer, Exporter):
         mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
         if mesh:
             self.createObjectWithMesh(mesh, objId, meshId)
+            self.queueRedraw()
         else:
             self.addDownload(objId, meshId, pars["MeshUrl"], self.meshArrived)
 
