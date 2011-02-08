@@ -15,6 +15,8 @@ from .exporter import Exporter
 
 import bpy
 
+ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
+
 if sys.version_info[0] == 3:
         import urllib.request as urllib2
 else:
@@ -45,6 +47,7 @@ class BaseApplication(Importer, Exporter):
         self.stats = [0,0,0,0,0,0,0,0]
         self.status = "b2rex started"
         self.selected = {}
+        self.sim_selection = set()
         self.pool = ThreadPool(10)
         self.connected = False
         self.positions = {}
@@ -66,14 +69,14 @@ class BaseApplication(Importer, Exporter):
     def default_error_db(self, request, error):
         logger.error("error downloading "+str(request)+": "+str(error))
 
-    def addDownload(self, objId, meshId, http_url, cb, error_cb=None):
+    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None):
         if not error_cb:
             _error_cb = self.default_error_db
         else:
             def _error_cb(request, result):
                 error_cb(result)
         def _cb(request, result):
-            cb(objId, meshId, result)
+            cb(result, *cb_pars)
         self.pool.addRequest(self.doDownload, [http_url], _cb, _error_cb)
 
     def doDownload(self, http_url):
@@ -178,6 +181,11 @@ class BaseApplication(Importer, Exporter):
             self.agent_access = args[1]
         elif cmd == 'meshcreated':
             self.processMeshCreated(*args)
+        elif cmd == 'capabilities':
+            self.processCapabilities(*args)
+
+    def processCapabilities(self, caps):
+        self.caps = caps
 
     def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
         foundobject = False
@@ -222,21 +230,37 @@ class BaseApplication(Importer, Exporter):
             self.createObjectWithMesh(mesh, objId, meshId)
             self.queueRedraw()
         else:
-            if not meshId == '00000000-0000-0000-0000-000000000000':
-                self.addDownload(objId, meshId, pars["MeshUrl"], self.meshArrived)
+            materials = []
+            if "Materials" in pars:
+                materials = pars["Materials"]
+                for index, matId, asset_type in materials:
+                    if not matId == ZERO_UUID_STR:
+                        mat_url = self.caps["GetTexture"] + "?texture_id=" + matId
+                        self.addDownload(mat_url, self.materialArrived, (objId,
+                                                                         meshId,
+                                                                         matId,
+                                                                         asset_type,
+                                                                         index))
+            if not meshId == ZERO_UUID_STR:
+                mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
+                # mesh_url = pars["MeshUrl"]
+                self.addDownload(mesh_url, self.meshArrived, (objId, meshId))
 
     def processObjectPropertiesCommand(self, objId, pars):
         #print("ObjectProperties for", objId, pars)
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:
-            print("Found obj!")
             self.applyObjectProperties(obj, pars)
         self.stats[5] += 1
 
     def applyObjectProperties(self, obj, pars):
         pass
 
-    def meshArrived(self, objId, meshId, data):
+    def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        if not assetType == 45:
+            print("MaterialArrived", matId, data, assetType)
+
+    def meshArrived(self, data, objId, meshId):
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
@@ -403,8 +427,6 @@ class BaseApplication(Importer, Exporter):
             obj_uuid = obj.opensim.uuid
             if obj.type == 'MESH' and obj_uuid:
                 mesh_uuid = obj.data.opensim.uuid
-                newselected[obj_uuid] = obj.as_pointer()
-                newselected[mesh_uuid] = obj.data.as_pointer()
                 if obj.opensim.uuid in oldselected and not oldselected[obj_uuid] == obj.as_pointer():
                     # copy or clone
                     if obj.data.opensim.uuid in oldselected and not oldselected[mesh_uuid] == obj.data.as_pointer():
@@ -415,6 +437,9 @@ class BaseApplication(Importer, Exporter):
                         # clone
                         pass
                     obj.opensim.uuid = ""
+                else:
+                    newselected[obj_uuid] = obj.as_pointer()
+                    newselected[mesh_uuid] = obj.data.as_pointer()
         self.selected = newselected
         return
 
@@ -450,12 +475,13 @@ class BaseApplication(Importer, Exporter):
         all_selected = set()
         # look for changes in objects
         for obj in selected:
-            if obj.opensim.uuid in self.selected and obj.as_pointer() == self.selected[obj.opensim.uuid]:
-                obj_id = self.processUpdate(obj)
-                if obj_id:
-                    all_selected.add(obj_id)
-        if not all_selected == self.selected:
+            obj_id = self.get_uuid(obj)
+            if obj_id in self.selected and obj.as_pointer() == self.selected[obj_id]:
+                self.processUpdate(obj)
+                all_selected.add(obj_id)
+        if not all_selected == self.sim_selection:
             self.simrt.addCmd(["select"]+list(all_selected))
+            self.sim_selection = all_selected
 
     def go(self):
         """
