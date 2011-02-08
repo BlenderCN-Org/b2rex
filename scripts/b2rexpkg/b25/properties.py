@@ -52,7 +52,7 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     rt_on = BoolProperty(name="RT", default=False)
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
-    kbytesPerSecond = IntProperty(name="KiloBytes per second", default=100)
+    kbytesPerSecond = IntProperty(name="Kbyte/s", default=100)
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
     expand = BoolProperty(default=True,
                           description="Expand, to display settings")
