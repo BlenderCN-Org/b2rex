@@ -134,7 +134,7 @@ class MeshImporter(oserializer.Serializer):
                 self.vertex = vertex
                 self.vbuffer = vbuffer
             else:
-                print("unhandled chunk", cid)
+                #print("unhandled chunk", cid)
                 sys.stderr.write("i")
                 self.IgnoreCurrentChunk(reader)
             cid = self.ReadChunk(reader)
@@ -160,7 +160,7 @@ class MeshImporter(oserializer.Serializer):
                 if cid == MeshChunkID.Mesh:
                     meshes.append(self.ReadMesh(reader))
                 else:
-                    print("ignoring", cid)
+                    # print("ignoring", cid)
                     self.IgnoreCurrentChunk(reader)
                     #else:
                         #print "incorrect cid", cid

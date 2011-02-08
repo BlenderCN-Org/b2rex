@@ -81,7 +81,7 @@ def unpack_v3(data, offset, min, max):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = True
+    verbose = False
     def __init__(self, in_queue, out_queue):
         self.creating = False
         self.in_queue = in_queue
@@ -300,7 +300,7 @@ class BlenderAgent(object):
             rot = unpack_q(data, idx+12)
             angular_vel = unpack_v3(data, idx+20, -64.0, 64.0)
             obj = self.client.region.objects.get_object_from_store(LocalID = localID)
-            print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
+            # print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
             if obj:
                 obj_uuid = str(obj.FullID)
                 obj.pos = v3_to_list(pos)
@@ -604,7 +604,7 @@ class BlenderAgent(object):
                 cmd_type = 11 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
-        print("Sending position update")
+        #print("Sending position update")
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)

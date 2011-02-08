@@ -209,7 +209,7 @@ class BaseApplication(Importer, Exporter):
             self.queueRedraw()
 
     def processRexPrimDataCommand(self, objId, pars):
-        print("ReXPrimData for ", pars["MeshUrl"])
+        #print("ReXPrimData for ", pars["MeshUrl"])
         self.stats[3] += 1
         meshId = pars["RexMeshUUID"]
         obj = self.findWithUUID(objId)
@@ -224,7 +224,7 @@ class BaseApplication(Importer, Exporter):
             self.addDownload(objId, meshId, pars["MeshUrl"], self.meshArrived)
 
     def processObjectPropertiesCommand(self, objId, pars):
-        print("ObjectProperties for", objId, pars)
+        #print("ObjectProperties for", objId, pars)
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:
             print("Found obj!")
@@ -263,7 +263,7 @@ class BaseApplication(Importer, Exporter):
 
 
     def doRtUpload(self, context):
-        print("doRtUpload")
+        #print("doRtUpload")
         selected = bpy.context.selected_objects
         if selected:
             # just the first for now
@@ -273,7 +273,7 @@ class BaseApplication(Importer, Exporter):
                 return
 
     def doDelete(self):
-        print("doDelete")
+        #print("doDelete")
         selected = self.getSelected()
         if selected:
             for obj in selected:
@@ -357,20 +357,18 @@ class BaseApplication(Importer, Exporter):
             
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
-        print("process update for ", obj_uuid)
+        #print("process update for ", obj_uuid)
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
             pos = list(pos)
             rot = list(rot)
             scale = list(scale)
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
-                print("posrot update")
                 self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
                 self.positions[obj_uuid] = pos
                 self.rotations[obj_uuid] = rot
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
-                print("rot update")
                 self.stats[1] += 1
                 self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
                 self.positions[obj_uuid] = pos
@@ -411,10 +409,9 @@ class BaseApplication(Importer, Exporter):
                         # copy
                         ismeshcopy = True
                         obj.data.opensim.uuid = ""
-                        print("copied")
                     else:
                         # clone
-                        print("cloned")
+                        pass
                     obj.opensim.uuid = ""
         self.selected = newselected
         return
@@ -452,7 +449,6 @@ class BaseApplication(Importer, Exporter):
         # look for changes in objects
         for obj in selected:
             if obj.opensim.uuid in self.selected and obj.as_pointer() == self.selected[obj.opensim.uuid]:
-                print("process update for "+obj.name)
                 obj_id = self.processUpdate(obj)
                 if obj_id:
                     all_selected.add(obj_id)
