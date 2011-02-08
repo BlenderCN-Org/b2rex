@@ -135,9 +135,7 @@ class ProxyAgent(Thread):
             found = False
             # msg queue
             if self.running:
-                print("get cmd")
                 cmd = self.out_queue.get()
-                print("send",cmd)
                 if cmd[0] == "quit":
                     self.socket.send(cmd)
                     self.socket.close()
