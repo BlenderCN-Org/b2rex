@@ -387,9 +387,9 @@ class BlenderAgent(object):
             print("FINISH CLONING OBJECT")
             args = {"RexMeshUUID": mesh_uuid_str,
                     "RexIsVisible": True}
-            self.sendRexPrimData(real_uuid, args)
             self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                 str(real_uuid), mesh_uuid_str])
+            self.sendRexPrimData(real_uuid, args)
             self.creating = False
             self.creating_cb = False
         self.creating = tok

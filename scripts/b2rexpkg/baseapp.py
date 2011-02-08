@@ -212,6 +212,10 @@ class BaseApplication(Importer, Exporter):
         print("ReXPrimData for ", pars["MeshUrl"])
         self.stats[3] += 1
         meshId = pars["RexMeshUUID"]
+        obj = self.findWithUUID(objId)
+        if obj:
+            # XXX we dont update mesh for the moment
+            return
         mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
         if mesh:
             self.createObjectWithMesh(mesh, objId, meshId)
