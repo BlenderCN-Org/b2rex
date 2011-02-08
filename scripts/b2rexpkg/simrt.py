@@ -215,7 +215,7 @@ class BlenderAgent(object):
         if 'drawType' in args:
             data += struct.pack('<b', args['drawType'])
         else:
-            data += struct.pack('<b', pyogp.lib.client.enums.AssetType.OgreMesh)
+            data += struct.pack('<b', 1) # where is this 1 coming from ??
         # bool properties
         for prop in ['RexIsVisible', 'RexCastShadows',
                      'RexLightCreatesShadows', 'RexDescriptionTexture',
@@ -277,8 +277,6 @@ class BlenderAgent(object):
         if obj:
             obj.rexdata = pars
         self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
-        #self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
-                #                  "+str(len(rexdata))+" "+pars["RexMeshUUID"])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':

@@ -13,6 +13,19 @@ from .tools.threadpool import ThreadPool, NoResultsPending
 from .importer import Importer
 from .exporter import Exporter
 
+class RexDrawType:
+    Prim = 0
+    Mesh = 1
+
+class AssetType:
+    OgreMesh = 43
+    OgreSkeleton = 44
+    OgreMaterial = 45
+    OgreParticles = 47
+    FlashAnimation = 49
+    GAvatar = 46
+
+
 import bpy
 
 ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
@@ -182,6 +195,7 @@ class BaseApplication(Importer, Exporter):
         elif cmd == 'meshcreated':
             self.processMeshCreated(*args)
         elif cmd == 'capabilities':
+            print(cmd, args)
             self.processCapabilities(*args)
 
     def processCapabilities(self, caps):
@@ -234,17 +248,22 @@ class BaseApplication(Importer, Exporter):
             if "Materials" in pars:
                 materials = pars["Materials"]
                 for index, matId, asset_type in materials:
-                    if not matId == ZERO_UUID_STR:
+                    if not matId == ZERO_UUID_STR and asset_type == AssetType.OgreMaterial:
                         mat_url = self.caps["GetTexture"] + "?texture_id=" + matId
                         self.addDownload(mat_url, self.materialArrived, (objId,
                                                                          meshId,
                                                                          matId,
                                                                          asset_type,
                                                                          index))
+                    else:
+                        print("unhandled material of type", asset_type)
             if not meshId == ZERO_UUID_STR:
-                mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
-                # mesh_url = pars["MeshUrl"]
-                self.addDownload(mesh_url, self.meshArrived, (objId, meshId))
+                asset_type = pars["drawType"]
+                if asset_type == RexDrawType.Mesh:
+                    mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
+                    self.addDownload(mesh_url, self.meshArrived, (objId, meshId))
+                else:
+                    print("unhandled rexdata of type", asset_type)
 
     def processObjectPropertiesCommand(self, objId, pars):
         #print("ObjectProperties for", objId, pars)
@@ -257,7 +276,7 @@ class BaseApplication(Importer, Exporter):
         pass
 
     def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
-        if not assetType == 45:
+        if not assetType == AssetType.OgreMaterial:
             print("MaterialArrived", matId, data, assetType)
 
     def meshArrived(self, data, objId, meshId):
