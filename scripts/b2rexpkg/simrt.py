@@ -129,6 +129,27 @@ class BlenderAgent(object):
             #print("PROCEEDING WITH DELETE")
         self.old_kill_object(packet)
 
+    def sendAgentThrottlePacket(self, bps=1000000):
+        bps = bps*8 # we use bytes per second :)
+        data = b''
+        data += struct.pack('<f', bps*0.1) # resend
+        data += struct.pack('<f', bps*0.1) # land
+        data += struct.pack('<f', bps*0.2) # wind
+        data += struct.pack('<f', bps*0.2) # cloud
+        data += struct.pack('<f', bps*0.25) # task
+        data += struct.pack('<f', bps*0.26) # texture
+        data += struct.pack('<f', bps*0.25) # asset
+        counter = 0
+        packet = Message('AgentThrottle',
+                        Block('AgentData',
+                                AgentID = self.client.agent_id,
+                                SessionID = self.client.session_id,
+                             CircuitCode = self.client.circuit_code),
+                        Block('Throttle',
+                              GenCounter=counter,
+                              Throttles=data))
+        self.client.region.enqueue_message(packet)
+
     def onConfirmXferPacket(self, packet):
         print("ConfirmXferPacket")
 
@@ -504,6 +525,7 @@ class BlenderAgent(object):
 
         while client.region.connected == False:
             api.sleep(0)
+        self.sendAgentThrottlePacket(100000.0)
 
         queue = []
 

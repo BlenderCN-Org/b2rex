@@ -221,7 +221,8 @@ class BaseApplication(Importer, Exporter):
             self.createObjectWithMesh(mesh, objId, meshId)
             self.queueRedraw()
         else:
-            self.addDownload(objId, meshId, pars["MeshUrl"], self.meshArrived)
+            if not meshId == '00000000-0000-0000-0000-000000000000':
+                self.addDownload(objId, meshId, pars["MeshUrl"], self.meshArrived)
 
     def processObjectPropertiesCommand(self, objId, pars):
         #print("ObjectProperties for", objId, pars)
