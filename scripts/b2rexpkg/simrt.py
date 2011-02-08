@@ -294,7 +294,8 @@ class BlenderAgent(object):
     def onObjectProperties(self, packet):
         self.logger.debug("ObjectProperties!!!")
         pars = {}
-        value_pars = ['CreationDate', 'EveryoneMask', 'NextOwnerMask',
+        value_pars = ['CreationDate', 'EveryoneMask', 'BaseMask',
+                      'OwnerMask', 'GroupMask' , 'NextOwnerMask',
                       'OwnershipCost', 'SaleType', 'SalePrice',
                       'AggregatePerms', 'AggregatePermTextures',
                       'AggregatePermTexturesOwner', 'Category',
