@@ -10,6 +10,9 @@ import socket
 import traceback
 import time
 
+import logging
+logger = logging.getLogger("b2rex.proxyagent")
+
 class ClientThread(Thread):
     def __init__ (self, parent):
         Thread.__init__(self)
@@ -31,7 +34,7 @@ class ClientThread(Thread):
                     return
         self.cleanup()
     def cleanup(self):
-        print("exit client thread")
+        logger.debug("exit client thread")
         self.parent = None
 
 class ProxyAgent(Thread):
@@ -90,7 +93,7 @@ class ProxyAgent(Thread):
             self.check_timer.start()
 
     def check_connection(self):
-        print("check connection")
+        logger.debug("check connection")
         # try connecting every 2 seconds
         if time.time() - self.starttime > 2 and not self.running:
             try:
@@ -100,7 +103,7 @@ class ProxyAgent(Thread):
                 self.connected = True
                 self.receiver.start()
                 self.redraw()
-                print("connected!!", self.server_url, self.username)
+                #logger.debug("connected!! " + self.server_url + " " + self.username)
                 self.addCmd(["connect", self.server_url, self.username,
                                 self.password, self.firstline])
                 return
@@ -117,7 +120,7 @@ class ProxyAgent(Thread):
             self.connected = not self.connected
             self.blinkstart = time.time()
             self.redraw()
-        print("check connection later..")
+        logger.debug("check connection later..")
         self.check_timer = Timer(1, self.check_connection)
         self.check_timer.start()
 
@@ -141,7 +144,6 @@ class ProxyAgent(Thread):
                     self.socket.close()
                     break
                 try:
-                    print("send",cmd[0])
                     self.socket.send(cmd)
                 except socket.error as e:
                     if e.errno == 32: # broken pipe
