@@ -45,6 +45,7 @@ class ObjectPropertiesPanel(bpy.types.Panel):
                     elif aprop.__class__ == tuple and aprop[0] in handled_props:
                         row = box.row()
                         row.prop(obj.opensim, propname)
+                row.operator('b2rex.delete', text='Delete from simulator')
             else:
                 row.operator('b2rex.exportupload', text='Upload to Sim')
 

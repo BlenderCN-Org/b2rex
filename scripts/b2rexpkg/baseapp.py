@@ -164,6 +164,8 @@ class BaseApplication(Importer, Exporter):
             self.processRotCommand(*args)
         elif cmd == 'scale':
             self.processScaleCommand(*args)
+        elif cmd == 'delete':
+            self.processDeleteCommand(*args)
         elif cmd == 'msg':
             self.processMsgCommand(*args)
         elif cmd == 'RexPrimData':
@@ -199,6 +201,11 @@ class BaseApplication(Importer, Exporter):
             foundmesh.opensim.uuid = asset_id
         else:
             print("Could not find mesh for meshcreated")
+
+    def processDeleteCommand(self, objId):
+        obj = self.findWithUUID(objId)
+        if obj:
+            obj.opensim.uuid = ""
 
     def processRexPrimDataCommand(self, objId, pars):
         print("ReXPrimData for ", pars["MeshUrl"])
@@ -258,6 +265,14 @@ class BaseApplication(Importer, Exporter):
             if not selected.opensim.uuid:
                 self.doRtObjectUpload(context, selected)
                 return
+
+    def doDelete(self):
+        print("doDelete")
+        selected = self.getSelected()
+        if selected:
+            for obj in selected:
+                if obj.opensim.uuid:
+                    self.simrt.addCmd(['delete', obj.opensim.uuid])
 
     def sendObjectClone(self, obj):
         obj_name = obj.name

@@ -81,7 +81,7 @@ def unpack_v3(data, offset, min, max):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self.creating = False
         self.in_queue = in_queue
@@ -104,6 +104,17 @@ class BlenderAgent(object):
         print("AssetUploadComplete")
         if self.onuploadfinished:
             self.onuploadfinished(packet['AssetBlock'][0]['UUID'])
+
+    def onKillObject(self, packet):
+        localID = packet["ObjectData"][0]["ID"]
+        obj = self.client.region.objects.get_object_from_store(LocalID = localID)
+        if obj:
+            #print("DELETE ARRIVED FOR OBJECT", obj.FullID, localID)
+            self.out_queue.put(["delete", str(obj.FullID)])
+        else:
+            #print("CANT FIND OBJECT TO DELETE", localID)
+            #print("PROCEEDING WITH DELETE")
+        self.old_kill_object(packet)
 
     def onConfirmXferPacket(self, packet):
         print("ConfirmXferPacket")
@@ -299,6 +310,41 @@ class BlenderAgent(object):
             obj_uuid = str(pars['ObjectID'])
             self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
+    def deleteObject(self, obj_id):
+        obj = self.client.region.objects.get_object_from_store(FullID=obj_id)
+        # SaveToExistingUserInventoryItem = 0,
+        # TakeCopy = 1,
+        # Take = 4,
+        # GodTakeCopy = 5,
+        # Delete = 6,
+        # Return = 9
+
+        tr_id = UUID(str(uuid.uuid4()))
+        packet = Message('DeRezObject',
+                        Block('AgentData',
+                                AgentID = self.client.agent_id,
+                                SessionID = self.client.session_id),
+                        Block('AgentBlock',
+                                 GroupID = UUID(),
+                                 Destination = 6,
+                                 DestinationID = UUID(),
+                                 TransactionID = tr_id,
+                                 PacketCount = 1,
+                                 PacketNumber = 0),
+                        Block('ObjectData',
+                                ObjectLocalID = obj.LocalID))
+        """
+        packet = Message('ObjectDelete',
+                        Block('AgentData',
+                                AgentID = self.client.agent_id,
+                                SessionID = self.client.session_id,
+                                Force = False),
+                        Block('ObjectData',
+                                ObjectLocalID = obj.LocalID))
+        """
+        # send
+        self.client.region.enqueue_message(packet)
+
     def createObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
                      scale, b64data):
         # create asset
@@ -393,6 +439,13 @@ class BlenderAgent(object):
         while client.connected == False:
             api.sleep(0)
 
+        # we pre-hook KillObject in a special way because we need to use the
+        # cache one last time
+        self.old_kill_object = self.client.region.objects.onKillObject
+        self.client.region.objects.onKillObject = self.onKillObject
+        #res = client.region.message_handler.register("KillObject")
+        #res.subscribe(self.onKillObject)
+
         res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
         res.subscribe(self.onImprovedTerseObjectUpdate)
         res = client.region.message_handler.register("AssetUploadComplete")
@@ -463,6 +516,8 @@ class BlenderAgent(object):
                 return
             elif cmd[0] == "create":
                 self.createObject(*cmd[1:])
+            elif cmd[0] == "delete":
+                self.deleteObject(*cmd[1:])
             elif cmd[0] == "clone":
                 self.cloneObject(*cmd[1:])
             elif cmd[0] == "select":
