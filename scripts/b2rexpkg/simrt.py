@@ -111,7 +111,7 @@ class BlenderAgent(object):
         if obj:
             #print("DELETE ARRIVED FOR OBJECT", obj.FullID, localID)
             self.out_queue.put(["delete", str(obj.FullID)])
-        else:
+            #else:
             #print("CANT FIND OBJECT TO DELETE", localID)
             #print("PROCEEDING WITH DELETE")
         self.old_kill_object(packet)
