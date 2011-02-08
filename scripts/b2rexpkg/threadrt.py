@@ -35,8 +35,12 @@ class ClientThread(Thread):
         self.parent = None
 
 class ProxyAgent(Thread):
-    def __init__ (self, context):
+    def __init__ (self, context, server_url, username, password, firstline):
         Thread.__init__(self)
+        self.server_url = server_url
+        self.username = username
+        self.password = password
+        self.firstline = firstline
         self.ctx = context.region
         self.screen = context.screen
         self.in_queue = Queue()
@@ -75,16 +79,18 @@ class ProxyAgent(Thread):
             if not area.type == 'VIEW_3D':
                 area.tag_redraw()
     def disconnected(self):
-        self.running = False
-        self.connected = False
-        self.receiver = None
-        self.socket.close()
-        self.socket = JsonSocket()
-        # start reconnecting
-        self.check_timer = Timer(0.5, self.check_connection)
-        self.check_timer.start()
+        if self.running:
+            self.running = False
+            self.connected = False
+            self.receiver = None
+            self.socket.close()
+            self.socket = JsonSocket()
+            # start reconnecting
+            self.check_timer = Timer(0.5, self.check_connection)
+            self.check_timer.start()
 
     def check_connection(self):
+        print("check connection")
         # try connecting every 2 seconds
         if time.time() - self.starttime > 2 and not self.running:
             try:
@@ -93,9 +99,10 @@ class ProxyAgent(Thread):
                 self.running = True
                 self.connected = True
                 self.receiver.start()
-                self.socket.send(["ping"])
                 self.redraw()
-                print("connected!!")
+                print("connected!!", self.server_url, self.username)
+                self.addCmd(["connect", self.server_url, self.username,
+                                self.password, self.firstline])
                 return
             except socket.error as e:
                 if e.errno == 111:
@@ -106,14 +113,12 @@ class ProxyAgent(Thread):
                 self.running = False
                 self.connected = False
         # otherwise blink every 0.5 seconds
-        if self.running == False and time.time() - self.blinkstart > 0.5:
-            if self.connected:
-                self.connected = False
-            else:
-                self.connected = True
+        if self.running == False and time.time() - self.blinkstart > 1:
+            self.connected = not self.connected
             self.blinkstart = time.time()
             self.redraw()
-        self.check_timer = Timer(0.5, self.check_connection)
+        print("check connection later..")
+        self.check_timer = Timer(1, self.check_connection)
         self.check_timer.start()
 
     def run(self):
@@ -135,7 +140,11 @@ class ProxyAgent(Thread):
                     self.socket.send(cmd)
                     self.socket.close()
                     break
-                self.socket.send(cmd)
+                try:
+                    self.socket.send(cmd)
+                except socket.error as e:
+                    if e.errno == 32: # broken pipe
+                        self.disconnected()
             else:
                 time.sleep(0.4)
         # clean up the thread
@@ -149,8 +158,7 @@ class ProxyAgent(Thread):
 
 
 def run_thread(context, server_url, username, password, firstline):
-    running = ProxyAgent(context)
-    running.addCmd(["connect", server_url, username, password, firstline])
+    running = ProxyAgent(context, server_url, username, password, firstline)
     running.start()
     return running
 
