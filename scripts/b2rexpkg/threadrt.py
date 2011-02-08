@@ -1,5 +1,10 @@
-from threading import Thread
+from threading import Thread, Timer
 from .tools.jsonsocket import JsonSocket
+
+try:
+    from queue import Queue
+except:
+    from Queue import Queue
 
 import socket
 import traceback
@@ -34,6 +39,8 @@ class ProxyAgent(Thread):
         Thread.__init__(self)
         self.ctx = context.region
         self.screen = context.screen
+        self.in_queue = Queue()
+        self.out_queue = Queue()
         self.connected = False
         self.socket = False
         self.queue = []
@@ -45,8 +52,7 @@ class ProxyAgent(Thread):
     def addCmd(self, cmd):
         if cmd[0] == 'quit':
             self.alive = False
-        else:
-            self.cmds.append(cmd)
+        self.out_queue.put(cmd)
     def getQueue(self):
         queue = list(self.queue)
         self.queue = []
@@ -74,49 +80,64 @@ class ProxyAgent(Thread):
         self.receiver = None
         self.socket.close()
         self.socket = JsonSocket()
+        # start reconnecting
+        self.check_timer = Timer(0.5, self.check_connection)
+        self.check_timer.start()
+
+    def check_connection(self):
+        # try connecting every 2 seconds
+        if time.time() - self.starttime > 2 and not self.running:
+            try:
+                self.socket.connect(("localhost", 11112))
+                self.receiver = ClientThread(self)
+                self.running = True
+                self.connected = True
+                self.receiver.start()
+                self.socket.send(["ping"])
+                self.redraw()
+                print("connected!!")
+                return
+            except socket.error as e:
+                if e.errno == 111:
+                    pass
+                if not e.errno in [111, 103]:
+                    traceback.print_exc()
+                self.starttime = self.starttime + 2
+                self.running = False
+                self.connected = False
+        # otherwise blink every 0.5 seconds
+        if self.running == False and time.time() - self.blinkstart > 0.5:
+            if self.connected:
+                self.connected = False
+            else:
+                self.connected = True
+            self.blinkstart = time.time()
+            self.redraw()
+        self.check_timer = Timer(0.5, self.check_connection)
+        self.check_timer.start()
+
     def run(self):
         self.running = False
         self.alive = True
         self.socket = JsonSocket()
         self.receiver = None
         started = False
-        starttime = time.time()-2
-        blinkstart = time.time()
+        self.starttime = time.time()-2
+        self.blinkstart = time.time()
+        self.check_timer = Timer(0.5, self.check_connection)
+        self.check_timer.start()
         while self.alive:
-            time.sleep(0.04)
             found = False
             # msg queue
-            if self.cmds and self.running:
-                cmds = list(self.cmds)
-                self.cmds = []
-                for cmd in cmds:
+            if self.running:
+                cmd = self.out_queue.get()
+                if cmd[0] == "quit":
                     self.socket.send(cmd)
-            # try connecting every 2 seconds
-            if time.time() - starttime > 2 and not self.running:
-                try:
-                    self.socket.connect(("localhost", 11112))
-                    self.receiver = ClientThread(self)
-                    self.running = True
-                    self.connected = True
-                    self.receiver.start()
-                    self.socket.send(["ping"])
-                except socket.error as e:
-                    if e.errno == 111:
-                        pass
-                    if not e.errno in [111, 103]:
-                        traceback.print_exc()
-                    starttime = time.time()
-                    self.running = False
-                    self.connected = False
-                self.redraw()
-            # otherwise blink every 0.5 seconds
-            if self.running == False and time.time() - blinkstart > 0.5:
-                if self.connected:
-                    self.connected = False
-                else:
-                    self.connected = True
-                blinkstart = time.time()
-                self.redraw()
+                    self.socket.close()
+                    break
+                self.socket.send(cmd)
+            else:
+                time.sleep(0.4)
         # clean up the thread
         if self.running:
             self.running = False
