@@ -100,6 +100,19 @@ class BlenderAgent(object):
                         Block('DataPacket', Data=b'\0\0\0\0'+self.tosend))
         self.client.region.enqueue_message(packet)
 
+    def bootstrapClient(self):
+        print("BOOTSTRAP CLIENT")
+        for obj in self.client.region.objects.object_store:
+            obj_uuid = str(obj.FullID)
+            if hasattr(obj, "pos") and hasattr(obj, "rot"):
+                self.out_queue.put(['pos', obj_uuid, obj.pos, obj.rot])
+            if hasattr(obj, "scale"):
+                self.out_queue.put(['scale', obj_uuid, obj.scale])
+            if hasattr(obj, "rexdata"):
+                self.out_queue.put(['RexPrimData', obj_uuid, obj.rexdata])
+            if hasattr(obj, "props"):
+                self.out_queue.put(["ObjectProperties", obj_uuid, obj.props])
+
     def onAssetUploadComplete(self, packet):
         print("AssetUploadComplete")
         if self.onuploadfinished:
@@ -212,7 +225,8 @@ class BlenderAgent(object):
         rexdata = packet[1]["Parameter"]
         if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
-        obj_uuid = str(UUID(packet[0]["Parameter"]))
+        obj_uuid = UUID(packet[0]["Parameter"])
+        obj_uuid_str = str(obj_uuid)
         pars = {}
         pars["drawType"] = struct.unpack("<b", rexdata[0])[0]
 
@@ -229,7 +243,10 @@ class BlenderAgent(object):
         pars["RexCollisionMeshUUID"]= str(UUID(bytes=rexdata[30:30+16]))
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
         pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
-        self.out_queue.put(['RexPrimData', obj_uuid, pars])
+        obj = self.client.region.objects.get_object_from_store(FullID = obj_uuid)
+        if obj:
+            obj.rexdata = pars
+        self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
         #self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
                 #                  "+str(len(rexdata))+" "+pars["RexMeshUUID"])
         animname = ""
@@ -286,6 +303,8 @@ class BlenderAgent(object):
             print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
             if obj:
                 obj_uuid = str(obj.FullID)
+                obj.pos = v3_to_list(pos)
+                obj.rot = q_to_list(rot)
                 self.out_queue.put(['pos', obj_uuid, v3_to_list(pos), q_to_list(rot)])
 
     def onObjectPermissions(self, packet):
@@ -309,6 +328,9 @@ class BlenderAgent(object):
             for par in uuid_pars:
                 pars[par] = str(block[par])
             obj_uuid = str(pars['ObjectID'])
+            obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
+            if obj:
+                obj.props = pars
             self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
     def deleteObject(self, obj_id):
@@ -512,9 +534,12 @@ class BlenderAgent(object):
             cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
             #   # 10-rot
             if cmd[0] == "quit":
+                continue # ignore
                 out_queue.put(["quit"])
                 client.logout()
                 return
+            elif cmd[0] == "bootstrap":
+                self.bootstrapClient()
             elif cmd[0] == "create":
                 self.createObject(*cmd[1:])
             elif cmd[0] == "delete":
@@ -632,10 +657,13 @@ class BlenderAgent(object):
            #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
            objdata = ObjectData_block["ObjectData"]
            obj_uuid = uuid_to_s(ObjectData_block["FullID"])
+           obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
            out_queue.put(['props', obj_uuid,
                                   {"OwnerID": str(ObjectData_block["OwnerID"])}])
            if "Scale" in ObjectData_block.var_list:
                scale = ObjectData_block["Scale"]
+               if obj:
+                  obj.scale = v3_to_list(scale)
                out_queue.put(['scale', obj_uuid,
                                      v3_to_list(scale)])
            if len(objdata) == 48:
@@ -643,12 +671,17 @@ class BlenderAgent(object):
                vel = Vector3(objdata[12:])
                acc = Vector3(objdata[24:])
                rot = Quaternion(objdata[36:])
+               if obj:
+                   obj.pos = v3_to_list(pos_vector)
+                   obj.rot = q_to_list(rot)
                out_queue.put(['pos', obj_uuid, v3_to_list(pos_vector),
                               q_to_list(rot)])
            elif len(objdata) == 12:
                if True:
                    # position only packed as 3 floats
                    pos = Vector3(objdata)
+                   if obj:
+                      obj.pos = v3_to_list(pos)
                    out_queue.put(['pos', obj_uuid, v3_to_list(pos)])
                elif ObjectData_block.Type in [4, 20, 12, 28]:
                    # position only packed as 3 floats
@@ -714,6 +747,7 @@ class BlenderAgent(object):
 class GreenletsThread(Thread):
     def __init__ (self, server_url, username, password, firstline="Hello"):
         self.running = True
+        self.agent = True
         self.cmd_out_queue = []
         self.cmd_in_queue = []
         self.out_queue = Queue()
@@ -740,6 +774,7 @@ class GreenletsThread(Thread):
                     self.password,
                     self.firstline)
         agent.logger.debug("Quitting")
+        self.agent = agent
         self.running = False
 
     def addCmd(self, cmd):
@@ -775,14 +810,17 @@ class ClientHandler(object):
             data = json_socket.recv()
             if not data:
                 # client disconnected, bail out
-                self.current.in_queue.put(["quit"])
+                self.current.out_queue.put(["quit"])
                 break
-            if data[0] == 'connect' and not running:
-                # initial connect command
-                running = GreenletsThread(*data[1:])
-                self.current = running
-                pool.spawn_n(running.run)
-                json_socket.send(["hihi"])
+            if data[0] == 'connect':
+                if not running:
+                    # initial connect command
+                    running = GreenletsThread(*data[1:])
+                    self.current = running
+                    pool.spawn_n(running.run)
+                    json_socket.send(["hihi"])
+                else:
+                    running.addCmd(["bootstrap"])
             elif self.current:
                 # forward command
                 self.current.addCmd(data)
@@ -815,7 +853,7 @@ class ClientHandler(object):
         json_socket.close()
         if running:
             running.addCmd(["quit"])
-            run_main = False
+            # run_main = False
         raise eventlet.StopServe
 
 run_main = True
