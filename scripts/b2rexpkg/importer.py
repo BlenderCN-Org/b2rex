@@ -533,7 +533,6 @@ class Importer(ImporterBase):
         except:
             new_mesh = bpy.data.meshes.new(meshName+meshId)
             is_new = True
-            print("new mesh - bak!")
         if not is_new:
             if bversion == 3:
                 new_mesh.name = "tobedeleted"
@@ -542,7 +541,6 @@ class Importer(ImporterBase):
                 new_mesh.faces.delete(1, range(len(new_mesh.faces)))
                 new_mesh.verts.delete(1, range(len(new_mesh.verts)))
                 new_mesh.materials = []
-            print("old mesh!")
 
         self._imported_assets[meshId] = new_mesh
         for vertex, vbuffer, indices, materialName in mesh:
