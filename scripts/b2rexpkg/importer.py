@@ -62,7 +62,7 @@ import bpy
 CONNECTION_ERRORS = (HTTPError, URLError, httplib.BadStatusLine,
                                      xml.parsers.expat.ExpatError)
 
-default_timeout = 10
+default_timeout = 4
 
 socket.setdefaulttimeout(default_timeout)
 

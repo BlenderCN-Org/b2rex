@@ -57,12 +57,19 @@ class Redraw(bpy.types.Operator):
     bl_idname = "b2rex.redraw"
     bl_label = "redraw"
 
+    def invoke(self, context, event):
+        for area in context.screen.areas:
+            #           if not area.type == 'VIEW_3D':
+                area.tag_redraw()
+        return {'RUNNING_MODAL'}
+    def check(self, context):
+        return True
     def execute(self, context):
         for area in context.screen.areas:
             #           if not area.type == 'VIEW_3D':
                 area.tag_redraw()
-
         return {'FINISHED'}
+
 
 
 class ToggleRt(bpy.types.Operator):

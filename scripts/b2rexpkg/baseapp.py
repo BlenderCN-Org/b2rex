@@ -62,7 +62,7 @@ class BaseApplication(Importer, Exporter):
         self.loglevel = "standard"
         self.agent_access = ""
         self.rt_support = eventlet_present
-        self.stats = [0,0,0,0,0,0,0,0]
+        self.stats = [0,0,0,0,0,0,0,0,0,0,0,0,0]
         self.status = "b2rex started"
         self.selected = {}
         self.sim_selection = set()
@@ -456,6 +456,7 @@ class BaseApplication(Importer, Exporter):
         starttime = time.time()
         self.command_queue = []
         processed = 0
+        self.stats[8] += 1
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
@@ -523,6 +524,7 @@ class BaseApplication(Importer, Exporter):
                     seen_meshes[mesh_uuid] = obj.data.as_pointer()
 
     def processView(self):
+        self.stats[9] += 1
         t = time.time()
         selected = self.getSelected()
         all_selected = set()
