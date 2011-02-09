@@ -343,7 +343,6 @@ class BlenderAgent(object):
 
     def onObjectProperties(self, packet):
         self.logger.debug("ObjectProperties!!!")
-        print(packet)
         pars = {}
         value_pars = ['CreationDate', 'EveryoneMask', 'BaseMask',
                       'OwnerMask', 'GroupMask' , 'NextOwnerMask',

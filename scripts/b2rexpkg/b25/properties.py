@@ -58,13 +58,22 @@ class B2RexProps(bpy.types.IDPropertyGroup):
                               min=0.0,
                               max=512.0)
     regenMaterials = BoolProperty(name="Regen Material", default=True)
-    rt_on = BoolProperty(name="RT", default=False)
+    rt_on = BoolProperty(name="RT", default=False, description="Enable real time connection")
+    rt_budget = IntProperty(name="Rt Budget", default=20, min=5,
+                              max=500, step=1, description="Number of milliseconds allocated for command execution every frame")
+    rt_sec_budget = IntProperty(name="Rt Budget per second", default=250, min=50,
+                              max=1000, step=1, description="Number of  milliseconds allocated for command execution every second")
+    pool_workers = IntProperty(name="Download Threads", default=5, min=1,
+                               max=100, step=1, description="Number of threads dedicated to downloading and transcoding")
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
-    kbytesPerSecond = IntProperty(name="Kbyte/s", default=100)
+    kbytesPerSecond = IntProperty(name="Kbyte/s", default=100,
+                                  description="kbytes per second to throttle the connection to")
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
     expand = BoolProperty(default=True,
                           description="Expand, to display settings")
+    show_stats = BoolProperty(default=False,
+                          description="Expand, to display stats")
     selected_region = IntProperty(default=-1, description="Expand, to display")
     regions = CollectionProperty(type=B2RexRegions,
                                  name='Regions',

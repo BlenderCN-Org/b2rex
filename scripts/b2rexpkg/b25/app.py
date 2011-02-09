@@ -177,3 +177,9 @@ class B2Rex(BaseApplication):
 
         for area in bpy.context.screen.areas:
             area.tag_redraw()
+    def queueRedraw(self):
+        screen = bpy.context.screen
+        for area in screen.areas:
+            #           if not area.type == 'VIEW_3D':
+                bpy.ops.b2rex.redraw()
+

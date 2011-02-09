@@ -8,6 +8,7 @@ from bpy.props import FloatVectorProperty, EnumProperty
 import logging
 
 log_levels = ((str(logging.ERROR), 'Standard', 'standard level, show only errors'),
+              (str(logging.CRITICAL), 'Critical', 'show only critical errors (least info)'),
               (str(logging.WARNING), 'Warning', 'show warnings or errors'),
               (str(logging.INFO), 'Info', 'show info or errors'),
               (str(logging.DEBUG), 'Debug', 'debug log level'))
@@ -51,6 +52,25 @@ class Connect(bpy.types.Operator):
     def execute(self, context):
         bpy.b2rex_session.onConnect(context)
         return {'FINISHED'}
+
+class Redraw(bpy.types.Operator):
+    bl_idname = "b2rex.redraw"
+    bl_label = "redraw"
+
+    def invoke(self, context, event):
+        for area in context.screen.areas:
+            #           if not area.type == 'VIEW_3D':
+                area.tag_redraw()
+        return {'RUNNING_MODAL'}
+    def check(self, context):
+        return True
+    def execute(self, context):
+        for area in context.screen.areas:
+            #           if not area.type == 'VIEW_3D':
+                area.tag_redraw()
+        return {'FINISHED'}
+
+
 
 class ToggleRt(bpy.types.Operator):
     bl_idname = "b2rex.toggle_rt"

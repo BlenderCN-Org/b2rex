@@ -2,6 +2,7 @@ import sys
 import time
 import uuid
 import traceback
+import threading
 import base64
 from collections import defaultdict
 
@@ -53,16 +54,20 @@ logger = logging.getLogger('b2rex.baseapp')
 
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
+        self.command_queue = []
+        self.wanted_workers = 1
+        self.second_start = time.time()
+        self.second_budget = 0
+        self.pool = ThreadPool(1)
         self.selected = set()
         self.agent_id = ""
         self.loglevel = "standard"
         self.agent_access = ""
         self.rt_support = eventlet_present
-        self.stats = [0,0,0,0,0,0,0,0]
+        self.stats = [0,0,0,0,0,0,0,0,0,0,0,0,0]
         self.status = "b2rex started"
         self.selected = {}
         self.sim_selection = set()
-        self.pool = ThreadPool(10)
         self.connected = False
         self.positions = {}
         self.rotations = {}
@@ -73,17 +78,42 @@ class BaseApplication(Importer, Exporter):
         self.gridinfo = GridInfo()
         self.buttons = {}
         self.settings_visible = False
+        self._requested_urls = []
+        self.initializeCommands()
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
-        #self.pool.addRequest(self.start_thread, range(100), self.print_thread,
-        #                 self.error_thread)
+    def registerCommand(self, cmd, callback):
+        self._cmd_matrix[cmd] = callback
 
+    def initializeCommands(self):
+        self._cmd_matrix = {}
+        self.registerCommand('pos', self.processPosCommand)
+        self.registerCommand('rot', self.processRotCommand)
+        self.registerCommand('scale', self.processScaleCommand)
+        self.registerCommand('delete', self.processDeleteCommand)
+        self.registerCommand('msg', self.processMsgCommand)
+        self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
+        self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
+        self.registerCommand('connected', self.processConnectedCommand)
+        self.registerCommand('meshcreated', self.processMeshCreated)
+        self.registerCommand('capabilities', self.processCapabilities)
+        # internal
+        self.registerCommand('mesharrived', self.processMeshArrived)
+        self.registerCommand('materialarrived', self.processMaterialArrived)
+
+    def processConnectedCommand(self, agent_id, agent_access):
+        self.agent_id = agent_id
+        self.agent_access = agent_access
 
     def default_error_db(self, request, error):
         logger.error("error downloading "+str(request)+": "+str(error))
+        #traceback.print_tb(error[2])
 
-    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None):
+    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, main=None):
+        if http_url in self._requested_urls:
+            return False
+        self._requested_urls.append(http_url)
         if not error_cb:
             _error_cb = self.default_error_db
         else:
@@ -91,20 +121,15 @@ class BaseApplication(Importer, Exporter):
                 error_cb(result)
         def _cb(request, result):
             cb(result, *cb_pars)
-        self.pool.addRequest(self.doDownload, [http_url], _cb, _error_cb)
+        if not main:
+            main = self.doDownload
+        self.pool.addRequest(main, [[http_url, cb_pars]], _cb, _error_cb)
+        return True
 
-    def doDownload(self, http_url):
+    def doDownload(self, pars):
+        http_url, pars = pars
         req = urllib2.urlopen(http_url)
         return req.read()
-
-    def start_thread(self, bla):
-        time.sleep(10)
-
-    def print_thread(self, request, result):
-        print(result)
-
-    def error_thread(self, request, error):
-        print(error)
 
     def addStatus(self, text, priority=0):
         pass
@@ -122,7 +147,7 @@ class BaseApplication(Importer, Exporter):
         self._sim_port = coninfo['sim_port']
         self._sim_ip = coninfo['sim_ip']
         self._sim_url = 'http://'+str(self._sim_ip)+':'+str(self._sim_port)
-        print("reconnect to", self._sim_url)
+        logger.info("reconnect to " + self._sim_url)
         self.gridinfo.connect('http://'+str(self._sim_ip)+':'+str(9000), username, password)
         self.sim.connect(self._sim_url)
 
@@ -148,7 +173,7 @@ class BaseApplication(Importer, Exporter):
         if eventlet_present:
             self.addRtCheckBox()
         else:
-            logger.debug("no support for real time communications")
+            logger.warning("no support for real time communications")
 
         self.connected = True
         self.addStatus("Connected to " + self.griddata['gridnick'])
@@ -176,28 +201,8 @@ class BaseApplication(Importer, Exporter):
 
     def processCommand(self, cmd, *args):
         self.stats[0] += 1
-        if cmd == 'pos':
-            self.processPosCommand(*args)
-        elif cmd == 'rot':
-            self.processRotCommand(*args)
-        elif cmd == 'scale':
-            self.processScaleCommand(*args)
-        elif cmd == 'delete':
-            self.processDeleteCommand(*args)
-        elif cmd == 'msg':
-            self.processMsgCommand(*args)
-        elif cmd == 'RexPrimData':
-            self.processRexPrimDataCommand(*args)
-        elif cmd == 'ObjectProperties':
-            self.processObjectPropertiesCommand(*args)
-        elif cmd == 'connected':
-            self.agent_id = args[0]
-            self.agent_access = args[1]
-        elif cmd == 'meshcreated':
-            self.processMeshCreated(*args)
-        elif cmd == 'capabilities':
-            print(cmd, args)
-            self.processCapabilities(*args)
+        if cmd in self._cmd_matrix:
+            self._cmd_matrix[cmd](*args)
 
     def processCapabilities(self, caps):
         self.caps = caps
@@ -220,11 +225,11 @@ class BaseApplication(Importer, Exporter):
         if foundobject:
             foundobject.opensim.uuid = new_obj_uuid
         else:
-            print("Could not find object for meshcreated")
+            logger.warning("Could not find object for meshcreated")
         if foundmesh:
             foundmesh.opensim.uuid = asset_id
         else:
-            print("Could not find mesh for meshcreated")
+            logger.warning("Could not find mesh for meshcreated")
 
     def processDeleteCommand(self, objId):
         obj = self.findWithUUID(objId)
@@ -233,11 +238,12 @@ class BaseApplication(Importer, Exporter):
             self.queueRedraw()
 
     def processRexPrimDataCommand(self, objId, pars):
-        #print("ReXPrimData for ", pars["MeshUrl"])
         self.stats[3] += 1
         meshId = pars["RexMeshUUID"]
         obj = self.findWithUUID(objId)
-        if obj:
+        if obj or not meshId:
+            if obj:
+                logger.warning(("Object already created", obj, meshId, objId))
             # XXX we dont update mesh for the moment
             return
         mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
@@ -257,17 +263,23 @@ class BaseApplication(Importer, Exporter):
                                                                          asset_type,
                                                                          index))
                     else:
-                        print("unhandled material of type", asset_type)
-            if not meshId == ZERO_UUID_STR:
+                        logger.warning("unhandled material of type " + str(asset_type))
+            if meshId and not meshId == ZERO_UUID_STR:
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
                     mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
-                    self.addDownload(mesh_url, self.meshArrived, (objId, meshId))
+                    if not self.addDownload(mesh_url,
+                                     self.meshArrived, 
+                                     (objId, meshId),
+                                            main=self.doMeshDownloadTranscode):
+                        self.add_mesh_callback(meshId,
+                                               self.createObjectWithMesh,
+                                               objId,
+                                               meshId)
                 else:
-                    print("unhandled rexdata of type", asset_type)
+                    logger.warning("unhandled rexdata of type " + str(asset_type))
 
     def processObjectPropertiesCommand(self, objId, pars):
-        #print("ObjectProperties for", objId, pars)
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:
             self.applyObjectProperties(obj, pars)
@@ -277,17 +289,28 @@ class BaseApplication(Importer, Exporter):
         pass
 
     def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
-        if not assetType == AssetType.OgreMaterial:
-            print("MaterialArrived", matId, data, assetType)
+        self.command_queue.append(["materialarrived", data, objId, meshId,
+                                      matId, assetType, matIdx])
 
-    def meshArrived(self, data, objId, meshId):
+    def processMaterialArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        if assetType == AssetType.OgreMaterial:
+            self.parse_material(matId, {"name":matId, "data":data}, meshId,
+                                matIdx)
+
+    def meshArrived(self, mesh, objId, meshId):
+        self.command_queue.append(["mesharrived", mesh, objId, meshId])
+
+    def processMeshArrived(self, mesh, objId, meshId):
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
             return
-        new_mesh = self.create_mesh_frombinary(meshId, "opensim", data)
+        new_mesh = self.create_mesh_fromomesh(meshId, "opensim", mesh)
         if new_mesh:
-            self.createObjectWithMesh(new_mesh, objId, meshId)
+            self.createObjectWithMesh(new_mesh, str(objId), meshId)
+            self.trigger_mesh_callbacks(meshId, new_mesh)
+        else:
+            print("No new mesh with processMeshArrived")
 
     def createObjectWithMesh(self, new_mesh, objId, meshId):
         obj = self.getcreate_object(objId, "opensim", new_mesh)
@@ -309,7 +332,6 @@ class BaseApplication(Importer, Exporter):
 
 
     def doRtUpload(self, context):
-        #print("doRtUpload")
         selected = bpy.context.selected_objects
         if selected:
             # just the first for now
@@ -319,7 +341,6 @@ class BaseApplication(Importer, Exporter):
                 return
 
     def doDelete(self):
-        #print("doDelete")
         selected = self.getSelected()
         if selected:
             for obj in selected:
@@ -346,7 +367,6 @@ class BaseApplication(Importer, Exporter):
         obj_uuid = obj.opensim.uuid
         mesh_name = mesh.name
         mesh_uuid = mesh.opensim.uuid
-        print("finishing upload for", obj_uuid, mesh_uuid)
         pos, rot, scale = self.getObjectProperties(obj)
         
         self.simrt.addCmd(['create', obj_name, obj_uuid, mesh_name, mesh_uuid,
@@ -372,8 +392,6 @@ class BaseApplication(Importer, Exporter):
 
     def findWithUUID(self, objId):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
-        if not obj:
-            obj = self.find_with_uuid(str(objId), bpy.data.meshes, "meshes")
         return obj
 
     def processPosCommand(self, objId, pos, rot=None):
@@ -403,7 +421,6 @@ class BaseApplication(Importer, Exporter):
             
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
-        #print("process update for ", obj_uuid)
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
             pos = list(pos)
@@ -430,12 +447,45 @@ class BaseApplication(Importer, Exporter):
             self.pool.poll()
         except NoResultsPending:
             pass
+        # check thread pool size
+        if self.wanted_workers != self.exportSettings.pool_workers:
+            current_workers = self.wanted_workers
+            wanted_workers = self.exportSettings.pool_workers
+            if current_workers < wanted_workers:
+                self.pool.createWorkers(wanted_workers-current_workers)
+            else:
+                self.pool.dismissWorkers(current_workers-wanted_workers)
+            self.wanted_workers = self.exportSettings.pool_workers
+        # check consistency
         self.checkUuidConsistency(self.getSelected())
-        cmds = self.simrt.getQueue()
+        # process command queue
+        cmds = self.command_queue + self.simrt.getQueue()
+        budget = float(self.exportSettings.rt_budget)/1000.0
+        second_budget = float(self.exportSettings.rt_sec_budget)/1000.0
+        if time.time() - self.second_start > 1:
+            self.second_budget = 0
+            self.second_start = time.time()
+        self.command_queue = []
+        currbudget = 0
+        processed = 0
+        self.stats[8] += 1
+        starttime = time.time()
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
-                self.processCommand(*cmd)
+                currbudget = time.time()-starttime
+                if currbudget < budget and self.second_budget+currbudget < second_budget or cmd[0] == 'pos':
+                    self.processCommand(*cmd)
+                    processed += 1
+                else:
+                    self.command_queue.append(cmd)
+        self.second_budget += currbudget
+        self.stats[5] = len(self.command_queue)
+        self.stats[6] = (currbudget)*1000 # processed
+        self.stats[7] = threading.activeCount()-1
+        # redraw if we have commands left
+        if len(self.command_queue):
+            self.queueRedraw()
 
     def checkUuidConsistency(self, selected):
         # look for duplicates
@@ -461,35 +511,9 @@ class BaseApplication(Importer, Exporter):
                     newselected[obj_uuid] = obj.as_pointer()
                     newselected[mesh_uuid] = obj.data.as_pointer()
         self.selected = newselected
-        return
-
-        uuids = map(lambda s: s.opensim.uuid, selected)
-        uuids = list(filter(lambda s: s, uuids))
-        uuids_set = set(uuids)
-        if len(uuids) == len(uuids_set):
-            return
-        seen = []
-        seen_meshes = {}
-        for obj in selected:
-            obj_uuid = obj.opensim.uuid
-            if obj_uuid and obj_uuid not in seen:
-                # didnt see this obj uuid, so just add to cache
-                seen.append(obj_uuid)
-            elif obj_uuid:
-                # mark the object as unsynced
-                obj.opensim.uuid = ""
-            if obj.type == 'MESH':
-                mesh_uuid = obj.data.opensim.uuid
-                if mesh_uuid:
-                    if mesh_uuid in seen_meshes:
-                        if obj.data.as_pointer() != seen_meshes[mesh_uuid]:
-                            obj.data.opensim.uuid = ""
-                    else:
-                        seen_meshes[mesh_uuid] = obj.data.as_pointer()
-
-                    seen_meshes[mesh_uuid] = obj.data.as_pointer()
 
     def processView(self):
+        self.stats[9] += 1
         t = time.time()
         selected = self.getSelected()
         all_selected = set()

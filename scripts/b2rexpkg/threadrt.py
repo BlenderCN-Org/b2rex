@@ -114,7 +114,6 @@ class ProxyAgent(Thread):
                     traceback.print_exc()
                 self.starttime = self.starttime + 2
                 self.running = False
-                self.connected = False
         # otherwise blink every 0.5 seconds
         if self.running == False and time.time() - self.blinkstart > 1:
             self.connected = not self.connected
