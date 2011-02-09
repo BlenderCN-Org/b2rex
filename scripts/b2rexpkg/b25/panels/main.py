@@ -120,7 +120,7 @@ class ConnectionPanel(bpy.types.Panel):
             row = box.row() 
             row.label(text="http requests: %d ok: %d"%tuple(session.stats[3:5]))
             row = box.row() 
-            row.label(text="queue pending: %d last time: %d"%tuple(session.stats[5:7]))
+            row.label(text="queue pending: %d last time: %d"%tuple(session.stats[5:7])+" last sec: "+str(session.second_budget))
             row = box.row() 
             row.label(text="threads workers: "+str(session.stats[7]))
             row = box.row() 
@@ -157,6 +157,8 @@ class ConnectionPanel(bpy.types.Panel):
             box.prop(props, "kbytesPerSecond")
             box = layout.row()
             box.prop(props, "rt_budget")
+            box = layout.row()
+            box.prop(props, "rt_sec_budget")
             box = layout.row()
             box.prop(props, "pool_workers")
         else:

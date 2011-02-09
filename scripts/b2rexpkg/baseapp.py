@@ -56,6 +56,8 @@ class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.command_queue = []
         self.wanted_workers = 1
+        self.second_start = time.time()
+        self.second_budget = 0
         self.pool = ThreadPool(1)
         self.selected = set()
         self.agent_id = ""
@@ -443,6 +445,7 @@ class BaseApplication(Importer, Exporter):
             self.pool.poll()
         except NoResultsPending:
             pass
+        # check thread pool size
         if self.wanted_workers != self.exportSettings.pool_workers:
             current_workers = self.wanted_workers
             wanted_workers = self.exportSettings.pool_workers
@@ -451,24 +454,34 @@ class BaseApplication(Importer, Exporter):
             else:
                 self.pool.dismissWorkers(current_workers-wanted_workers)
             self.wanted_workers = self.exportSettings.pool_workers
+        # check consistency
         self.checkUuidConsistency(self.getSelected())
+        # process command queue
         cmds = self.command_queue + self.simrt.getQueue()
-        budget = self.exportSettings.rt_budget/1000.0
+        budget = float(self.exportSettings.rt_budget)/1000.0
+        second_budget = float(self.exportSettings.rt_sec_budget)/1000.0
+        if time.time() - self.second_start > 1:
+            self.second_budget = 0
+            self.second_start = time.time()
         self.command_queue = []
+        currbudget = 0
         processed = 0
         self.stats[8] += 1
         starttime = time.time()
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
-                if time.time()-starttime > budget:
-                    self.command_queue.append(cmd)
-                else:
+                currbudget = time.time()-starttime
+                if currbudget < budget and self.second_budget+currbudget < second_budget:
                     self.processCommand(*cmd)
                     processed += 1
+                else:
+                    self.command_queue.append(cmd)
+        self.second_budget += currbudget
         self.stats[5] = len(self.command_queue)
-        self.stats[6] = (time.time() - starttime)*1000 # processed
+        self.stats[6] = (currbudget)*1000 # processed
         self.stats[7] = threading.activeCount()-1
+        # redraw if we have commands left
         if len(self.command_queue):
             self.queueRedraw()
 
@@ -496,33 +509,6 @@ class BaseApplication(Importer, Exporter):
                     newselected[obj_uuid] = obj.as_pointer()
                     newselected[mesh_uuid] = obj.data.as_pointer()
         self.selected = newselected
-        return
-
-        uuids = map(lambda s: s.opensim.uuid, selected)
-        uuids = list(filter(lambda s: s, uuids))
-        uuids_set = set(uuids)
-        if len(uuids) == len(uuids_set):
-            return
-        seen = []
-        seen_meshes = {}
-        for obj in selected:
-            obj_uuid = obj.opensim.uuid
-            if obj_uuid and obj_uuid not in seen:
-                # didnt see this obj uuid, so just add to cache
-                seen.append(obj_uuid)
-            elif obj_uuid:
-                # mark the object as unsynced
-                obj.opensim.uuid = ""
-            if obj.type == 'MESH':
-                mesh_uuid = obj.data.opensim.uuid
-                if mesh_uuid:
-                    if mesh_uuid in seen_meshes:
-                        if obj.data.as_pointer() != seen_meshes[mesh_uuid]:
-                            obj.data.opensim.uuid = ""
-                    else:
-                        seen_meshes[mesh_uuid] = obj.data.as_pointer()
-
-                    seen_meshes[mesh_uuid] = obj.data.as_pointer()
 
     def processView(self):
         self.stats[9] += 1

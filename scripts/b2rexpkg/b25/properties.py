@@ -61,6 +61,8 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     rt_on = BoolProperty(name="RT", default=False, description="Enable real time connection")
     rt_budget = IntProperty(name="Rt Budget", default=20, min=5,
                               max=500, step=1, description="Number of milliseconds allocated for command execution every frame")
+    rt_sec_budget = IntProperty(name="Rt Budget per second", default=250, min=50,
+                              max=1000, step=1, description="Number of  milliseconds allocated for command execution every second")
     pool_workers = IntProperty(name="Download Threads", default=5, min=1,
                                max=100, step=1, description="Number of threads dedicated to downloading and transcoding")
     regenObjects = BoolProperty(name="Regen Objects", default=False)
