@@ -8,6 +8,8 @@ import logging
 
 class B2RexRegions(bpy.types.IDPropertyGroup):
     pass
+
+
 class B2RexChatLine(bpy.types.IDPropertyGroup):
     pass
 
@@ -16,6 +18,8 @@ class B2RexBaseProps(bpy.types.IDPropertyGroup):
 
 class B2RexObjectProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
+    everyonemask_expand = BoolProperty(name='everyonemask_expand', default=False)
+
 
 class B2RexMeshProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')

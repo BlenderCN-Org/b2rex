@@ -1,4 +1,5 @@
 import bpy
+from bpy.props import StringProperty, PointerProperty, IntProperty
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
@@ -133,4 +134,25 @@ class Settings(bpy.types.Operator):
         bpy.b2rex_session.onSettings(context)
         return {'FINISHED'}
         
+class SetMaskOn(bpy.types.Operator):
+    bl_idname = "b2rex.setmaskon"
+    bl_label = "SetMaskOn"
+    mask = bpy.props.IntProperty(name="Mask")
+    def execute(self, context):
+        for obj in context.selected_objects:
+            obj.opensim.EveryoneMask -= self.mask
+        
+        return {'FINISHED'}
+        
+class SetMaskOff(bpy.types.Operator):
+    bl_idname = "b2rex.setmaskoff"
+    bl_label = "SetMaskOff"
+    mask = bpy.props.IntProperty(name="Mask")
+
+    def execute(self, context):
+        for obj in context.selected_objects:
+            obj.opensim.EveryoneMask += self.mask
+ 
+        return {'FINISHED'}
+   
 
