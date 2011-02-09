@@ -386,6 +386,7 @@ else:
 class Importer(ImporterBase):
     def __init__(self, gridinfo):
         self._material_cb = defaultdict(list)
+        self._mesh_cb = defaultdict(list)
         self._key_materials = {}
         self._name_materials = {}
         ImporterBase.__init__(self)
@@ -407,8 +408,22 @@ class Importer(ImporterBase):
         self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
 
+    def add_mesh_callback(self, meshId, cb, *args):
+        mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
+        if mesh:
+            cb(*args)
+        else:
+            self._mesh_cb[meshId].append([cb, args])
+
+    def trigger_mesh_callbacks(self, meshId, new_mesh):
+        for cb, args in self._mesh_cb[meshId]:
+            cb(new_mesh, *args)
+        if meshId in self._mesh_cb:
+            self._mesh_cb.pop(meshId)
+
     def add_material_callback(self, key, materialName, cb, *args):
         if materialName in self._name_materials:
+            cb(materialName, *args)
             cb(materialName, *args)
             return
         if key in self._key_materials:
@@ -425,7 +440,8 @@ class Importer(ImporterBase):
             ogremat.name = materialName # hack
             self._imported_ogre_materials[ogremat.name] = ogremat # XXX hack
             cb(materialName, *args)
-        self._material_cb.pop(slot)
+        if slot in self._material_cb:
+            self._material_cb.pop(slot)
         # add to slot - mat dict
         self._key_materials[slot] = ogremat
         if not materialName:
@@ -448,14 +464,16 @@ class Importer(ImporterBase):
         assetName = pars[0] # we dont get the name here
         assetId = pars[0]
         origin = "/tmp/"+assetId+".1.jpg"
-        urlretrieve(http_url, origin)
-        return self.decode_texture_fromfile(assetId, assetName, origin)
+        req = urllib2.urlopen(http_url)
+        data = req.read()
+        return self.decode_texture(assetId, assetName, data)
+        #return self.decode_texture_fromfile(assetId, assetName, origin)
 
     def decode_texture(self, textureId, textureName, data):
         f = open("/tmp/"+textureId+".1.jpg", "wb")
         f.write(data)
         f.close()
-        self.decode_texture_fromfile(self, textureId, textureName,
+        return self.decode_texture_fromfile(textureId, textureName,
                                      "/tmp/"+textureId+".1.jpg")
 
     def decode_texture_fromfile(self, textureId, textureName, origin):
@@ -774,6 +792,8 @@ class Importer(ImporterBase):
                 obj_uuid = self.get_uuid(obj)
                 if obj_uuid:
                     self._total[section][obj_uuid] = obj.name
+                    if obj_uuid == groupid:
+                        return obj
 
     def check_group(self, groupid, scenegroup):
         """

@@ -108,10 +108,11 @@ class BaseApplication(Importer, Exporter):
 
     def default_error_db(self, request, error):
         logger.error("error downloading "+str(request)+": "+str(error))
+        #traceback.print_tb(error[2])
 
     def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, main=None):
         if http_url in self._requested_urls:
-            return
+            return False
         self._requested_urls.append(http_url)
         if not error_cb:
             _error_cb = self.default_error_db
@@ -123,6 +124,7 @@ class BaseApplication(Importer, Exporter):
         if not main:
             main = self.doDownload
         self.pool.addRequest(main, [[http_url, cb_pars]], _cb, _error_cb)
+        return True
 
     def doDownload(self, pars):
         http_url, pars = pars
@@ -236,11 +238,12 @@ class BaseApplication(Importer, Exporter):
             self.queueRedraw()
 
     def processRexPrimDataCommand(self, objId, pars):
-        #print("ReXPrimData for ", pars["MeshUrl"])
         self.stats[3] += 1
         meshId = pars["RexMeshUUID"]
         obj = self.findWithUUID(objId)
-        if obj:
+        if obj or not meshId:
+            if obj:
+                print("OBJECT ALREADY CREATED", obj, meshId, objId)
             # XXX we dont update mesh for the moment
             return
         mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
@@ -261,14 +264,18 @@ class BaseApplication(Importer, Exporter):
                                                                          index))
                     else:
                         print("unhandled material of type", asset_type)
-            if not meshId == ZERO_UUID_STR:
+            if meshId and not meshId == ZERO_UUID_STR:
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
                     mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
-                    self.addDownload(mesh_url,
+                    if not self.addDownload(mesh_url,
                                      self.meshArrived, 
                                      (objId, meshId),
-                                     main=self.doMeshDownloadTranscode)
+                                            main=self.doMeshDownloadTranscode):
+                        self.add_mesh_callback(meshId,
+                                               self.createObjectWithMesh,
+                                               objId,
+                                               meshId)
                 else:
                     print("unhandled rexdata of type", asset_type)
 
@@ -301,7 +308,15 @@ class BaseApplication(Importer, Exporter):
             return
         new_mesh = self.create_mesh_fromomesh(meshId, "opensim", mesh)
         if new_mesh:
-            self.createObjectWithMesh(new_mesh, objId, meshId)
+            self.createObjectWithMesh(new_mesh, str(objId), meshId)
+            self.trigger_mesh_callbacks(meshId, new_mesh)
+
+    def createObjectWithMeshUUID(self, objId, meshId):
+        new_mesh = self.find_with_uuid(str(meshId), bpy.data.meshes, "meshes")
+        if not new_mesh:
+            print("CANT FIND MESH TO FINISH ACTION!!", meshId)
+            return
+        self.createObjectWithMesh(new_mesh, objId, meshId)
 
     def createObjectWithMesh(self, new_mesh, objId, meshId):
         obj = self.getcreate_object(objId, "opensim", new_mesh)
@@ -385,8 +400,6 @@ class BaseApplication(Importer, Exporter):
 
     def findWithUUID(self, objId):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
-        if not obj:
-            obj = self.find_with_uuid(str(objId), bpy.data.meshes, "meshes")
         return obj
 
     def processPosCommand(self, objId, pos, rot=None):
@@ -470,7 +483,7 @@ class BaseApplication(Importer, Exporter):
             self.stats[2] += 1
             for cmd in cmds:
                 currbudget = time.time()-starttime
-                if currbudget < budget and self.second_budget+currbudget < second_budget:
+                if currbudget < budget and self.second_budget+currbudget < second_budget or cmd[0] == 'pos':
                     self.processCommand(*cmd)
                     processed += 1
                 else:
