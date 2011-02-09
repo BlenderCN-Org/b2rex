@@ -4,6 +4,8 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty
 
+import logging
+
 class B2RexRegions(bpy.types.IDPropertyGroup):
     pass
 
@@ -41,6 +43,9 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     password = StringProperty(name='password',
                               default='nemesis',
                               description='')
+    loglevel = IntProperty(name='loglevel',
+                           default=logging.ERROR,
+                          description='log level')
     server_url = StringProperty(name='server url',
                                 default='http://delirium:9000',
                                 description='')
@@ -56,6 +61,7 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     rt_on = BoolProperty(name="RT", default=False)
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
+    kbytesPerSecond = IntProperty(name="Kbyte/s", default=100)
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
     expand = BoolProperty(default=True,
                           description="Expand, to display settings")

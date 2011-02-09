@@ -84,6 +84,8 @@ class BlenderAgent(object):
     verbose = False
     def __init__(self, in_queue, out_queue):
         self.creating = False
+        self.client = None
+        self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
         self.out_queue = out_queue
         self.initialize_logger()
@@ -129,7 +131,16 @@ class BlenderAgent(object):
             #print("PROCEEDING WITH DELETE")
         self.old_kill_object(packet)
 
-    def sendAgentThrottlePacket(self, bps=1000000):
+    def setThrottle(self, bps):
+        print("SET THROTTLE TO", bps)
+        if not bps == self.bps:
+            self.bps = bps
+            client = self.client
+            if client and client.connected and client.region.connected:
+                self.sendThrottle(bps)
+    def sendThrottle(self, bps=None):
+        if not bps:
+            bps = self.bps
         bps = bps*8 # we use bytes per second :)
         data = b''
         data += struct.pack('<f', bps*0.1) # resend
@@ -204,7 +215,7 @@ class BlenderAgent(object):
         if 'drawType' in args:
             data += struct.pack('<b', args['drawType'])
         else:
-            data += struct.pack('<b', pyogp.lib.client.enums.AssetType.OgreMesh)
+            data += struct.pack('<b', 1) # where is this 1 coming from ??
         # bool properties
         for prop in ['RexIsVisible', 'RexCastShadows',
                      'RexLightCreatesShadows', 'RexDescriptionTexture',
@@ -258,8 +269,6 @@ class BlenderAgent(object):
         pars["RexScaleToPrim"]= struct.unpack("<?", rexdata[5])[0]
         pars["RexDrawDistance"]= struct.unpack("<f", rexdata[6:6+4])[0]
         pars["RexLOD"]= struct.unpack("<f", rexdata[10:10+4])[0]
-        meshurl = str(self.client.region.capabilities['GetTexture'].public_url)+'?texture_id='+str(UUID(bytes=rexdata[14:14+16]))
-        pars["MeshUrl"] = meshurl
         pars["RexMeshUUID"]= str(UUID(bytes=rexdata[14:14+16]))
         pars["RexCollisionMeshUUID"]= str(UUID(bytes=rexdata[30:30+16]))
         pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
@@ -268,8 +277,6 @@ class BlenderAgent(object):
         if obj:
             obj.rexdata = pars
         self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
-        #self.logger.debug("REXPRIMDATA "+str(pars["drawType"])+" \
-                #                  "+str(len(rexdata))+" "+pars["RexMeshUUID"])
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -279,12 +286,15 @@ class BlenderAgent(object):
         RexAnimationRate = struct.unpack("<f", rexdata[pos:pos+4])[0]
         materialsCount = struct.unpack("<b", rexdata[pos+4])[0]
         pos = pos+5
+        materials = []
         for i in range(materialsCount):
             assettype = struct.unpack("<b", rexdata[pos])[0]
             matuuid_b = rexdata[pos+1:pos+1+16]
             matuuid = UUID(bytes=matuuid_b)
             matindex = struct.unpack("<b", rexdata[pos+17])[0]
+            materials.append([matindex, str(matuuid), assettype])
             pos = pos + 18
+        pars["Materials"] = materials
         if not len(rexdata) > pos:
             #self.logger.debug("RexPrimData: no more data")
             return
@@ -333,6 +343,7 @@ class BlenderAgent(object):
 
     def onObjectProperties(self, packet):
         self.logger.debug("ObjectProperties!!!")
+        print(packet)
         pars = {}
         value_pars = ['CreationDate', 'EveryoneMask', 'BaseMask',
                       'OwnerMask', 'GroupMask' , 'NextOwnerMask',
@@ -523,33 +534,31 @@ class BlenderAgent(object):
         res = client.region.objects.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
 
+        caps_sent = False
+        caps = {}
+
+        # wait until the client is connected
         while client.region.connected == False:
+            # look for GetTexture and send to client as soon as possible
+            if not caps_sent and "GetTexture" in client.region.capabilities:
+                for cap in client.region.capabilities:
+                    caps[cap] = client.region.capabilities[cap].public_url
+                self.out_queue.put(["capabilities", caps])
+                caps_sent = True
             api.sleep(0)
-        self.sendAgentThrottlePacket(100000.0)
 
-        queue = []
+        api.sleep(0.3)
 
-        # script specific stuff here
+        self.sendThrottle()
+
+        # speak up the first line
         client.say(str(firstline))
 
-        # wait 30 seconds for some object data to come in
-        now = time.time()
-        start = now
-        #while now - start < 30 and client.running:
-            #    api.sleep(0)
-            #now = time.time()
-
-        client.say("going on")
-        client.stand()
-        print(client.region.capabilities)
-        #new_uuid = uuid.uuid4()
-        #print("transfer", new_uuid)
-        #client.asset_manager.upload_asset(new_uuid, 41, False, False,
-        #                           b'jkladasdjklasdjkl')
-
-        # main loop for the agent
+        # inform our client of connection success
         out_queue.put(["connected", str(client.agent_id),
                              str(client.agent_access)])
+
+        # main loop for the agent
         selected = set()
         while client.running == True:
             cmd = in_queue.get()
@@ -560,6 +569,8 @@ class BlenderAgent(object):
                 out_queue.put(["quit"])
                 client.logout()
                 return
+            elif cmd[0] == "throttle":
+                self.setThrottle(*cmd[1:])
             elif cmd[0] == "bootstrap":
                 self.bootstrapClient()
             elif cmd[0] == "create":
@@ -595,9 +606,7 @@ class BlenderAgent(object):
                                               obj.LocalID, data, cmd_type)
             elif cmd[0] == "pos":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                print("Try Position update for ", cmd[1])
                 if obj:
-                    print("Position update for ", cmd[1])
                     pos = cmd[2]
                     rot = cmd[3]
                     self.sendPositionUpdate(obj, pos, rot)
@@ -626,7 +635,6 @@ class BlenderAgent(object):
                 cmd_type = 11 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
-        #print("Sending position update")
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
@@ -826,6 +834,7 @@ def stop_thread():
 class ClientHandler(object):
     def __init__(self):
         self.current = None
+        self.deferred_cmds = []
     def read_client(self, json_socket, pool):
         global running
         while True:
@@ -840,12 +849,18 @@ class ClientHandler(object):
                     running = GreenletsThread(*data[1:])
                     self.current = running
                     pool.spawn_n(running.run)
+                    for cmd in self.deferred_cmds:
+                        running.addCmd(cmd)
+                    self.deferred_cmds = []
                     json_socket.send(["hihi"])
                 else:
                     running.addCmd(["bootstrap"])
             elif self.current:
                 # forward command
                 self.current.addCmd(data)
+            else:
+                if data[0] in ["throttle"]:
+                    self.deferred_cmds.append(data)
         print("exit read client")
         # exit
         self.connected = False

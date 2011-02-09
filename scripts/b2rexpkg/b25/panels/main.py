@@ -4,6 +4,9 @@
 
 import bpy
 
+from b2rexpkg.b25.ops import getLogLabel
+
+
 class ConnectionPanel(bpy.types.Panel):
     bl_label = "b2rex" #baseapp.title
     #bl_space_type = "VIEW_3D"
@@ -14,14 +17,10 @@ class ConnectionPanel(bpy.types.Panel):
     bl_idname = "b2rex"
     cb_pixel = None
     cb_view = None
-#    bpy.types.Scene.b2rex_props = bpy.props.PointerProperty(type = B2RexProps)
-#    B2RexProps.serverurl = bpy.props.StringProperty(description="url:serverurl")
-
-#    def __init__(self, x):
-#        self.serverurl = "localhost:9000"
-#        self.amount = 10
-#        self.icon_list = create_icon_list()
-    
+    def __init__(self, context):
+        bpy.types.Panel.__init__(self)
+        # not the best place to set the loglevel :P
+        bpy.ops.b2rex.loglevel(level=str(bpy.context.scene.b2rex_props.loglevel))
     def __del__(self):
         if bpy.b2rex_session.rt_on:
             bpy.b2rex_session.onToggleRt()
@@ -113,23 +112,27 @@ class ConnectionPanel(bpy.types.Panel):
         box = layout.row()
         row = layout.row()
         if not bpy.context.scene.b2rex_props.expand:
-            row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
+            row.prop(props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
             for prop in ["pack", "path", "server_url", "username", "password",
                          "loc"]:
                 row = layout.row()
-                row.prop(bpy.context.scene.b2rex_props, prop)
+                row.prop(props, prop)
 
             box = layout.row()
             col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"regenMaterials")
+            col.prop(props,"regenMaterials")
             col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"regenObjects")
+            col.prop(props,"regenObjects")
 
             box = layout.row()
             col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"regenTextures")
+            col.prop(props,"regenTextures")
             col = box.column()
-            col.prop(bpy.context.scene.b2rex_props,"regenMeshes")
-            
+            col.prop(props,"regenMeshes")
+            box = layout.row()
+            box.prop(props, "kbytesPerSecond")
+            box = layout.row()
+            box.operator_menu_enum("b2rex.loglevel", 'level', icon='INFO',
+                                   text=getLogLabel(props.loglevel))
         else:
             row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)
