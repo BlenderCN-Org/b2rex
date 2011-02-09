@@ -55,6 +55,7 @@ class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.selected = set()
         self.agent_id = ""
+        self.loglevel = "standard"
         self.agent_access = ""
         self.rt_support = eventlet_present
         self.stats = [0,0,0,0,0,0,0,0]

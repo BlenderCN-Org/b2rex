@@ -4,6 +4,9 @@
 
 import bpy
 
+from b2rexpkg.b25.ops import getLogLabel
+
+
 class ConnectionPanel(bpy.types.Panel):
     bl_label = "b2rex" #baseapp.title
     #bl_space_type = "VIEW_3D"
@@ -132,6 +135,8 @@ class ConnectionPanel(bpy.types.Panel):
             col.prop(bpy.context.scene.b2rex_props,"regenMeshes")
             box = layout.row()
             box.prop(bpy.context.scene.b2rex_props, "kbytesPerSecond")
-            
+            box = layout.row()
+            box.operator_menu_enum("b2rex.loglevel", 'level', 
+                                   text= getLogLabel(session.loglevel))
         else:
             row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)

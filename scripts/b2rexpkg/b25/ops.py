@@ -1,5 +1,47 @@
 import bpy
 
+from bpy.props import StringProperty, PointerProperty, IntProperty
+from bpy.props import BoolProperty, FloatProperty, CollectionProperty
+from bpy.props import FloatVectorProperty, EnumProperty
+
+import logging
+
+log_levels = ((str(logging.ERROR), 'Standard', 'standard level, show only errors'),
+              (str(logging.WARNING), 'Warning', 'show warnings or errors'),
+              (str(logging.INFO), 'Info', 'show info or errors'),
+              (str(logging.DEBUG), 'Debug', 'debug log level'))
+
+def getLogLabel(level):
+    level = str(level)
+    loglevel = list(filter(lambda s: s[0] == level, log_levels))
+    if loglevel:
+        return loglevel[0][1]
+    else:
+        return log_levels[0][1]
+
+
+class SetLogLevel(bpy.types.Operator):
+    bl_idname = "b2rex.loglevel"
+    bl_label = "LogLevel"
+    level = EnumProperty(items=log_levels,
+                         name='level',
+                         default=str(logging.ERROR))
+    def __init__(self, context):
+        pass
+
+    def getLabel(self):
+        return getLogLabel(self.level)
+
+    def execute(self, context):
+        if not self.level:
+            self.level = logging.ERROR
+        session = bpy.b2rex_session
+        session.loglevel = self.level
+        logging.getLogger('root').setLevel(int(self.level))
+        for logger in logging.getLogger('root').manager.loggerDict.values():
+            logger.setLevel(int(self.level))
+        return {'FINISHED'}
+
 class Connect(bpy.types.Operator):
     bl_idname = "b2rex.connect"
     bl_label = "Connect"
