@@ -104,8 +104,8 @@ class MeshImporter(oserializer.Serializer):
         cid = self.ReadChunk(reader)
         while not self.IsEOF(reader) and cid in SubMeshCids:
             if cid == MeshChunkID.SubMeshOperation:
-                sys.stderr.write("o")
-                sys.stderr.flush()
+                #sys.stderr.write("o")
+                #sys.stderr.flush()
                 self.ReadShort(reader)
             elif cid == MeshChunkID.SubMeshBoneAssignment:
                 self.ReadInt(reader)
@@ -126,16 +126,16 @@ class MeshImporter(oserializer.Serializer):
         submeshes = []
         while cid in MeshCids and not self.IsEOF(reader):
             if cid == MeshChunkID.SubMesh:
-                sys.stderr.write("s")
+                #sys.stderr.write("s")
                 submeshes.append(self.ReadSubMesh(reader))
             elif cid == MeshChunkID.Geometry:
-                sys.stderr.write("g")
+                #sys.stderr.write("g")
                 vertex, vbuffer = self.ReadGeometry(reader)
                 self.vertex = vertex
                 self.vbuffer = vbuffer
             else:
                 #print("unhandled chunk", cid)
-                sys.stderr.write("i")
+                #sys.stderr.write("i")
                 self.IgnoreCurrentChunk(reader)
             cid = self.ReadChunk(reader)
         if not self.IsEOF(reader):
@@ -166,10 +166,7 @@ class MeshImporter(oserializer.Serializer):
                         #print "incorrect cid", cid
         else:
             #raise Exception("no header found")
-            logger.debug("no header found")
-            f = open("/tmp/noheader.txt","a")
-            f.write(data+"\n-------------------\n")
-            f.close()
+            pass
         if meshes:
             return meshes[0]
        

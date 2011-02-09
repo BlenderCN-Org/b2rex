@@ -2,6 +2,7 @@ import sys
 import time
 import uuid
 import traceback
+import threading
 import base64
 from collections import defaultdict
 
@@ -54,6 +55,8 @@ logger = logging.getLogger('b2rex.baseapp')
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.command_queue = []
+        self.wanted_workers = 1
+        self.pool = ThreadPool(1)
         self.selected = set()
         self.agent_id = ""
         self.loglevel = "standard"
@@ -63,7 +66,6 @@ class BaseApplication(Importer, Exporter):
         self.status = "b2rex started"
         self.selected = {}
         self.sim_selection = set()
-        self.pool = ThreadPool(1)
         self.connected = False
         self.positions = {}
         self.rotations = {}
@@ -440,19 +442,20 @@ class BaseApplication(Importer, Exporter):
             self.pool.poll()
         except NoResultsPending:
             pass
-        if len(self.pool.workers) != self.exportSettings.pool_workers:
-            current_workers = len(self.pool.workers)
+        if self.wanted_workers != self.exportSettings.pool_workers:
+            current_workers = self.wanted_workers
             wanted_workers = self.exportSettings.pool_workers
             if current_workers < wanted_workers:
                 self.pool.createWorkers(wanted_workers-current_workers)
             else:
                 self.pool.dismissWorkers(current_workers-wanted_workers)
-            pass
+            self.wanted_workers = self.exportSettings.pool_workers
         self.checkUuidConsistency(self.getSelected())
         cmds = self.command_queue + self.simrt.getQueue()
         budget = self.exportSettings.rt_budget/1000.0
         starttime = time.time()
         self.command_queue = []
+        processed = 0
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
@@ -460,7 +463,12 @@ class BaseApplication(Importer, Exporter):
                     self.command_queue.append(cmd)
                 else:
                     self.processCommand(*cmd)
+                    processed += 1
         self.stats[5] = len(self.command_queue)
+        self.stats[6] = processed
+        self.stats[7] = threading.activeCount()-1
+        if len(self.command_queue):
+            self.queueRedraw()
 
     def checkUuidConsistency(self, selected):
         # look for duplicates

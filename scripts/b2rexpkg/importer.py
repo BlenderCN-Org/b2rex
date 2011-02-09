@@ -194,9 +194,9 @@ class Importer25(object):
                     blender_tface.use_image = True
 
         if not len(new_mesh.faces):
-            logger.debug("mesh with no faces!!")
-        sys.stderr.write("*")
-        sys.stderr.flush()
+            logger.warning("mesh with no faces!!")
+        #sys.stderr.write("*")
+        #sys.stderr.flush()
         return new_mesh
 
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
@@ -311,9 +311,9 @@ class Importer24(object):
                            mathutils.Vector(uv2),
                            mathutils.Vector(uv3))
         if not len(new_mesh.faces):
-            logger.debug("mesh with no faces!!")
-        sys.stderr.write("*")
-        sys.stderr.flush()
+            logger.warning("mesh with no faces!!")
+        #sys.stderr.write("*")
+        #sys.stderr.flush()
         return new_mesh
 
     def create_texture(self, name, filename):
