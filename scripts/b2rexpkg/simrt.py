@@ -610,6 +610,14 @@ class BlenderAgent(object):
                     pos = cmd[2]
                     rot = cmd[3]
                     self.sendPositionUpdate(obj, pos, rot)
+            elif cmd[0] == "updatepermissions":
+                obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                if obj:
+                    mask = cmd[2]
+                    val = cmd[3]
+                    self.updatePermissions(obj, mask, val)
+              
+                
 
     def sendPositionUpdate(self, obj, pos, rot):
         cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
@@ -638,6 +646,15 @@ class BlenderAgent(object):
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
+    def updatePermissions(self, obj, mask, val):
+        
+        if self.verbose:
+            print("updatePermissions:", obj, mask, val)
+
+        client = self.client
+        obj.update_object_permissions(client, 0x08, val, mask)
+
+
     def initialize_logger(self):
         self.logger = logging.getLogger("b2rex.simrt")
 

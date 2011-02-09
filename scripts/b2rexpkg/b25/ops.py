@@ -140,7 +140,7 @@ class SetMaskOn(bpy.types.Operator):
     mask = bpy.props.IntProperty(name="Mask")
     def execute(self, context):
         for obj in context.selected_objects:
-            obj.opensim.EveryoneMask -= self.mask
+            bpy.b2rex_session.simrt.addCmd(['updatepermissions', obj.opensim.uuid, self.mask, 1])
         
         return {'FINISHED'}
         
@@ -151,7 +151,7 @@ class SetMaskOff(bpy.types.Operator):
 
     def execute(self, context):
         for obj in context.selected_objects:
-            obj.opensim.EveryoneMask += self.mask
+            bpy.b2rex_session.simrt.addCmd(['updatepermissions', obj.opensim.uuid, self.mask, 0])
  
         return {'FINISHED'}
    
