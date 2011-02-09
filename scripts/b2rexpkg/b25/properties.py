@@ -16,18 +16,8 @@ class B2RexBaseProps(bpy.types.IDPropertyGroup):
 
 class B2RexObjectProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
+    everyonemask_expand = BoolProperty(name='everyonemask_expand', default=False)
 
-mask_targets = ["EveryoneMask"]
-mask_props = ["Transfer","Modify","Copy","Move","Damage","All"]
-
-for m_target in mask_targets:
-    prop_expand = m_target+"_expand"
-    prop_type = BoolProperty(name=prop_expand)
-    setattr(B2RexObjectProps, prop_expand, prop_type)
-    for m_prop in mask_props:
-        mask = m_target+"_"+m_prop
-        prop_type = BoolProperty(name=mask)
-        setattr(B2RexObjectProps, mask, prop_type)
 
 class B2RexMeshProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
