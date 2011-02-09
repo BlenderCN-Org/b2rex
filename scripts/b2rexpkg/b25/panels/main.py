@@ -62,11 +62,6 @@ class ConnectionPanel(bpy.types.Panel):
         row = layout.row()
         row = box.row() 
         row.label(text="Status: "+session.status)
-        if session.simrt:
-            if session.agent_id:
-                row = box.row() 
-                row.label(text="agent: "+session.agent_id+" "+session.agent_access)
-
 
 
         if len(props.regions):
@@ -115,12 +110,19 @@ class ConnectionPanel(bpy.types.Panel):
         if not props.show_stats:
             row.prop(props,"show_stats", icon="TRIA_DOWN", text="Stats", emboss=False)
             box = layout.box()
-            row = box.row() 
+            if session.simrt:
+                if session.agent_id:
+                    row = box.row()
+                    row.label(text="agent: "+session.agent_id+" "+session.agent_access)
+
+            row = box.row()
             row.label(text="cmds in: %d out: %d updates: %d"%tuple(session.stats[:3]))
             row = box.row() 
-            row.label(text="http req: %d ok: %d"%tuple(session.stats[3:5]))
+            row.label(text="http requests: %d ok: %d"%tuple(session.stats[3:5]))
             row = box.row() 
-            row.label(text="queue pending: %d last: %d workers: %d"%tuple(session.stats[5:8]))
+            row.label(text="queue pending: %d last time: %d"%tuple(session.stats[5:7]))
+            row = box.row() 
+            row.label(text="threads workers: "+str(session.stats[7]))
             row = box.row() 
             row.label(text="updates cmd: %d view: %d"%tuple(session.stats[8:10]))
         else:
