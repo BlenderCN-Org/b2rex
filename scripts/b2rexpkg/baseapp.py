@@ -77,12 +77,32 @@ class BaseApplication(Importer, Exporter):
         self.buttons = {}
         self.settings_visible = False
         self._requested_urls = []
+        self.initializeCommands()
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
         #self.pool.addRequest(self.start_thread, range(100), self.print_thread,
         #                 self.error_thread)
 
+    def registerCommand(self, cmd, callback):
+        self._cmd_matrix[cmd] = callback
+
+    def initializeCommands(self):
+        self._cmd_matrix = {}
+        self.registerCommand('pos', self.processPosCommand)
+        self.registerCommand('rot', self.processRotCommand)
+        self.registerCommand('scale', self.processScaleCommand)
+        self.registerCommand('delete', self.processDeleteCommand)
+        self.registerCommand('msg', self.processMsgCommand)
+        self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
+        self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
+        self.registerCommand('connected', self.processConnectedCommand)
+        self.registerCommand('meshcreated', self.processMeshCreated)
+        self.registerCommand('capabilities', self.processCapabilities)
+
+    def processConnectedCommand(self, agent_id, agent_access):
+        self.agent_id = agent_id
+        self.agent_access = agent_access
 
     def default_error_db(self, request, error):
         logger.error("error downloading "+str(request)+": "+str(error))
@@ -186,27 +206,8 @@ class BaseApplication(Importer, Exporter):
 
     def processCommand(self, cmd, *args):
         self.stats[0] += 1
-        if cmd == 'pos':
-            self.processPosCommand(*args)
-        elif cmd == 'rot':
-            self.processRotCommand(*args)
-        elif cmd == 'scale':
-            self.processScaleCommand(*args)
-        elif cmd == 'delete':
-            self.processDeleteCommand(*args)
-        elif cmd == 'msg':
-            self.processMsgCommand(*args)
-        elif cmd == 'RexPrimData':
-            self.processRexPrimDataCommand(*args)
-        elif cmd == 'ObjectProperties':
-            self.processObjectPropertiesCommand(*args)
-        elif cmd == 'connected':
-            self.agent_id = args[0]
-            self.agent_access = args[1]
-        elif cmd == 'meshcreated':
-            self.processMeshCreated(*args)
-        elif cmd == 'capabilities':
-            self.processCapabilities(*args)
+        if cmd in self._cmd_matrix:
+            self._cmd_matrix[cmd](*args)
 
     def processCapabilities(self, caps):
         self.caps = caps
@@ -453,10 +454,10 @@ class BaseApplication(Importer, Exporter):
         self.checkUuidConsistency(self.getSelected())
         cmds = self.command_queue + self.simrt.getQueue()
         budget = self.exportSettings.rt_budget/1000.0
-        starttime = time.time()
         self.command_queue = []
         processed = 0
         self.stats[8] += 1
+        starttime = time.time()
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
@@ -466,7 +467,7 @@ class BaseApplication(Importer, Exporter):
                     self.processCommand(*cmd)
                     processed += 1
         self.stats[5] = len(self.command_queue)
-        self.stats[6] = processed
+        self.stats[6] = (time.time() - starttime)*1000 # processed
         self.stats[7] = threading.activeCount()-1
         if len(self.command_queue):
             self.queueRedraw()
