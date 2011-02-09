@@ -53,6 +53,7 @@ logger = logging.getLogger('b2rex.baseapp')
 
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
+        self.command_queue = []
         self.selected = set()
         self.agent_id = ""
         self.loglevel = "standard"
@@ -62,7 +63,7 @@ class BaseApplication(Importer, Exporter):
         self.status = "b2rex started"
         self.selected = {}
         self.sim_selection = set()
-        self.pool = ThreadPool(10)
+        self.pool = ThreadPool(1)
         self.connected = False
         self.positions = {}
         self.rotations = {}
@@ -73,6 +74,7 @@ class BaseApplication(Importer, Exporter):
         self.gridinfo = GridInfo()
         self.buttons = {}
         self.settings_visible = False
+        self._requested_urls = []
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
@@ -83,7 +85,10 @@ class BaseApplication(Importer, Exporter):
     def default_error_db(self, request, error):
         logger.error("error downloading "+str(request)+": "+str(error))
 
-    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None):
+    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, main=None):
+        if http_url in self._requested_urls:
+            return
+        self._requested_urls.append(http_url)
         if not error_cb:
             _error_cb = self.default_error_db
         else:
@@ -91,9 +96,12 @@ class BaseApplication(Importer, Exporter):
                 error_cb(result)
         def _cb(request, result):
             cb(result, *cb_pars)
-        self.pool.addRequest(self.doDownload, [http_url], _cb, _error_cb)
+        if not main:
+            main = self.doDownload
+        self.pool.addRequest(main, [[http_url, cb_pars]], _cb, _error_cb)
 
-    def doDownload(self, http_url):
+    def doDownload(self, pars):
+        http_url, pars = pars
         req = urllib2.urlopen(http_url)
         return req.read()
 
@@ -122,7 +130,7 @@ class BaseApplication(Importer, Exporter):
         self._sim_port = coninfo['sim_port']
         self._sim_ip = coninfo['sim_ip']
         self._sim_url = 'http://'+str(self._sim_ip)+':'+str(self._sim_port)
-        print("reconnect to", self._sim_url)
+        logger.info("reconnect to " + self._sim_url)
         self.gridinfo.connect('http://'+str(self._sim_ip)+':'+str(9000), username, password)
         self.sim.connect(self._sim_url)
 
@@ -148,7 +156,7 @@ class BaseApplication(Importer, Exporter):
         if eventlet_present:
             self.addRtCheckBox()
         else:
-            logger.debug("no support for real time communications")
+            logger.warning("no support for real time communications")
 
         self.connected = True
         self.addStatus("Connected to " + self.griddata['gridnick'])
@@ -196,7 +204,6 @@ class BaseApplication(Importer, Exporter):
         elif cmd == 'meshcreated':
             self.processMeshCreated(*args)
         elif cmd == 'capabilities':
-            print(cmd, args)
             self.processCapabilities(*args)
 
     def processCapabilities(self, caps):
@@ -262,7 +269,10 @@ class BaseApplication(Importer, Exporter):
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
                     mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
-                    self.addDownload(mesh_url, self.meshArrived, (objId, meshId))
+                    self.addDownload(mesh_url,
+                                     self.meshArrived, 
+                                     (objId, meshId),
+                                     main=self.doMeshDownloadTranscode)
                 else:
                     print("unhandled rexdata of type", asset_type)
 
@@ -277,15 +287,16 @@ class BaseApplication(Importer, Exporter):
         pass
 
     def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
-        if not assetType == AssetType.OgreMaterial:
-            print("MaterialArrived", matId, data, assetType)
+        if assetType == AssetType.OgreMaterial:
+            self.parse_material(matId, {"name":matId, "data":data}, meshId,
+                                matIdx)
 
-    def meshArrived(self, data, objId, meshId):
+    def meshArrived(self, mesh, objId, meshId):
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
             return
-        new_mesh = self.create_mesh_frombinary(meshId, "opensim", data)
+        new_mesh = self.create_mesh_fromomesh(meshId, "opensim", mesh)
         if new_mesh:
             self.createObjectWithMesh(new_mesh, objId, meshId)
 
@@ -346,7 +357,6 @@ class BaseApplication(Importer, Exporter):
         obj_uuid = obj.opensim.uuid
         mesh_name = mesh.name
         mesh_uuid = mesh.opensim.uuid
-        print("finishing upload for", obj_uuid, mesh_uuid)
         pos, rot, scale = self.getObjectProperties(obj)
         
         self.simrt.addCmd(['create', obj_name, obj_uuid, mesh_name, mesh_uuid,
@@ -430,12 +440,27 @@ class BaseApplication(Importer, Exporter):
             self.pool.poll()
         except NoResultsPending:
             pass
+        if len(self.pool.workers) != self.exportSettings.pool_workers:
+            current_workers = len(self.pool.workers)
+            wanted_workers = self.exportSettings.pool_workers
+            if current_workers < wanted_workers:
+                self.pool.createWorkers(wanted_workers-current_workers)
+            else:
+                self.pool.dismissWorkers(current_workers-wanted_workers)
+            pass
         self.checkUuidConsistency(self.getSelected())
-        cmds = self.simrt.getQueue()
+        cmds = self.command_queue + self.simrt.getQueue()
+        budget = self.exportSettings.rt_budget/1000.0
+        starttime = time.time()
+        self.command_queue = []
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:
-                self.processCommand(*cmd)
+                if time.time()-starttime > budget:
+                    self.command_queue.append(cmd)
+                else:
+                    self.processCommand(*cmd)
+        self.stats[5] = len(self.command_queue)
 
     def checkUuidConsistency(self, selected):
         # look for duplicates

@@ -29,7 +29,7 @@ class OgreMaterial(object):
         for line in material_data.split(b"\n"):
             line = line.strip()
             if line.startswith(b"material"):
-                self.name = line.split()[1]
+                self.name = line.split()[1].decode('latin1')
             elif line.startswith(b"ambient "):
                 self.ambient = list(map(lambda s: float(s), line.split()[1:]))
             elif line.startswith(b"specular "):
@@ -45,11 +45,11 @@ class OgreMaterial(object):
                 if cull_software == b"none":
                     self.two_side = True
             elif line.startswith(b"vertex_program_ref"):
-                self.vertex_program = line.split()[1]
+                self.vertex_program = line.split()[1].decode('latin1')
             elif line.startswith(b"fragment_program_ref"):
-                self.fragment_program = line.split()[1]
+                self.fragment_program = line.split()[1].decode('latin1')
             elif line.startswith(b"texture_unit"):
-                currlayer = line.split()[1]
+                currlayer = line.split()[1].decode('latin1')
                 if b"baseMap" in line:
                     basemap = True
                 else:
@@ -60,7 +60,7 @@ class OgreMaterial(object):
                 if len(split_line) == 2:
                     tex = split_line[1].strip()
                     self.textures.append(tex)
-                    self.layers[currlayer] = tex
+                    self.layers[currlayer] = tex.decode('latin1')
                 basemap = False
 
 
