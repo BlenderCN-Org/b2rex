@@ -647,7 +647,7 @@ class Importer(ImporterBase):
             logger.debug("("+asset["type"]+")")
             return
         mesh = self.create_mesh_frombinary(scenegroup["asset"], asset["name"], asset["data"])
-        return self.create_mesh_fromomesh(meshId, meshName, mesh)
+        return self.create_mesh_fromomesh(scenegroup["asset"], asset["name"], mesh)
 
     def doMeshDownloadTranscode(self, pars):
         http_url, pars = pars
@@ -664,7 +664,7 @@ class Importer(ImporterBase):
 
     def create_mesh_fromomesh(self, meshId, meshName, mesh):
         if not mesh:
-            logger.debug("error loading",meshId)
+            logger.error("error loading",meshId)
             return
         is_new = False
         try:
