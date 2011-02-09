@@ -83,9 +83,6 @@ class BaseApplication(Importer, Exporter):
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
-        #self.pool.addRequest(self.start_thread, range(100), self.print_thread,
-        #                 self.error_thread)
-
     def registerCommand(self, cmd, callback):
         self._cmd_matrix[cmd] = callback
 
@@ -101,6 +98,9 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
+        # internal
+        self.registerCommand('mesharrived', self.processMeshArrived)
+        self.registerCommand('materialarrived', self.processMaterialArrived)
 
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id
@@ -128,15 +128,6 @@ class BaseApplication(Importer, Exporter):
         http_url, pars = pars
         req = urllib2.urlopen(http_url)
         return req.read()
-
-    def start_thread(self, bla):
-        time.sleep(10)
-
-    def print_thread(self, request, result):
-        print(result)
-
-    def error_thread(self, request, error):
-        print(error)
 
     def addStatus(self, text, priority=0):
         pass
@@ -292,11 +283,18 @@ class BaseApplication(Importer, Exporter):
         pass
 
     def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        self.command_queue.append(["materialarrived", data, objId, meshId,
+                                      matId, assetType, matIdx])
+
+    def processMaterialArrived(self, data, objId, meshId, matId, assetType, matIdx):
         if assetType == AssetType.OgreMaterial:
             self.parse_material(matId, {"name":matId, "data":data}, meshId,
                                 matIdx)
 
     def meshArrived(self, mesh, objId, meshId):
+        self.command_queue.append(["mesharrived", mesh, objId, meshId])
+
+    def processMeshArrived(self, mesh, objId, meshId):
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
