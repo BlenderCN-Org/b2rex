@@ -66,14 +66,7 @@ class ConnectionPanel(bpy.types.Panel):
             if session.agent_id:
                 row = box.row() 
                 row.label(text="agent: "+session.agent_id+" "+session.agent_access)
-            row = box.row() 
-            row.label(text="cmds in: %d out: %d updates: %d"%tuple(session.stats[:3]))
-            row = box.row() 
-            row.label(text="http req: %d ok: %d"%tuple(session.stats[3:5]))
-            row = box.row() 
-            row.label(text="queue pending: %d last: %d workers: %d"%tuple(session.stats[5:8]))
-            row = box.row() 
-            row.label(text="updates cmd: %d view: %d"%tuple(session.stats[8:10]))
+
 
 
         if len(props.regions):
@@ -113,9 +106,31 @@ class ConnectionPanel(bpy.types.Panel):
             row.label(text=k)
             row = layout.row()
 
+        self.draw_stats(layout, session, props)
+        self.draw_settings(layout, session, props)
+
+
+    def draw_stats(self, layout, session, props):
+        row = layout.row() 
+        if not props.show_stats:
+            row.prop(props,"show_stats", icon="TRIA_DOWN", text="Stats", emboss=False)
+            box = layout.box()
+            row = box.row() 
+            row.label(text="cmds in: %d out: %d updates: %d"%tuple(session.stats[:3]))
+            row = box.row() 
+            row.label(text="http req: %d ok: %d"%tuple(session.stats[3:5]))
+            row = box.row() 
+            row.label(text="queue pending: %d last: %d workers: %d"%tuple(session.stats[5:8]))
+            row = box.row() 
+            row.label(text="updates cmd: %d view: %d"%tuple(session.stats[8:10]))
+        else:
+            row.prop(props,"show_stats", icon="TRIA_RIGHT", text="Stats", emboss=False)
+
+
+    def draw_settings(self, layout, session, props):
         box = layout.row()
         row = layout.row()
-        if not bpy.context.scene.b2rex_props.expand:
+        if not props.expand:
             row.prop(props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
             for prop in ["pack", "path", "server_url", "username", "password",
                          "loc"]:
@@ -143,4 +158,4 @@ class ConnectionPanel(bpy.types.Panel):
             box = layout.row()
             box.prop(props, "pool_workers")
         else:
-            row.prop(bpy.context.scene.b2rex_props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)
+            row.prop(props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)

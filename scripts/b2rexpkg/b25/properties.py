@@ -70,6 +70,8 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
     expand = BoolProperty(default=True,
                           description="Expand, to display settings")
+    show_stats = BoolProperty(default=False,
+                          description="Expand, to display stats")
     selected_region = IntProperty(default=-1, description="Expand, to display")
     regions = CollectionProperty(type=B2RexRegions,
                                  name='Regions',
