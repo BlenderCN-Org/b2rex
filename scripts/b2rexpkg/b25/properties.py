@@ -4,6 +4,8 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty
 
+import logging
+
 class B2RexRegions(bpy.types.IDPropertyGroup):
     pass
 class B2RexChatLine(bpy.types.IDPropertyGroup):
@@ -37,6 +39,9 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     password = StringProperty(name='password',
                               default='nemesis',
                               description='')
+    loglevel = IntProperty(name='loglevel',
+                           default=logging.ERROR,
+                          description='log level')
     server_url = StringProperty(name='server url',
                                 default='http://delirium:9000',
                                 description='')

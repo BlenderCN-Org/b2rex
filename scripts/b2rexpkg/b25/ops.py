@@ -35,8 +35,7 @@ class SetLogLevel(bpy.types.Operator):
     def execute(self, context):
         if not self.level:
             self.level = logging.ERROR
-        session = bpy.b2rex_session
-        session.loglevel = self.level
+        context.scene.b2rex_props.loglevel = int(self.level)
         logging.getLogger('root').setLevel(int(self.level))
         for logger in logging.getLogger('root').manager.loggerDict.values():
             logger.setLevel(int(self.level))
