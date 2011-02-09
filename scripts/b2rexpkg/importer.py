@@ -18,6 +18,7 @@ if sys.version_info[0] == 2:
     import urllib2
     import Blender
     from urllib2 import HTTPError, URLError
+    from urllib import urlretrieve
     from Blender import Mathutils as mathutils
     bversion = 2
     def bytes(text):
@@ -25,6 +26,7 @@ if sys.version_info[0] == 2:
 else:
     import http.client as httplib
     import urllib.request as urllib2
+    from urllib.request import urlretrieve
     from urllib.error import HTTPError, URLError
     import mathutils
     bversion = 3
@@ -445,14 +447,18 @@ class Importer(ImporterBase):
         http_url, pars = pars
         assetName = pars[0] # we dont get the name here
         assetId = pars[0]
-        req = urllib2.urlopen(http_url)
-        data = req.read()
-        return self.decode_texture(assetId, assetName, data)
+        origin = "/tmp/"+assetId+".1.jpg"
+        urlretrieve(http_url, origin)
+        return self.decode_texture_fromfile(assetId, assetName, origin)
 
     def decode_texture(self, textureId, textureName, data):
         f = open("/tmp/"+textureId+".1.jpg", "wb")
         f.write(data)
         f.close()
+        self.decode_texture_fromfile(self, textureId, textureName,
+                                     "/tmp/"+textureId+".1.jpg")
+
+    def decode_texture_fromfile(self, textureId, textureName, origin):
         split_name = textureName.split("/")
         if len(split_name) > 2:
             textureName = split_name[2]
@@ -461,7 +467,7 @@ class Importer(ImporterBase):
             dest = dest + ".png"
         try:
             subprocess.call(["convert",
-                              "/tmp/"+textureId+".1.jpg",
+                              origin,
                               dest])
             return dest
         except:
