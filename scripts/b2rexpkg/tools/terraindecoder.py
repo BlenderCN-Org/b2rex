@@ -4,8 +4,6 @@ import math
 import struct
 import traceback
 
-from bitstring import ConstBitStream
-
 class BitReader(object):
     _num_bits_in_elem = 8
     def __init__(self, data):
