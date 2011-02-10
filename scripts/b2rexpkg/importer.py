@@ -109,22 +109,22 @@ class Importer25(object):
             logger.debug("mesh with no vertex!!")
         start_face = len(new_mesh.faces)
         # faces
+        new_mesh.faces.add(int(len(indices)/3))
         for idx in range(int(len(indices)/3)):
-            idx = idx*3
+            f_idx = idx*3
             #new_mesh.vertexUV = False
             #face = [new_mesh.verts[indices_map[indices[idx]]],
             #                    new_mesh.verts[indices_map[indices[idx+1]]],
             #                    new_mesh.verts[indices_map[indices[idx+2]]]]
-            face = [indices_map[indices[idx]],
-                                indices_map[indices[idx+1]],
-                                indices_map[indices[idx+2]]]
-            new_mesh.faces.add(1)
-            new_mesh.faces[len(new_mesh.faces)-1].vertices = face
+            face = [indices_map[indices[f_idx]],
+                                indices_map[indices[f_idx+1]],
+                                indices_map[indices[f_idx+2]]]
+            new_mesh.faces[idx+start_face].vertices = face
             #new_mesh.faces.extend(face, ignoreDups=True)
-            if len(new_mesh.faces) == 0:
-                logger.debug("Degenerate face!")
-                continue
-            face = new_mesh.faces[len(new_mesh.faces)-1]
+            #if len(new_mesh.faces) == 0:
+                #    logger.debug("Degenerate face!")
+                #continue
+                #face = new_mesh.faces[len(new_mesh.faces)-1]
 
             continue
             try:
@@ -717,7 +717,7 @@ class Importer(ImporterBase):
             scene.objects.link(obj)
         except RuntimeError:
             pass # object already in scene
-        new_mesh.update()
+        #new_mesh.update()
         #obj.makeDisplayList()
         #new_mesh.hasVertexColours(True) # for now we create them as blender does
 

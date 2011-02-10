@@ -103,6 +103,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
+        self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
@@ -113,8 +114,13 @@ class BaseApplication(Importer, Exporter):
         for header, layer in terrpackets:
             self.terrain.apply_patch(layer, header.x, header.y)
 
+    def processInventorySkeleton(self, inventory):
+        self.inventory = inventory
+        for inv in inventory:
+            print(inv['parent_id'])
+
     def processCoarseLocationUpdate(self, agent_id, pos):
-        print("COARSE LOCATION UPDATE", agent_id, pos)       
+        print("COARSE LOCATION UPDATE", agent_id, pos)
 
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id

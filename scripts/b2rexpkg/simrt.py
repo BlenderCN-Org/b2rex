@@ -192,7 +192,6 @@ class BlenderAgent(object):
         #stride = struct.unpack("<H", data[0:2])[0]
         #patchSize = struct.unpack("<B", data[2])[0]
         layerType = struct.unpack("<B", data[3])[0]
-        print("LAYERDATA", layerType)
         if layerType == LayerTypes.LayerLand or True:
             #patches = self.decompressLand(stride, patchSize, data) # tricky
             #print(patches)
@@ -575,7 +574,9 @@ class BlenderAgent(object):
         # inform our client of connection success
         out_queue.put(["connected", str(client.agent_id),
                              str(client.agent_access)])
-
+        # send inventory skeleton
+        if hasattr(self.client, 'login_response') and 'inventory-skeleton' in self.client.login_response:
+            out_queue.put(["InventorySkeleton",  self.client.login_response['inventory-skeleton']])
         # main loop for the agent
         selected = set()
         while client.running == True:
