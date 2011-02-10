@@ -6,6 +6,8 @@ import threading
 import base64
 from collections import defaultdict
 
+from .terrainsync import TerrainSync
+
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 
@@ -155,6 +157,7 @@ class BaseApplication(Importer, Exporter):
         """
         Connect Action
         """
+        self.terrain = TerrainSync(self)
         base_url = self.exportSettings.server_url
         self.addStatus("Connecting to " + base_url, IMMEDIATE)
         self.connect(base_url, self.exportSettings.username,
