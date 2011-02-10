@@ -292,12 +292,29 @@ def checkbitreader():
     assert(bits.len == 32*4+16+16)
     assert(bits.pos == bits.len)
 
+def drawlayer(layerdata, n, im):
+    maxfound = 0
+    header = layerdata[0]
+    off_x = (header.y)*16
+    off_y = (header.x)*16
+    for j in range(16):
+        for i in range(16):
+            val = layerdata[1][(i*16)+j]
+            if val > maxfound:
+                maxfound = val
+            val = ((val + 10.0)/40.0)*255
+            val = int(min(max(0, val), 255))
+            im.putpixel((i+(off_x), j+(off_y)), val)
+    return maxfound
+
 if __name__ == "__main__":
+from PIL import Image
     b = os.path.dirname
     scriptdir = os.path.realpath(__file__)
     checkbitreader()
     layerfolder = os.path.join(b(b(b(b(scriptdir)))), "test", "layers")
     totalblocks = 0
+    im = Image.new("L", (16*16, 16*16))
     for layer_file in os.listdir(layerfolder):
         #if not layer_file == "0.layer":
             #        continue
@@ -307,5 +324,8 @@ if __name__ == "__main__":
         f.close()
         res = TerrainDecoder.decode(data)
         print("RESULT", len(res))
-        totalblocks += len(res)
+        for layer in res:
+            totalblocks += 1
+            print("MAXFOUND",drawlayer(layer, totalblocks, im))
+    im.save("/tmp/terrain/all.png")
     print("TOTAL", totalblocks)
