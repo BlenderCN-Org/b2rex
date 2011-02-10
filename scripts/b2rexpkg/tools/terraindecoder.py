@@ -114,85 +114,73 @@ class IDCTPrecomputationTables(object):
 precompTables = IDCTPrecomputationTables(16)
 
 class PatchHeader(object):
-    def __init__(self, patchSize, data=None, rawdata=None):
+    def __init__(self, patchSize, data=None):
         self.patchSize = patchSize
         if data:
-            self.decode(data, rawdata)
-    def decode(self, data, rawdata):
+            self.decode(data)
+    def decode(self, data):
         self.quantWBits = data.read("uintle:8")
         if self.quantWBits == cEndOfPatches:
             return
         self.dcOffset = data.read("floatle:32")
         self.range = data.read("uintle:16")
-        #uintpos = data.pos
-        #x = data.read("uint:5")
-        #y = data.read("uint:5")
-        #data.seek(uintpos)
+
         patchIDs = data.read("uint:10")
-        x = patchIDs >> 5
-        y = patchIDs & 31
-        #patchIDs = struct.unpack("<H", struct.pack(">H", patchIDs))[0]
-        x2 = patchIDs >> 5
-        y2 = patchIDs & 31
-        #print("LAND", bin(x), bin(y), bin(x2), bin(y2))
+        self.x = patchIDs >> 5
+        self.y = patchIDs & 31
         self.wordBits = (self.quantWBits & 0x0f) + 2
-        #print("Block", self.dcOffset, self.range, "x", x,
-        #      "y", y, self.wordBits, data.pos)
-        self.x = x
-        self.y = y
 
 class TerrainDecoder(object):
     def __init__(self, data, stride=None, patchSize=None):
         self.patches = []
-        #print(data,data[2])
         if not stride and not patchSize:
             stride = struct.unpack("<H", data[0:2])[0]
             patchSize = struct.unpack("<B", data[2:3])[0]
             layerType = struct.unpack("<B", data[3:4])[0]
             data = data[4:]
-            #print("stride",stride,"patchSize" ,patchSize,"layerType", layerType,
-            #     len(data), len(data)*8)
         self.decompressLand(data, stride, patchSize, layerType)
+
     @staticmethod
     def decode(data, stride=None, patchSize=None):
         decoder = TerrainDecoder(data, stride, patchSize)
         return decoder.getPatches()
+
     def getPatches(self):
         return self.patches
+
     def decodeTerrainPatch(self, header, data, size):
         patchdata = list(range(size*size))
         for i in range(size*size):
             if data.len - data.pos <= 0:
-                #print("out of bits when decoding terrain vertex")
                 while i < size*size:
                     patchdata[i] = 0
                     i+=1
                 return patchdata
-            v = data.read("bool")
-            if not v:
+
+            if not data.ReadBit():
                 patchdata[i] = 0
                 continue
-            v = data.read("bool")
-            if not v:
+
+            if not data.ReadBit():
                 while i < size*size:
                     patchdata[i] = 0
                     i+=1
                 return patchdata
-            signNegative = data.read("bool")
+            signNegative = data.ReadBit()
             dataval = data.read("uint:"+str(header.wordBits))
             if signNegative:
                 patchdata[i] = -dataval
             else:
                 patchdata[i] = dataval
-            i += 1
         return patchdata
+
     def decompressTerrainPatch(self, header, data):
         prequant = (header.quantWBits >> 4) +2
         quantize = 1 << prequant
         ooq = 1.0 / float(quantize)
         mult = ooq * float(header.range)
         addval = mult * float(1<<(prequant-1)) + header.dcOffset
-        #print("mult",mult,"addval",addval,"prequant",prequant,ooq,quantize)
+
         block = []
         if not header.patchSize == 16:
             print("TerrainDecoder:DecompressTerrainPatch: Unsupported patch size   present!")
@@ -210,6 +198,7 @@ class TerrainDecoder(object):
         for j in range(len(block)):
             output.append((block[j] * mult) + addval)
         return output
+
     def IDCTColumn16(self, linein, lineout, column):
         total = 0.0
         cStride = 16
@@ -218,24 +207,23 @@ class TerrainDecoder(object):
             for u in range(1,16):
                 total += linein[u*cStride + column] * precompTables.cosineTable[u*cStride + n]
             lineout[16 * n + column] = total
+
     def IDCTLine16(self, linein, lineout, line):
         oosob = 2.0 / 16.0
         lineSize = line * 16
         total = 0.0
         for n in range(16):
             total = OO_SQRT2 * linein[lineSize]
-            for u in range(0, 16):
+            for u in range(1, 16):
                 total += linein[lineSize + u] * precompTables.cosineTable[u *16 +  n]
             lineout[lineSize+n] = total*oosob
 
     def decompressLand(self, rawdata, stride, patchSize, layerType):
-        #data = dec2bin(rawdata)
-        #data = ConstBitStream(bytes=rawdata, length=len(rawdata)*8)
         data = BitReader(rawdata)
         iter = 0
         while data.BitsLeft() > 0:
             try:
-                header = self.decodePatchHeader(data, patchSize, rawdata)
+                header = PatchHeader(patchSize, data)
             except:
                 traceback.print_exc()
                 print("LAND:DecompressLand: Invalid header data!",
@@ -253,13 +241,6 @@ class TerrainDecoder(object):
             patch = self.decompressTerrainPatch(header, patch)
             self.patches.append([header, patch])
             iter += 1
-            #print("next iter",data.pos)
-    def decodePatchHeader(self, data, patchSize, rawdata, header=None):
-        if header:
-            header.decode(data, rawdata)
-        else:
-            header = PatchHeader(patchSize, data, rawdata)
-        return header
 
 
 def checkbitreader():
