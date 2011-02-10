@@ -59,7 +59,7 @@ class BaseApplication(Importer, Exporter):
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
-        self.selected = set()
+        self.rawselected = set()
         self.agent_id = ""
         self.loglevel = "standard"
         self.agent_access = ""
@@ -442,11 +442,7 @@ class BaseApplication(Importer, Exporter):
             return obj_uuid
 
 
-    def processUpdates(self):
-        try:
-            self.pool.poll()
-        except NoResultsPending:
-            pass
+    def checkPool(self):
         # check thread pool size
         if self.wanted_workers != self.exportSettings.pool_workers:
             current_workers = self.wanted_workers
@@ -456,15 +452,29 @@ class BaseApplication(Importer, Exporter):
             else:
                 self.pool.dismissWorkers(current_workers-wanted_workers)
             self.wanted_workers = self.exportSettings.pool_workers
+
+    def processUpdates(self):
+        try:
+            self.pool.poll()
+        except NoResultsPending:
+            pass
+
         # check consistency
-        self.checkUuidConsistency(self.getSelected())
+        self.checkUuidConsistency(set(self.getSelected()))
+
+        # per second checks
+        if time.time() - self.second_start > 1:
+            self.checkPool()
+            self.second_budget = 0
+            self.second_start = time.time()
+
         # process command queue
+        self.processCommandQueue()
+
+    def processCommandQueue(self):
         cmds = self.command_queue + self.simrt.getQueue()
         budget = float(self.exportSettings.rt_budget)/1000.0
         second_budget = float(self.exportSettings.rt_sec_budget)/1000.0
-        if time.time() - self.second_start > 1:
-            self.second_budget = 0
-            self.second_start = time.time()
         self.command_queue = []
         currbudget = 0
         processed = 0
@@ -483,13 +493,15 @@ class BaseApplication(Importer, Exporter):
         self.stats[5] = len(self.command_queue)
         self.stats[6] = (currbudget)*1000 # processed
         self.stats[7] = threading.activeCount()-1
+
         # redraw if we have commands left
         if len(self.command_queue):
             self.queueRedraw()
 
     def checkUuidConsistency(self, selected):
         # look for duplicates
-        selected = set(self.getSelected())
+        if self.rawselected == selected:
+            return
         oldselected = self.selected
         newselected = {}
         isobjcopy = True
@@ -511,11 +523,12 @@ class BaseApplication(Importer, Exporter):
                     newselected[obj_uuid] = obj.as_pointer()
                     newselected[mesh_uuid] = obj.data.as_pointer()
         self.selected = newselected
+        self.rawselected = selected
 
     def processView(self):
         self.stats[9] += 1
-        t = time.time()
-        selected = self.getSelected()
+
+        selected = set(self.getSelected())
         all_selected = set()
         # look for changes in objects
         for obj in selected:
@@ -523,6 +536,7 @@ class BaseApplication(Importer, Exporter):
             if obj_id in self.selected and obj.as_pointer() == self.selected[obj_id]:
                 self.processUpdate(obj)
                 all_selected.add(obj_id)
+        # update selection
         if not all_selected == self.sim_selection:
             self.simrt.addCmd(["select"]+list(all_selected))
             self.sim_selection = all_selected
