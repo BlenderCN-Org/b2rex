@@ -20,6 +20,7 @@ class BitReader(object):
         cur_bit = 0
         total_bits = min(self._num_bits_in_elem, count)
         while count > 0:
+            count -= 1
             bit = self.ReadBit()
             if bit:
                 newval = data[cur_byte] | (1 << (total_bits - 1 - cur_bit))
@@ -29,7 +30,6 @@ class BitReader(object):
                 cur_byte += 1
                 cur_bit = 0
                 total_bits = min(self._num_bits_in_elem, count)
-            count -= 1
         return struct.pack("<BBBB", *data)
     def read(self, instructions):
         if instructions in ["bool"]:
@@ -133,7 +133,7 @@ class PatchHeader(object):
         patchIDs = data.read("uint:10")
         x = patchIDs >> 5
         y = patchIDs & 31
-        patchIDs = struct.unpack("<H", struct.pack(">H", patchIDs))[0]
+        #patchIDs = struct.unpack("<H", struct.pack(">H", patchIDs))[0]
         x2 = patchIDs >> 5
         y2 = patchIDs & 31
         print("LAND", bin(x), bin(y), bin(x2), bin(y2))
@@ -297,6 +297,7 @@ if __name__ == "__main__":
     scriptdir = os.path.realpath(__file__)
     checkbitreader()
     layerfolder = os.path.join(b(b(b(b(scriptdir)))), "test", "layers")
+    totalblocks = 0
     for layer_file in os.listdir(layerfolder):
         #if not layer_file == "0.layer":
             #        continue
@@ -305,4 +306,6 @@ if __name__ == "__main__":
         data = f.read()
         f.close()
         res = TerrainDecoder.decode(data)
-        print("RESULT", len(res), res)
+        print("RESULT", len(res))
+        totalblocks += len(res)
+    print("TOTAL", totalblocks)
