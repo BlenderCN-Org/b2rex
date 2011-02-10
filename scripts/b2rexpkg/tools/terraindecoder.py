@@ -4,6 +4,9 @@ import math
 import struct
 import traceback
 
+EndOfPatches = 97;
+OO_SQRT2 = 0.7071067811865475244008443621049
+
 class BitReader(object):
     _num_bits_in_elem = 8
     def __init__(self, data):
@@ -50,8 +53,6 @@ class BitReader(object):
         self.pos = self._bit_ofs + (self._elem_ofs*8)
         return bit
 
-cEndOfPatches = 97;
-OO_SQRT2 = 0.7071067811865475244008443621049
 class IDCTPrecomputationTables(object):
     def __init__(self, size):
         self.buildDequantizeTable(size)
@@ -110,6 +111,25 @@ class IDCTPrecomputationTables(object):
                     j+=1
                     if j == size-1 or i == 0:
                         diag = False
+    def IDCTColumn16(self, linein, lineout, column):
+        total = 0.0
+        cStride = 16
+        for n in range(16):
+            total = OO_SQRT2 * linein[column]
+            for u in range(1,16):
+                total += linein[u*cStride + column] * self.cosineTable[u*cStride + n]
+            lineout[16 * n + column] = total
+
+    def IDCTLine16(self, linein, lineout, line):
+        oosob = 2.0 / 16.0
+        lineSize = line * 16
+        total = 0.0
+        for n in range(16):
+            total = OO_SQRT2 * linein[lineSize]
+            for u in range(1, 16):
+                total += linein[lineSize + u] * self.cosineTable[u *16 +  n]
+            lineout[lineSize+n] = total*oosob
+
 
 precompTables = IDCTPrecomputationTables(16)
 
@@ -120,12 +140,12 @@ class PatchHeader(object):
             self.decode(data)
     def decode(self, data):
         self.quantWBits = data.read("uintle:8")
-        if self.quantWBits == cEndOfPatches:
+        if self.quantWBits == EndOfPatches:
             return
         self.dcOffset = data.read("floatle:32")
         self.range = data.read("uintle:16")
 
-        patchIDs = data.read("uint:10")
+        patchIDs = data.read("uintle:10")
         self.x = patchIDs >> 5
         self.y = patchIDs & 31
         self.wordBits = (self.quantWBits & 0x0f) + 2
@@ -191,35 +211,17 @@ class TerrainDecoder(object):
             block.append(val)
         tempblock = list(range(16*16))
         for o in range(16):
-            col = self.IDCTColumn16(block, tempblock, o)
+            col = precompTables.IDCTColumn16(block, tempblock, o)
         for o in range(16):
-            line = self.IDCTLine16(tempblock, block, o)
-        output = []
-        for j in range(len(block)):
-            output.append((block[j] * mult) + addval)
+            line = precompTables.IDCTLine16(tempblock, block, o)
+        output = tempblock
+        for j in range(256):
+            output[j] =  (block[j] * mult) + addval
         return output
-
-    def IDCTColumn16(self, linein, lineout, column):
-        total = 0.0
-        cStride = 16
-        for n in range(16):
-            total = OO_SQRT2 * linein[column]
-            for u in range(1,16):
-                total += linein[u*cStride + column] * precompTables.cosineTable[u*cStride + n]
-            lineout[16 * n + column] = total
-
-    def IDCTLine16(self, linein, lineout, line):
-        oosob = 2.0 / 16.0
-        lineSize = line * 16
-        total = 0.0
-        for n in range(16):
-            total = OO_SQRT2 * linein[lineSize]
-            for u in range(1, 16):
-                total += linein[lineSize + u] * precompTables.cosineTable[u *16 +  n]
-            lineout[lineSize+n] = total*oosob
 
     def decompressLand(self, rawdata, stride, patchSize, layerType):
         data = BitReader(rawdata)
+        cPatchesPerEdge = 16 # patchSize ?
         iter = 0
         while data.BitsLeft() > 0:
             try:
@@ -229,10 +231,9 @@ class TerrainDecoder(object):
                 print("LAND:DecompressLand: Invalid header data!",
                         data.BitsLeft(), layerType, patchSize, stride, iter)
                 return
-            if header.quantWBits == cEndOfPatches:
+            if header.quantWBits == EndOfPatches:
                 #print("LAND OK", len(self.patches))
                 return
-            cPatchesPerEdge = 16 # patchSize ?
             if header.x >= cPatchesPerEdge or header.y >= cPatchesPerEdge:
                 print("LAND:DecompressLand: Invalid patch data!",
                       data.BitsLeft(), layerType, iter)
