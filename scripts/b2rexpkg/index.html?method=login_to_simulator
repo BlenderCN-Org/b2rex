@@ -1,6 +1,0 @@
-
-//This is the slightly modified RPC-class of the BSD-licensed WiXTD webportal
-<?xml version='1.0' encoding='UTF-8'?>
-<elgg><status type="integer">-1</status>
-<message type="string">Missing parameter first in method login_to_simulator</message>
-</elgg>
