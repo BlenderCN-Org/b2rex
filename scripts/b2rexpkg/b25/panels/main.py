@@ -147,5 +147,7 @@ class ConnectionPanel(bpy.types.Panel):
             box.prop(props, "rt_sec_budget")
             box = layout.row()
             box.prop(props, "pool_workers")
+            box = layout.row()
+            box.prop(props, "terrainLOD")
         else:
             row.prop(props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)

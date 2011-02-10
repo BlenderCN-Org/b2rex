@@ -69,6 +69,8 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     regenTextures = BoolProperty(name="Regen Textures", default=False)
     kbytesPerSecond = IntProperty(name="Kbyte/s", default=100,
                                   description="kbytes per second to throttle the connection to")
+    terrainLOD = IntProperty(name="Terrain LOD", default=1, min=0, max=4,
+                                  description="terrain lod level, needs restart to take effect")
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)
     expand = BoolProperty(default=True,
                           description="Expand, to display settings")

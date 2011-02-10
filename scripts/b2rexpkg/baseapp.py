@@ -165,7 +165,7 @@ class BaseApplication(Importer, Exporter):
         """
         Connect Action
         """
-        self.terrain = TerrainSync(self)
+        self.terrain = TerrainSync(self, self.exportSettings.terrainLOD)
         base_url = self.exportSettings.server_url
         self.addStatus("Connecting to " + base_url, IMMEDIATE)
         self.connect(base_url, self.exportSettings.username,

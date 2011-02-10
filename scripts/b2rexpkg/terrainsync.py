@@ -2,8 +2,11 @@
 import bpy
 
 class TerrainSync(object):
-    def __init__(self, app):
+    lodlevels = [1,2,4,8,16]
+    def __init__(self, app, lod):
+        self.lod = lod
         self.app = app
+        self.nblocks = 16
         try:
             self.terrain = bpy.data.objects["terrain"]
         except:
@@ -11,11 +14,13 @@ class TerrainSync(object):
     def create_terrain(self):
         mesh = bpy.data.meshes.new("terrain")
         newobj = bpy.data.objects.new("terrain", mesh)
+        newobj.location = (0,0,-20)
 
-        f = 256.0/float(16*16)
 
-        layersize = 16*16
+        patchsize = int(16/self.lodlevels[self.lod])
+        layersize = patchsize*self.nblocks
         layersize_f = layersize-1
+        f = 256.0/float(layersize)
         off_x = 128.0
         off_y = 128.0
         mesh.vertices.add(layersize*layersize)
@@ -33,23 +38,20 @@ class TerrainSync(object):
                 mesh.faces[i + (j*layersize_f)].vertices_raw = face
 
         
-        """
-        for j in range(15*15*16):
-            for i in range(15*15*16):
-        """
         scene = self.app.get_current_scene()
         scene.objects.link(newobj)
-        #self.apply_patch(None, 10, 10)
 
     def apply_patch(self, data, x, y):
-        patchsize = 16
+        lod = self.lodlevels[self.lod]
+        fullpatchsize = 16
+        patchsize = int(fullpatchsize/lod)
         off_x = x*patchsize
         off_y = y*patchsize
-        layersize = patchsize*patchsize
+        layersize = patchsize*self.nblocks
         mesh = bpy.data.objects["terrain"].data
         for j in range(patchsize):
             for i in range(patchsize):
-                val = data[i+(j*patchsize)]
+                val = data[(i*lod)+(j*fullpatchsize)]
                 i2 = off_x+i
                 j2 = off_y+j
-                mesh.vertices[i2 + (j2*layersize)].co.z = val-20.0
+                mesh.vertices[i2 + (j2*layersize)].co.z = val
