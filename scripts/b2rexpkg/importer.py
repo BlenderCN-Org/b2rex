@@ -513,7 +513,7 @@ class Importer(ImporterBase):
                     # XXX should update
                     return btex
                 except:
-                    dest = self.decode_texture(textureId, textureName, tex["data"])
+                    dest = self.decode_texture(texture, tex_name, tex["data"])
                     self.parse_texture(texture, tex_name, dest)
 
     def create_blender_material(self, ogremat, mat, meshId, matIdx):
