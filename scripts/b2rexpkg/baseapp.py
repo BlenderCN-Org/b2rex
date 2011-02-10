@@ -99,6 +99,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
         self.registerCommand('LayerData', self.processLayerData)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
+        self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
@@ -111,6 +112,9 @@ class BaseApplication(Importer, Exporter):
         terrpackets = TerrainDecoder.decode(data)
         for header, layer in terrpackets:
             self.terrain.apply_patch(layer, header.x, header.y)
+
+    def processCoarseLocationUpdate(self, agent_id, pos):
+        print("COARSE LOCATION UPDATE", agent_id, pos)       
 
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id

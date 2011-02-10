@@ -166,10 +166,6 @@ class BlenderAgent(object):
     def onConfirmXferPacket(self, packet):
         print("ConfirmXferPacket")
 
-    def onRegionHandshake(self, packet):
-        # some region info
-        pass
-
     def sendCreateObject(self, objId, pos, rot, scale):
         RayTargetID = UUID()
 
@@ -456,6 +452,21 @@ class BlenderAgent(object):
         self.creating_cb = finish_creating
         self.sendCreateObject(obj_uuid, pos, rot, scale)
 
+    def onCoarseLocationUpdate(self, packet):
+        print("COARSE LOCATION UPDATE")
+        print(packet)
+        for i, block in enumerate(packet["Location"]):
+            X = block['X']
+            Y = block['Y']
+            Z = block['Z']
+            agent = packet["AgentData"][i]["AgentID"]
+
+            self.out_queue.put(["CoarseLocationUpdate", str(agent), (X, Y, Z)])
+
+    def onRegionHandshakeReply(self, packet):
+        print("REGION HANDSHAKE REPLY")
+        print(packet)
+
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
@@ -506,6 +517,10 @@ class BlenderAgent(object):
         #res = client.region.message_handler.register("KillObject")
         #res.subscribe(self.onKillObject)
 
+        res = client.region.message_handler.register("RegionHandshakeReply")
+        res.subscribe(self.onRegionHandshakeReply)
+        res = client.region.message_handler.register("CoarseLocationUpdate")
+        res.subscribe(self.onCoarseLocationUpdate)
         res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
         res.subscribe(self.onImprovedTerseObjectUpdate)
         res = client.region.message_handler.register("AssetUploadComplete")
@@ -518,8 +533,6 @@ class BlenderAgent(object):
         res.subscribe(self.onGenericMessage)
         res = client.region.message_handler.register("ParcelOverlay")
         res.subscribe(self.onParcelOverlay)
-        res = client.region.message_handler.register("RegionHandshake")
-        res.subscribe(self.onRegionHandshake)
         res = client.region.message_handler.register("AgentMovementComplete")
         res.subscribe(self.onAgentMovementComplete)
         res = client.region.message_handler.register("LayerData")
