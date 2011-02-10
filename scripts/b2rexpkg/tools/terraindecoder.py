@@ -42,7 +42,7 @@ class BitReader(object):
     def ReadBit(self):
         if self.BitsLeft() == 0:
             raise Exception("Out of bits!")
-        bit = struct.unpack("<B", self._data[self._elem_ofs])[0] & (1 << (self._num_bits_in_elem - 1 - self._bit_ofs)) != 0
+        bit = struct.unpack("<B", self._data[self._elem_ofs:self._elem_ofs+1])[0] & (1 << (self._num_bits_in_elem - 1 - self._bit_ofs)) != 0
         self._bit_ofs += 1
         if self._bit_ofs >= self._num_bits_in_elem:
             self._bit_ofs = 0
@@ -134,23 +134,24 @@ class PatchHeader(object):
         #patchIDs = struct.unpack("<H", struct.pack(">H", patchIDs))[0]
         x2 = patchIDs >> 5
         y2 = patchIDs & 31
-        print("LAND", bin(x), bin(y), bin(x2), bin(y2))
+        #print("LAND", bin(x), bin(y), bin(x2), bin(y2))
         self.wordBits = (self.quantWBits & 0x0f) + 2
-        print("Block", self.dcOffset, self.range, "x", x,
-              "y", y, self.wordBits, data.pos)
+        #print("Block", self.dcOffset, self.range, "x", x,
+        #      "y", y, self.wordBits, data.pos)
         self.x = x
         self.y = y
 
 class TerrainDecoder(object):
     def __init__(self, data, stride=None, patchSize=None):
         self.patches = []
+        #print(data,data[2])
         if not stride and not patchSize:
             stride = struct.unpack("<H", data[0:2])[0]
-            patchSize = struct.unpack("<B", data[2])[0]
-            layerType = struct.unpack("<B", data[3])[0]
+            patchSize = struct.unpack("<B", data[2:3])[0]
+            layerType = struct.unpack("<B", data[3:4])[0]
             data = data[4:]
-            print("stride",stride,"patchSize" ,patchSize,"layerType", layerType,
-                 len(data), len(data)*8)
+            #print("stride",stride,"patchSize" ,patchSize,"layerType", layerType,
+            #     len(data), len(data)*8)
         self.decompressLand(data, stride, patchSize, layerType)
     @staticmethod
     def decode(data, stride=None, patchSize=None):
@@ -162,7 +163,7 @@ class TerrainDecoder(object):
         patchdata = list(range(size*size))
         for i in range(size*size):
             if data.len - data.pos <= 0:
-                print("out of bits when decoding terrain vertex")
+                #print("out of bits when decoding terrain vertex")
                 while i < size*size:
                     patchdata[i] = 0
                     i+=1
@@ -191,7 +192,7 @@ class TerrainDecoder(object):
         ooq = 1.0 / float(quantize)
         mult = ooq * float(header.range)
         addval = mult * float(1<<(prequant-1)) + header.dcOffset
-        print("mult",mult,"addval",addval,"prequant",prequant,ooq,quantize)
+        #print("mult",mult,"addval",addval,"prequant",prequant,ooq,quantize)
         block = []
         if not header.patchSize == 16:
             print("TerrainDecoder:DecompressTerrainPatch: Unsupported patch size   present!")
@@ -232,31 +233,27 @@ class TerrainDecoder(object):
         #data = ConstBitStream(bytes=rawdata, length=len(rawdata)*8)
         data = BitReader(rawdata)
         iter = 0
-        header = PatchHeader(patchSize)
         while data.BitsLeft() > 0:
             try:
-                header = self.decodePatchHeader(data, patchSize, rawdata, header)
+                header = self.decodePatchHeader(data, patchSize, rawdata)
             except:
                 traceback.print_exc()
                 print("LAND:DecompressLand: Invalid header data!",
-                        data.BitsLeft(), layerType, patchSize, stride, header.x,
-                      header.y, iter)
+                        data.BitsLeft(), layerType, patchSize, stride, iter)
                 return
             if header.quantWBits == cEndOfPatches:
-                print("LAND OK", len(self.patches), patchSize, stride,
-                      layerType, data.BitsLeft(), data, header.x, header.y,
-                      header.range, header.dcOffset)
+                #print("LAND OK", len(self.patches))
                 return
             cPatchesPerEdge = 16 # patchSize ?
             if header.x >= cPatchesPerEdge or header.y >= cPatchesPerEdge:
                 print("LAND:DecompressLand: Invalid patch data!",
-                      data.BitsLeft(), layerType, header.x, header.y, iter)
+                      data.BitsLeft(), layerType, iter)
                 return
             patch = self.decodeTerrainPatch(header, data, patchSize)
             patch = self.decompressTerrainPatch(header, patch)
             self.patches.append([header, patch])
             iter += 1
-            print("next iter",data.pos)
+            #print("next iter",data.pos)
     def decodePatchHeader(self, data, patchSize, rawdata, header=None):
         if header:
             header.decode(data, rawdata)
@@ -304,9 +301,11 @@ def drawlayer(layerdata, n, im):
             val = int(min(max(0, val), 255))
             im.putpixel((i+(off_x), j+(off_y)), val)
     return maxfound
-
+try:
+    from PIL import Image
+except:
+    pass
 if __name__ == "__main__":
-from PIL import Image
     b = os.path.dirname
     scriptdir = os.path.realpath(__file__)
     checkbitreader()

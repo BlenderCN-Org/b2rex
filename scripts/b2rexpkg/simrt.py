@@ -9,6 +9,7 @@ import base64
 import struct
 import urlparse
 from threading import Thread
+#from terraindecoder import TerrainDecoder
 
 # related
 import eventlet
@@ -83,6 +84,7 @@ class BlenderAgent(object):
     do_megahal = False
     verbose = False
     def __init__(self, in_queue, out_queue):
+        self.nlayers = 0
         self.creating = False
         self.client = None
         self.bps = 100*1024 # bytes per second
@@ -190,16 +192,20 @@ class BlenderAgent(object):
         self.logger.debug(packet)
 
     def onLayerData(self, packet):
-        # some region info
-        # self.logger.debug(packet)
         data = packet["LayerData"][0]["Data"]
-        stride = struct.unpack("<H", data[0:2])[0]
-        patchSize = struct.unpack("<B", data[2])[0]
+        #stride = struct.unpack("<H", data[0:2])[0]
+        #patchSize = struct.unpack("<B", data[2])[0]
         layerType = struct.unpack("<B", data[3])[0]
-        if layerType == LayerTypes.LayerLand:
-            data = data[4:]
-            # patches = self.decompressLand(data, stride, patchSize) # tricky
+        print("LAYERDATA", layerType)
+        if layerType == LayerTypes.LayerLand or True:
+            #patches = self.decompressLand(stride, patchSize, data) # tricky
+            #print(patches)
             # stuff... (check naali/EnvironmentModule)
+            b64data = base64.urlsafe_b64encode(data).decode('ascii')
+            self.out_queue.put(["LayerData", layerType, b64data])
+
+    def decompressLand(self, data, stride, patchSize):
+        return TerrainDecoder.decode(data, stride, patchSize)
 
     def onParcelOverlay(self, packet):
         # some region info

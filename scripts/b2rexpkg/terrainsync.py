@@ -15,7 +15,7 @@ class TerrainSync(object):
         f = 256.0/float(16*16)
 
         layersize = 16*16
-        layersize_f = 15*15
+        layersize_f = layersize-1
         off_x = 128.0
         off_y = 128.0
         mesh.vertices.add(layersize*layersize)
@@ -39,7 +39,7 @@ class TerrainSync(object):
         """
         scene = self.app.get_current_scene()
         scene.objects.link(newobj)
-        self.apply_patch(None, 10, 10)
+        #self.apply_patch(None, 10, 10)
 
     def apply_patch(self, data, x, y):
         patchsize = 16
@@ -47,6 +47,9 @@ class TerrainSync(object):
         off_y = y*patchsize
         layersize = patchsize*patchsize
         mesh = bpy.data.objects["terrain"].data
-        for j in range(off_x, off_x+patchsize):
-            for i in range(off_y, off_y+patchsize):
-                mesh.vertices[i + j*layersize].co.z = data[i+j*patchsize]
+        for j in range(patchsize):
+            for i in range(patchsize):
+                val = data[i+(j*patchsize)]
+                i2 = off_x+i
+                j2 = off_y+j
+                mesh.vertices[i2 + (j2*layersize)].co.z = val-20.0

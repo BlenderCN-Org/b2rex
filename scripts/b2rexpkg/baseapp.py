@@ -15,6 +15,7 @@ from .tools.threadpool import ThreadPool, NoResultsPending
 
 from .importer import Importer
 from .exporter import Exporter
+from .tools.terraindecoder import TerrainDecoder
 
 class RexDrawType:
     Prim = 0
@@ -96,6 +97,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('delete', self.processDeleteCommand)
         self.registerCommand('msg', self.processMsgCommand)
         self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
+        self.registerCommand('LayerData', self.processLayerData)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
@@ -103,6 +105,12 @@ class BaseApplication(Importer, Exporter):
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
+
+    def processLayerData(self, layerType, b64data):
+        data = base64.urlsafe_b64decode(b64data.encode('ascii'))
+        terrpackets = TerrainDecoder.decode(data)
+        for header, layer in terrpackets:
+            self.terrain.apply_patch(layer, header.x, header.y)
 
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id
