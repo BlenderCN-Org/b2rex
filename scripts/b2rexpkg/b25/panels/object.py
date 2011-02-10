@@ -42,9 +42,9 @@ class ObjectPropertiesPanel(bpy.types.Panel):
             for perm, mask in mask_enum.items():
                 row = box.row() 
                 if getattr(obj.opensim, 'EveryoneMask') & mask: 
-                    row.operator("b2rex.setmaskon", text=perm, icon='LAYER_ACTIVE', emboss=False).mask = mask
+                    row.operator("b2rex.setmaskoff", text=perm, icon='LAYER_ACTIVE', emboss=False).mask = mask
                 else:
-                    row.operator("b2rex.setmaskoff", text=perm, icon='LAYER_USED', emboss=False).mask = mask
+                    row.operator("b2rex.setmaskon", text=perm, icon='LAYER_USED', emboss=False).mask = mask
         else:
             row.prop(obj.opensim, 'everyonemask_expand', icon="TRIA_RIGHT", text='Everyone Permissions', emboss=False)
 
