@@ -655,7 +655,7 @@ class Importer(ImporterBase):
         if scenegroup["asset"] in self._imported_assets:
             return self._imported_assets[scenegroup["asset"]]
         asset = self.gridinfo.getAsset(scenegroup["asset"])
-        if not asset["type"] == "43":
+        if not asset["type"] == str(AssetType.OgreMesh):
             logger.debug("("+asset["type"]+")")
             return
         mesh = self.create_mesh_frombinary(scenegroup["asset"], asset["name"], asset["data"])

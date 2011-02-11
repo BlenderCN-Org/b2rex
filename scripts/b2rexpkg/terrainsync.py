@@ -1,3 +1,7 @@
+"""
+Maintains a terrain mesh in blender and synchronizes it with height data
+arriving in blocks.
+"""
 
 import bpy
 
@@ -16,13 +20,22 @@ class TerrainSync(object):
         self.checksums = [0] * self.nblocks * self.nblocks
 
     def set_dirty(self):
+        """
+        Set the dirty flag so the terrain will do a scan for changes.
+        """
         self.terraindirty = True
         self.nextcheck = 0
 
     def is_dirty(self):
+        """
+        Check if the Terrain needs to be checked.
+        """
         return self.terraindirty
 
     def check(self):
+        """
+        Check some blocks and return changed arrays.
+        """
         output = []
         for i in range(8):
             res = self.check_next()
@@ -31,22 +44,35 @@ class TerrainSync(object):
         return output
 
     def check_next(self):
+        """
+        Check the next block to see if it needs updating, and
+        unsets dirty state if this is the last block.
+        """
         if self.lod > 0:
             # doesnt work with lod yet...
             self.terraindirty = False
             return
+        if not self.terraindirty:
+            return
+
         res = None
         x = self.nextcheck % self.nblocks
         y = int(self.nextcheck / self.nblocks)
+
         if self.patch_changed(x, y):
             res = [self.patch_array(x, y), x, y]
+
         self.nextcheck += 1
         if self.nextcheck >= self.nblocks*self.nblocks:
             self.nextcheck = 0
             self.terraindirty = False
+
         return res
 
     def create_terrain(self):
+        """
+        Creates the terrain mesh.
+        """
         mesh = bpy.data.meshes.new("terrain")
         newobj = bpy.data.objects.new("terrain", mesh)
         newobj.location = (0,0,-20)
@@ -78,6 +104,10 @@ class TerrainSync(object):
         mesh.calc_normals()
 
     def patch_changed(self, x, y):
+        """
+        Checks to see if given patch changed by calculating
+        a checksum.
+        """
         mesh = bpy.data.objects["terrain"].data
         lod = self.lodlevels[self.lod]
         fullpatchsize = 16
@@ -93,15 +123,17 @@ class TerrainSync(object):
                 val = mesh.vertices[i2 + (j2*layersize)].co.z
                 checksum += val
         idx = x + int(self.nblocks * y)
+
         changed = abs(checksum - self.checksums[idx]) > 1.0
-        #print("CHECKING",x,y,abs(checksum - self.checksums[idx]), checksum,
-        #      self.checksums[idx])
         if changed:
             self.checksums[idx] = checksum
             self.constrain_patch(x, y)
         return changed
 
     def constrain_patch(self, x, y):
+        """
+        Set all vertices in given patch to their lawful x, y coordinates.
+        """
         fullpatchsize = 16
         patchsize = int(fullpatchsize/self.lodlevels[self.lod])
         layersize = patchsize*self.nblocks
@@ -124,6 +156,9 @@ class TerrainSync(object):
                                                         zval)
 
     def patch_array(self, x, y):
+        """
+        Return the patch array for given coordinates.
+        """
         mesh = bpy.data.objects["terrain"].data
         # XXX check for lod
         fullpatchsize = 16
@@ -140,6 +175,9 @@ class TerrainSync(object):
         return output
 
     def apply_patch(self, data, x, y):
+        """
+        Apply a set of data to a patch of land
+        """
         lod = self.lodlevels[self.lod]
         fullpatchsize = 16
         patchsize = int(fullpatchsize/lod)

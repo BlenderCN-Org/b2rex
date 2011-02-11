@@ -17,18 +17,7 @@ from .importer import Importer
 from .exporter import Exporter
 from .tools.terraindecoder import TerrainDecoder, TerrainEncoder
 
-class RexDrawType:
-    Prim = 0
-    Mesh = 1
-
-class AssetType:
-    OgreMesh = 43
-    OgreSkeleton = 44
-    OgreMaterial = 45
-    OgreParticles = 47
-    FlashAnimation = 49
-    GAvatar = 46
-
+from .tools.simtypes import RexDrawType, AssetType
 
 import bpy
 
@@ -105,10 +94,14 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
+        self.registerCommand('RegionHandshake', self.processRegionHandshake)
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
+
+    def processRegionHandshake(self, regionID, pars):
+        print("REGUION HANDSHAKE", pars)
 
     def processLayerData(self, layerType, b64data):
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
@@ -529,16 +522,20 @@ class BaseApplication(Importer, Exporter):
 
     def checkTerrain(self, timebudget=20):
         updated_blocks = []
-        if bpy.context.mode in ['EDIT_MESH', 'SCULPT']:
+
+        if bpy.context.mode == 'EDIT_MESH' or bpy.context.mode == 'SCULPT':
             if bpy.context.scene.objects.active:
                 if bpy.context.scene.objects.active.name == 'terrain':
                     self.terrain.set_dirty()
         elif self.terrain.is_dirty():
-            self.queueRedraw()
             start = time.time()
             while self.terrain.is_dirty() and time.time() - start < timebudget:
                 updated_blocks.extend(self.terrain.check())
+
         self.sendTerrainBlocks(updated_blocks)
+
+        if self.terrain.is_dirty() or updated_blocks:
+            self.queueRedraw()
 
     def sendTerrainBlocks(self, updated_blocks):
         if not updated_blocks:

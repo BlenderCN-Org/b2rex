@@ -17,8 +17,11 @@ from eventlet import api
 from eventlet import Queue
 try:
     from jsonsocket import JsonSocket
+    from simtypes import RegionFlags, SimAccess, LayerTypes, AssetType
 except:
     from b2rexpkg.tools.jsonsocket import JsonSocket
+    from b2rexpkg.tools.simtypes import RegionFlags, SimAccess, LayerTypes
+    from b2rexpkg.tools.simtypes import AssetType
 import socket
 
 # pyogp
@@ -33,22 +36,6 @@ from pyogp.lib.base.message.message import Message, Block
 
 # Extra asset and inventory types for rex
 import pyogp.lib.client.enums
-pyogp.lib.client.enums.AssetType.OgreMesh = 43
-pyogp.lib.client.enums.AssetType.OgreSkeleton = 44
-pyogp.lib.client.enums.AssetType.OgreMaterial = 45
-pyogp.lib.client.enums.AssetType.OgreParticles = 47
-pyogp.lib.client.enums.AssetType.FlashAnimation = 49
-pyogp.lib.client.enums.AssetType.GAvatar = 46
-
-pyogp.lib.client.enums.InventoryType.OgreParticles = 41
-pyogp.lib.client.enums.InventoryType.FlashAnimation = 42
-pyogp.lib.client.enums.InventoryType.OgreMaterial = 41
-
-class LayerTypes:
-    LayerLand = 0x4C
-    LayerWater = 0x57
-    LayerWind = 0x37
-    LayerCloud = 0x38
 
 def v3_to_list(v3):
     return [v3.X, v3.Y, v3.Z]
@@ -188,6 +175,7 @@ class BlenderAgent(object):
         self.logger.debug(packet)
 
     def sendLayerData(self, x, y, b64data):
+        print("SENDING LAYERDATA FOR", x, y)
         bindata = base64.urlsafe_b64decode(b64data.encode('ascii'))
         packet = Message('LayerData',
                         Block('LayerID',
@@ -435,7 +423,7 @@ class BlenderAgent(object):
         self.tosend = data # hack for now
         self.onuploadfinished = finishupload
         self.client.asset_manager.upload_asset(mesh_uuid,
-                                          pyogp.lib.client.enums.AssetType.OgreMesh,
+                                          AssetType.OgreMesh,
                                           False,
                                           True,
                                           None)
@@ -461,8 +449,8 @@ class BlenderAgent(object):
         self.sendCreateObject(obj_uuid, pos, rot, scale)
 
     def onCoarseLocationUpdate(self, packet):
-        print("COARSE LOCATION UPDATE")
-        print(packet)
+        #print("COARSE LOCATION UPDATE")
+        #print(packet)
         for i, block in enumerate(packet["Location"]):
             X = block['X']
             Y = block['Y']
@@ -471,9 +459,32 @@ class BlenderAgent(object):
 
             self.out_queue.put(["CoarseLocationUpdate", str(agent), (X, Y, Z)])
 
-    def onRegionHandshakeReply(self, packet):
+    def onRegionHandshake(self, packet):
         print("REGION HANDSHAKE REPLY")
         print(packet)
+        regionInfo = packet["RegionInfo"][0]
+
+        pars = {}
+
+        for prop in ['RegionFlags', 'SimAccess', 'SimName', 'WaterHeight',
+                     'BillableFactor', 'TerrainStartHeight00',
+                     'IsEstateManager',
+                     'TerrainStartHeight01', 'TerrainStartHeight10',
+                     'TerrainStartHeight11', 'TerrainHeightRange00',
+                     'TerrainHeightRange01', 'TerrainHeightRange10',
+                     'TerrainHeightRange11']:
+            pars[prop] = regionInfo[prop]
+
+        for prop in ["SimOwner", 'CacheID', 'TerrainBase0', 'TerrainBase1',
+                     'TerrainBase2', 'TerrainDetail0', 'TerrainDetail1',
+                     'TerrainDetail2', 'TerrainDetail3']:
+            pars[prop] = str(regionInfo[prop])
+
+        pars["RegionID"] = str(packet["RegionInfo2"][0]["RegionID"])
+        pars["CPUClassID"] = packet["RegionInfo3"][0]["CPUClassID"]
+        pars["CPURatio"] = packet["RegionInfo3"][0]["CPURatio"]
+
+        self.out_queue.put(["RegionHandshake", pars["RegionID"], pars])
 
     def login(self, server_url, username, password, firstline=""):
         """ login an to a login endpoint """ 
@@ -525,8 +536,8 @@ class BlenderAgent(object):
         #res = client.region.message_handler.register("KillObject")
         #res.subscribe(self.onKillObject)
 
-        res = client.region.message_handler.register("RegionHandshakeReply")
-        res.subscribe(self.onRegionHandshakeReply)
+        res = client.region.message_handler.register("RegionHandshake")
+        res.subscribe(self.onRegionHandshake)
         res = client.region.message_handler.register("CoarseLocationUpdate")
         res.subscribe(self.onCoarseLocationUpdate)
         res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
