@@ -45,10 +45,10 @@ pyogp.lib.client.enums.InventoryType.FlashAnimation = 42
 pyogp.lib.client.enums.InventoryType.OgreMaterial = 41
 
 class LayerTypes:
-    LayerLand = 1
-    LayerWater = 2
-    LayerWind = 3
-    LayerCloud = 4
+    LayerLand = 0x4C
+    LayerWater = 0x57
+    LayerWind = 0x37
+    LayerCloud = 0x38
 
 def v3_to_list(v3):
     return [v3.X, v3.Y, v3.Z]
