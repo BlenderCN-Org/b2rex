@@ -529,17 +529,16 @@ class BaseApplication(Importer, Exporter):
 
     def checkTerrain(self, timebudget=20):
         updated_blocks = []
-        if bpy.context.mode == 'EDIT_MESH':
+        if bpy.context.mode in ['EDIT_MESH', 'SCULPT']:
             if bpy.context.scene.objects.active:
                 if bpy.context.scene.objects.active.name == 'terrain':
                     self.terrain.set_dirty()
         elif self.terrain.is_dirty():
+            self.queueRedraw()
             start = time.time()
             while self.terrain.is_dirty() and time.time() - start < timebudget:
                 updated_blocks.extend(self.terrain.check())
         self.sendTerrainBlocks(updated_blocks)
-        if self.terrain.is_dirty():
-            self.queueRedraw()
 
     def sendTerrainBlocks(self, updated_blocks):
         if not updated_blocks:

@@ -39,7 +39,6 @@ class TerrainSync(object):
         x = self.nextcheck % self.nblocks
         y = int(self.nextcheck / self.nblocks)
         if self.patch_changed(x, y):
-            print("CHANGED")
             res = [self.patch_array(x, y), x, y]
         self.nextcheck += 1
         if self.nextcheck >= self.nblocks*self.nblocks:
