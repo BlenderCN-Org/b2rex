@@ -172,7 +172,15 @@ class BlenderAgent(object):
 
     def onAgentMovementComplete(self, packet):
         # some region info
+        AgentData = packet['AgentData'][0]
+        Data = packet['Data'][0]
         self.logger.debug(packet)
+        pos = Data['Position']
+        lookat = Data['LookAt']
+        agent_id = str(AgentData['AgentID'])
+        lookat = [lookat.X, lookat.Y, lookat.Z]
+        pos = [pos.X, pos.Y, pos.Z]
+        self.out_queue.put(["AgentMovementComplete", agent_id, pos, lookat])
 
     def sendLayerData(self, x, y, b64data):
         print("SENDING LAYERDATA FOR", x, y)

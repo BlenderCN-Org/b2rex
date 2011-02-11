@@ -72,6 +72,7 @@ class BaseApplication(Importer, Exporter):
         self.buttons = {}
         self.settings_visible = False
         self._requested_urls = []
+        self._agents = {}
         self.initializeCommands()
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
@@ -95,10 +96,26 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
+        self.registerCommand('AgentMovementComplete',
+                             self.processAgentMovementComplete)
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
+
+    def processAgentMovementComplete(self, agentID, pos, lookat):
+        print("AgentMovementComplete", pos, lookat)
+        if agentID in bpy.data.objects:
+            agent = bpy.data.objects[agentID]
+        else:
+            camera = bpy.data.cameras.new(agentID)
+            agent = bpy.data.objects.new(agentID, camera)
+            scene = self.get_current_scene()
+            scene.objects.link(agent)
+
+        agent.rotation_euler = lookat
+        self.apply_position(agent, pos)
+
 
     def processRegionHandshake(self, regionID, pars):
         print("REGUION HANDSHAKE", pars)

@@ -101,6 +101,11 @@ class TerrainSync(object):
 
         scene = self.app.get_current_scene()
         scene.objects.link(newobj)
+        newobj.lock_location = (True, True, True)
+        newobj.lock_scale = (True, True, True)
+        newobj.lock_rotation = (True, True, True)
+        newobj.lock_rotations_4d = True
+        newobj.lock_rotation_w = True
         mesh.calc_normals()
 
     def patch_changed(self, x, y):
