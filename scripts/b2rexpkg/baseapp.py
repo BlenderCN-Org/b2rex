@@ -107,6 +107,7 @@ class BaseApplication(Importer, Exporter):
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
+        self.registerCommand('texturearrived', self.processTextureArrived)
 
     def processLayerData(self, layerType, b64data):
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
@@ -493,6 +494,7 @@ class BaseApplication(Importer, Exporter):
         self.processCommandQueue()
 
     def processCommandQueue(self):
+        starttime = time.time()
         cmds = self.command_queue + self.simrt.getQueue()
         budget = float(self.exportSettings.rt_budget)/1000.0
         second_budget = float(self.exportSettings.rt_sec_budget)/1000.0
@@ -500,7 +502,6 @@ class BaseApplication(Importer, Exporter):
         currbudget = 0
         processed = 0
         self.stats[8] += 1
-        starttime = time.time()
         if cmds:
             self.stats[2] += 1
             for cmd in cmds:

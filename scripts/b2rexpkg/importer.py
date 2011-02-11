@@ -84,7 +84,6 @@ class Importer25(object):
         bmat = None
         image = None
         uvco_offset = None
-        logger.debug("looking for image "+materialName)
         stride = 0
         for layer in vertex_legend.values():
             stride += type2size[layer[2]]
@@ -108,8 +107,11 @@ class Importer25(object):
             verts_flat = [f for v in new_vertices for f in v]
             new_mesh.vertices.add(len(new_vertices))
             new_mesh.vertices.foreach_set("co", verts_flat)
+            del verts_flat
+            del new_vertices
         if not len(new_mesh.vertices):
             logger.debug("mesh with no vertex!!")
+            return
         start_face = len(new_mesh.faces)
         # faces
         new_mesh.faces.add(int(len(indices)/3))
@@ -122,6 +124,7 @@ class Importer25(object):
                                                 indices_map[indices[f_idx+2]],
                                                 0]]
             new_mesh.faces.foreach_set("vertices_raw", faces)
+            del faces
         else:
             faces  = []
             for idx in range(int(len(indices)/3)):
@@ -581,7 +584,10 @@ class Importer(ImporterBase):
         self._imported_materials[mat["name"]] = bmat
         return bmat
 
-    def texture_downloaded(self, data, textureId, bmat, layerName, mat_name,
+    def texture_downloaded(self, *args):
+        self.command_queue.append(["texturearrived"]+list(args))
+
+    def processTextureArrived(self, data, textureId, bmat, layerName, mat_name,
                            ogremat, idx, meshId, matIdx):
         textureName = 'opensim'+textureId
         btex = self.parse_texture(textureId, textureName, data)
