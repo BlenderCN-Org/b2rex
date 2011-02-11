@@ -22,14 +22,14 @@ class BitWriter(object):
         self.bytePos = 0
         self.bitPos = 0
     def getBytes(self):
-        return self.data+chr(self.nextbyte)
+        return self.data+struct.pack("<B", self.nextbyte)
     def write(self, instructions, data):
         datatype, nbits = instructions.split(":")
         nbits = int(nbits)
         if datatype in ["uintle", "uint"]:
-            self.PackInt(data, nbits)
-        elif datatype in ["intle", "int"]:
             self.PackUint(data, nbits)
+        elif datatype in ["intle", "int"]:
+            self.PackInt(data, nbits)
         elif datatype in ["floatle", "float"]:
             self.PackBits(struct.pack("<f", float(data)), int(nbits))
         else:
@@ -62,7 +62,7 @@ class BitWriter(object):
                 count = totalCount
                 totalCount = 0
             while count > 0:
-                if (ord(data[curBytePos]) & (0x01 << (count - 1))) != 0:
+                if (ord(data[curBytePos:curBytePos+1]) & (0x01 << (count - 1))) != 0:
                      self.nextbyte = (self.nextbyte | (0x80 >> \
                                                                self.bitPos))
                 count -= 1
@@ -71,7 +71,7 @@ class BitWriter(object):
                 if self.bitPos >= MAX_BITS:
                     self.bitPos = 0
                     self.bytePos += 1
-                    self.data += chr(self.nextbyte)
+                    self.data += struct.pack("<B", self.nextbyte)
                     self.nextbyte = 0
                 if curBitPos >= MAX_BITS:
                     curBitPos = 0
@@ -431,7 +431,6 @@ class TerrainDecoder(object):
             stride = struct.unpack("<H", data[0:2])[0]
             patchSize = struct.unpack("<B", data[2:3])[0]
             layerType = struct.unpack("<B", data[3:4])[0]
-            print("LAYERTYPE",layerType)
             data = data[4:]
         self.decompressLand(data, stride, patchSize, layerType)
 

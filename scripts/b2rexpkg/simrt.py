@@ -187,6 +187,15 @@ class BlenderAgent(object):
         # some region info
         self.logger.debug(packet)
 
+    def sendLayerData(self, x, y, b64data):
+        bindata = base64.urlsafe_b64decode(b64data.encode('ascii'))
+        packet = Message('LayerData',
+                        Block('LayerID',
+                                Type = LayerTypes.LayerLand),
+                        Block('LayerData',
+                              Data=bindata))
+        self.client.region.enqueue_message(packet)
+
     def onLayerData(self, packet):
         data = packet["LayerData"][0]["Data"]
         #stride = struct.unpack("<H", data[0:2])[0]
@@ -580,6 +589,7 @@ class BlenderAgent(object):
         # main loop for the agent
         selected = set()
         while client.running == True:
+            api.sleep()
             cmd = in_queue.get()
             cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
             #   # 10-rot
@@ -635,6 +645,8 @@ class BlenderAgent(object):
                     mask = cmd[2]
                     val = cmd[3]
                     self.updatePermissions(obj, mask, val)
+            elif cmd[0] == "LayerData":
+                self.sendLayerData(*cmd[1:])
               
                 
 

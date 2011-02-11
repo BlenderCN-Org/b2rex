@@ -15,7 +15,7 @@ from .tools.threadpool import ThreadPool, NoResultsPending
 
 from .importer import Importer
 from .exporter import Exporter
-from .tools.terraindecoder import TerrainDecoder
+from .tools.terraindecoder import TerrainDecoder, TerrainEncoder
 
 class RexDrawType:
     Prim = 0
@@ -62,6 +62,7 @@ class BaseApplication(Importer, Exporter):
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
+        self.workpool = ThreadPool(4)
         self.rawselected = set()
         self.agent_id = ""
         self.loglevel = "standard"
@@ -480,6 +481,10 @@ class BaseApplication(Importer, Exporter):
             self.pool.poll()
         except NoResultsPending:
             pass
+        try:
+            self.workpool.poll()
+        except NoResultsPending:
+            pass
 
         # check consistency
         self.checkUuidConsistency(set(self.getSelected()))
@@ -519,6 +524,40 @@ class BaseApplication(Importer, Exporter):
         # redraw if we have commands left
         if len(self.command_queue):
             self.queueRedraw()
+            return
+        self.checkTerrain()
+
+    def checkTerrain(self, timebudget=20):
+        updated_blocks = []
+        if bpy.context.mode == 'EDIT_MESH':
+            if bpy.context.scene.objects.active:
+                if bpy.context.scene.objects.active.name == 'terrain':
+                    self.terrain.set_dirty()
+        elif self.terrain.is_dirty():
+            start = time.time()
+            while self.terrain.is_dirty() and time.time() - start < timebudget:
+                updated_blocks.extend(self.terrain.check())
+        self.sendTerrainBlocks(updated_blocks)
+        if self.terrain.is_dirty():
+            self.queueRedraw()
+
+    def sendTerrainBlocks(self, updated_blocks):
+        if not updated_blocks:
+            return
+
+        self.workpool.addRequest(self.encodeTerrainBlock, updated_blocks,
+                             self.terrainEncoded, self.default_error_db)
+
+
+    def encodeTerrainBlock(self, args):
+        datablock, x, y = args
+        bindata = TerrainEncoder.encode([[datablock, x, y]])
+        b64data = base64.urlsafe_b64encode(bindata).decode('ascii')
+        return b64data
+
+    def terrainEncoded(self, request, result):
+        _, x, y = request.args[0]
+        self.simrt.addCmd(['LayerData', x, y, result])
 
     def checkUuidConsistency(self, selected):
         # look for duplicates
