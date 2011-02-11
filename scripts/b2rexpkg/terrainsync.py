@@ -34,12 +34,13 @@ class TerrainSync(object):
                 v2 = i + ((j+1)*layersize)
                 v3 = i+1 + ((j+1)*layersize)
                 v4 = i+1 + (j*layersize)
-                face = [v1, v2, v3, v4]
+                face = [v1, v4, v3, v2]
+                mesh.faces[i + (j*layersize_f)].use_smooth = True
                 mesh.faces[i + (j*layersize_f)].vertices_raw = face
 
-        
         scene = self.app.get_current_scene()
         scene.objects.link(newobj)
+        mesh.calc_normals()
 
     def apply_patch(self, data, x, y):
         lod = self.lodlevels[self.lod]
@@ -55,3 +56,4 @@ class TerrainSync(object):
                 i2 = off_x+i
                 j2 = off_y+j
                 mesh.vertices[i2 + (j2*layersize)].co.z = val
+        mesh.calc_normals()
