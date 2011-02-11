@@ -111,11 +111,12 @@ class BaseApplication(Importer, Exporter):
 
     def processInventorySkeleton(self, inventory):
         self.inventory = inventory
-        for inv in inventory:
-            print(inv['parent_id'])
+        #for inv in inventory:
+            #    print(inv['parent_id'])
 
     def processCoarseLocationUpdate(self, agent_id, pos):
-        print("COARSE LOCATION UPDATE", agent_id, pos)
+        #print("COARSE LOCATION UPDATE", agent_id, pos)
+        pass
 
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id
@@ -205,11 +206,14 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = False
             self.simrt = None
         else:
+            props = self.exportSettings
+            region_uuid = list(self.regions.keys())[props.selected_region]
+            region_name = self.regions[region_uuid]['name']
             firstline = 'Blender '+ self.getBlenderVersion()
             self.simrt = simrt.run_thread(context, self.exportSettings.server_url,
                                           self.exportSettings.username,
                                           self.exportSettings.password,
-                                          firstline)
+                                          region_name, firstline)
             self.simrt.addCmd(["throttle", self.exportSettings.kbytesPerSecond*1024])
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)

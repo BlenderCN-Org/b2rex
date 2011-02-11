@@ -486,7 +486,7 @@ class BlenderAgent(object):
 
         self.out_queue.put(["RegionHandshake", pars["RegionID"], pars])
 
-    def login(self, server_url, username, password, firstline=""):
+    def login(self, server_url, username, password, regionname, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
         out_queue = self.out_queue
@@ -494,7 +494,7 @@ class BlenderAgent(object):
         client = self.initialize_agent()
 
         # Now let's log it in
-        region = 'Taiga'
+        region = regionname
         firstname, lastname = username.split(" ", 1)
         parsed_url = urlparse.urlparse(server_url)
         split_netloc = parsed_url.netloc.split(":")
@@ -519,6 +519,7 @@ class BlenderAgent(object):
         server_url = parsed_url.scheme + '://' + server_name
         #if not server_url.endswith("/"):
             #    server_url = server_url + "/"
+        print("LOGIN TO", regionname)
         loginuri = server_url
         api.spawn(client.login, loginuri, firstname, lastname, password,
                   start_location = region, connect_region = True)
@@ -834,7 +835,7 @@ class BlenderAgent(object):
 
 
 class GreenletsThread(Thread):
-    def __init__ (self, server_url, username, password, firstline="Hello"):
+    def __init__ (self, server_url, username, password, region, firstline="Hello"):
         self.running = True
         self.agent = True
         self.cmd_out_queue = []
@@ -842,6 +843,7 @@ class GreenletsThread(Thread):
         self.out_queue = Queue()
         self.in_queue = Queue()
         self.server_url = server_url
+        self.regionname = region
         self.username = username
         self.password = password
         self.firstline = firstline
@@ -861,6 +863,7 @@ class GreenletsThread(Thread):
         agent.login(self.server_url,
                     self.username,
                     self.password,
+                    self.regionname,
                     self.firstline)
         agent.logger.debug("Quitting")
         self.agent = agent
@@ -877,9 +880,9 @@ class GreenletsThread(Thread):
 
 running = False
 
-def run_thread(context, server_url, username, password, firstline):
+def run_thread(context, server_url, username, password, region, firstline):
     global running
-    running = GreenletsThread(server_url, username, password, firstline)
+    running = GreenletsThread(server_url, username, password, region, firstline)
     running.start()
     return running
 
