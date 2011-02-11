@@ -90,42 +90,47 @@ class Importer25(object):
             stride += type2size[layer[2]]
         if VES_TEXTURE_COORDINATES in vertex_legend:
             uvco_offset = vertex_legend[VES_TEXTURE_COORDINATES][1]
-        vertmaps = {}
         indices_map = []
+        new_vertices = []
+        start_vert = len(new_mesh.vertices)
         # vertices
         for idx in range(max(indices)+1):
             coords = get_vcoords(vbuffer, idx, pos_offset, stride)
-            if coords:
-                if not coords in vertmaps:
+            if not coords:
+                coords = (0.0,0.0,0.0)
+            if not coords in new_vertices:
+                if matIdx != 0:
                     new_mesh.vertices.add(1)
                     new_mesh.vertices[len(new_mesh.vertices)-1].co = coords
-                    vertmaps[coords] = len(new_mesh.vertices)-1
-                indices_map.append(vertmaps[coords])
-            else:
-                new_mesh.vertices.add(1)
-                new_mesh.vertices[len(new_mesh.vertices)-1].co = (0.0,0.0,0.0)
-                indices_map.append(len(new_mesh.vertices)-1)
+                new_vertices.append(coords)
+            indices_map.append(new_vertices.index(coords)+start_vert)
+        if matIdx == 0:
+            verts_flat = [f for v in new_vertices for f in v]
+            new_mesh.vertices.add(len(new_vertices))
+            new_mesh.vertices.foreach_set("co", verts_flat)
         if not len(new_mesh.vertices):
             logger.debug("mesh with no vertex!!")
         start_face = len(new_mesh.faces)
         # faces
         new_mesh.faces.add(int(len(indices)/3))
-        for idx in range(int(len(indices)/3)):
-            f_idx = idx*3
-            #new_mesh.vertexUV = False
-            #face = [new_mesh.verts[indices_map[indices[idx]]],
-            #                    new_mesh.verts[indices_map[indices[idx+1]]],
-            #                    new_mesh.verts[indices_map[indices[idx+2]]]]
-            face = [indices_map[indices[f_idx]],
-                                indices_map[indices[f_idx+1]],
-                                indices_map[indices[f_idx+2]]]
-            new_mesh.faces[idx+start_face].vertices = face
-            #new_mesh.faces.extend(face, ignoreDups=True)
-            #if len(new_mesh.faces) == 0:
-                #    logger.debug("Degenerate face!")
-                #continue
-                #face = new_mesh.faces[len(new_mesh.faces)-1]
-
+        if matIdx == 0:
+            # only for mat 0 because otherwise we're adding faces so
+            # can't use foreach (need to check out the api)
+            faces = [a for f_idx in range(0,
+                     len(indices), 3) for a in [indices_map[indices[f_idx]],
+                                                indices_map[indices[f_idx+1]],
+                                                indices_map[indices[f_idx+2]],
+                                                0]]
+            new_mesh.faces.foreach_set("vertices_raw", faces)
+        else:
+            faces  = []
+            for idx in range(int(len(indices)/3)):
+                f_idx = idx*3
+                face = [indices_map[indices[f_idx]],
+                                    indices_map[indices[f_idx+1]],
+                                    indices_map[indices[f_idx+2]]]
+                new_mesh.faces[idx+start_face].vertices = face
+        """
             continue
             try:
                 no1 = get_nor(indices[idx], vbuffer, no_offset)
@@ -150,6 +155,7 @@ class Importer25(object):
                 blender_tface.uv3 = uv3
                 if image:
                     blender_tface.image = image
+        """
         # UV
         if materialName in self._imported_ogre_materials:
             self.assign_submesh_images(materialName,
