@@ -179,7 +179,7 @@ class XferUploadManager(object):
         if str(assetID) in self._uploaders:
             print("AssetUploadComplete Go On", assetID)
             self._uploaders[str(assetID)].cb(assetID)
-            xfer_id = self._uploaders[str(assetID)].xferID
+            xferID = self._uploaders[str(assetID)].xferID
             del self._uploaders[xferID]
             del self._uploaders[str(assetID)]
         else:
@@ -484,10 +484,10 @@ class BlenderAgent(object):
                 print("cant find object")
 
     def sendLocalTeleport(self, agent, pos):
-        if not agent.FullID == self.agent_id:
+        client = self.client
+        if not agent.FullID == self.client.agent_id:
             print("Trying to move an agent for other user")
         t_id = uuid.uuid4()
-        client = self.client
         invoice_id = UUID()
         self.client.teleport(region_handle=client.region.RegionHandle, 
                              position=Vector3(X=pos[0], Y=pos[1], Z=pos[2]))
