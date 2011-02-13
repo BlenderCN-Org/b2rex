@@ -71,7 +71,7 @@ def unpack_v3(data, offset, min, max):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = True
+    verbose = False
     def __init__(self, in_queue, out_queue):
         self.nlayers = 0
         self.creating = False

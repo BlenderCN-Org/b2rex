@@ -128,7 +128,7 @@ class BaseApplication(Importer, Exporter):
         return agent
 
     def processRegionHandshake(self, regionID, pars):
-        print("REGUION HANDSHAKE", pars)
+        print("REGION HANDSHAKE", pars)
 
     def processLayerData(self, layerType, b64data):
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
@@ -150,7 +150,7 @@ class BaseApplication(Importer, Exporter):
         self.agent_access = agent_access
 
     def default_error_db(self, request, error):
-        logger.error("error downloading "+str(request)+": "+str(error))
+        logger.warning("error downloading "+str(request)+": "+str(error))
         #traceback.print_tb(error[2])
 
     def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, main=None):
