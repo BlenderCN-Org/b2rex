@@ -104,6 +104,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
+        self.registerCommand('InventoryDescendents', self.processInventoryDescendents)
         self.registerCommand('SimStats', self.processSimStats)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('OnlineNotification',
