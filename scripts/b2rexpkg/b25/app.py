@@ -1,10 +1,12 @@
 import traceback
 import math
+import uuid
 
 from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
 from .properties import B2RexObjectProps
+from .properties import B2RexProps
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
@@ -187,3 +189,42 @@ class B2Rex(BaseApplication):
             #           if not area.type == 'VIEW_3D':
                 bpy.ops.b2rex.redraw()
 
+    def update_folders(self, folders):
+        props = bpy.context.scene.b2rex_props
+        cached_folders = getattr(props, 'folders')
+        for folder in folders:
+            expand_prop = "e_" + str(folder['FolderID']).split('-')[0]
+            if not hasattr(B2RexProps, expand_prop):
+                prop = BoolProperty(name="expand", default=False)
+                setattr(B2RexProps, expand_prop, prop) 
+            cached_folders[folder['FolderID']] = folder
+
+    def update_items(self, items):
+        props = bpy.context.scene.b2rex_props
+        cached_items = getattr(props, '_items')
+        for item in items:
+            cached_items[item['ItemID']] = item
+
+    def processInventoryDescendents(self, folder_id, folders, items):
+        self.update_folders(folders)
+        self.update_items(items)
+           
+    def processInventorySkeleton(self, inventory):
+
+        props = bpy.context.scene.b2rex_props
+        session = bpy.b2rex_session
+        if not hasattr(B2RexProps, 'folders'):
+            setattr(B2RexProps, 'folders',  dict())
+        if not hasattr(B2RexProps, '_items'):
+            setattr(B2RexProps, '_items', dict())
+
+        for inv in inventory:
+            if uuid.UUID(inv['parent_id']).int == 0:
+                if not hasattr(B2RexProps, "root_folder"):
+                    setattr(B2RexProps, "root_folder", inv['folder_id'])
+                setattr(props, "root_folder", inv['folder_id'])
+                self.update_folders([{'FolderID' : inv['folder_id'], 'ParentID' : inv['parent_id'], 'Name' : inv['name']}])
+            session.simrt.addCmd(['sendFetchInventoryDescendentsRequest', inv['folder_id']])
+
+        session.inventory = inventory
+        

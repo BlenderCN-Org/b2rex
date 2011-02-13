@@ -87,6 +87,7 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     next_chat = StringProperty(name='next_chat',
                               default='',
                               description='')
+    inventory_expand = BoolProperty(default=False, description="Expand inventory")
 #    B2RexProps.regions.name = StringProperty(name='Name', description='Name of the session', maxlen=128, default='[session]')
 
 
