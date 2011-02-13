@@ -78,6 +78,12 @@ class BaseApplication(Importer, Exporter):
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
+    def registerTextureImage(self, image):
+        if not image.opensim.uuid:
+            image.opensim.uuid = str(uuid.uuid4())
+        pass # register a texture with the sim
+        return image.opensim.uuid
+
     def registerCommand(self, cmd, callback):
         self._cmd_matrix[cmd] = callback
 

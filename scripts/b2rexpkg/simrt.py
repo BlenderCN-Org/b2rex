@@ -4,6 +4,7 @@ import uuid
 import getpass, sys, logging
 import time
 import math
+from hashlib import md5
 import popen2
 import base64
 import struct
@@ -71,31 +72,99 @@ def unpack_v3(data, offset, min, max):
                                                      min, max))
     return vector3
 
+def uuid_combine(uuid_one, uuid_two):
+    return UUID(bytes=md5(uuid_one.uuid.bytes+uuid_two.uuid.bytes).digest())
+
+class XferUploader(object):
+    def __init__(self, data, cb):
+        self.cb = cb
+        self.data = data
+
+class XferUploadManager(object):
+    def __init__(self, agent):
+        self._agent = agent
+        region = agent.region
+        self._uploaders = {}
+        res = region.message_handler.register("AssetUploadComplete")
+        res.subscribe(self.onAssetUploadComplete)
+        res = region.message_handler.register("ConfirmXferPacket")
+        res.subscribe(self.onConfirmXferPacket)
+        res = region.message_handler.register("RequestXfer")
+        res.subscribe(self.onRequestXfer)
+
+    def uploadAsset(self, assetType, data, cb):
+        """
+        Request an asset upload from the simulator
+        """
+        tr_uuid = UUID()
+        tr_uuid.random()
+        assetID = uuid_combine(tr_uuid, self._agent.secure_session_id)
+        self._uploaders[str(assetID)] = XferUploader(data, cb)
+        self._agent.asset_manager.upload_asset(tr_uuid,
+                                               assetType,
+                                               False, # tempfile
+                                               True, # storelocal
+                                               None) # asset_data
+        return  assetID
+
+    def onRequestXfer(self, packet):
+        """
+        Confirmation for our asset upload. Now send data.
+        """
+        xfer_id = packet["XferID"][0]["ID"]
+        vfile_id = packet["XferID"][0]["VFileID"] # key and uuid of new asset
+        if str(vfile_id) in self._uploaders:
+            uploader = self._uploaders[str(vfile_id)]
+            ongoing = 0x80000000 # last packet
+            packet = Message('SendXferPacket',
+                            Block('XferID',
+                                    ID = xfer_id,
+                                    Packet = ongoing|1),
+                             # first packet needs 4 bytes padding if we dont
+                             # bootstrap some data ???
+                            Block('DataPacket', Data=b'\0\0\0\0'+uploader.data))
+            self._agent.region.enqueue_message(packet)
+        else:
+            print("NO UPLOAD FOR TRANSFER REQUEST!!", vfile_id,
+                  self._uploaders.keys())
+
+    def onConfirmXferPacket(self, packet):
+        """
+        Confirmation for one of our upload packets.
+        """
+        print("ConfirmXferPacket")
+
+    def onAssetUploadComplete(self, packet):
+        """
+        Confirmation for completion of the asset upload.
+        """
+        assetID = packet['AssetBlock'][0]['UUID']
+        print("AssetUploadComplete", assetID)
+        if str(assetID) in self._uploaders:
+            print("AssetUploadComplete Go On", assetID)
+            self._uploaders[str(assetID)].cb(assetID)
+            del self._uploaders[str(assetID)]
+        else:
+            print("NO UPLOAD FOR ASSET UPLOAD COMPLETE!!", assetID,
+                  self._uploaders.keys())
+
+
+
+
 class BlenderAgent(object):
     do_megahal = False
     verbose = True
     def __init__(self, in_queue, out_queue):
         self.inventory = None
         self.nlayers = 0
-        self.creating = False
+        self._creating_cb = {}
+        self._next_create = 1000
         self._eatupdates = defaultdict(int)
         self.client = None
         self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
         self.out_queue = out_queue
         self.initialize_logger()
-
-    def onRequestXfer(self, packet):
-        xfer_id = packet["XferID"][0]["ID"]
-        ongoing = 0x80000000
-        packet = Message('SendXferPacket',
-                        Block('XferID',
-                                ID = xfer_id,
-                                Packet = ongoing|1),
-                         # first packet needs 4 bytes padding if we dont
-                         # bootstrap some data ???
-                        Block('DataPacket', Data=b'\0\0\0\0'+self.tosend))
-        self.client.region.enqueue_message(packet)
 
     def bootstrapClient(self):
         print("BOOTSTRAP CLIENT")
@@ -109,11 +178,6 @@ class BlenderAgent(object):
                 self.out_queue.put(['RexPrimData', obj_uuid, obj.rexdata])
             if hasattr(obj, "props"):
                 self.out_queue.put(["ObjectProperties", obj_uuid, obj.props])
-
-    def onAssetUploadComplete(self, packet):
-        print("AssetUploadComplete")
-        if self.onuploadfinished:
-            self.onuploadfinished(packet['AssetBlock'][0]['UUID'])
 
     def onKillObject(self, packet):
         localID = packet["ObjectData"][0]["ID"]
@@ -154,21 +218,20 @@ class BlenderAgent(object):
                               Throttles=data))
         self.client.region.enqueue_message(packet)
 
-    def onConfirmXferPacket(self, packet):
-        print("ConfirmXferPacket")
-
-    def sendCreateObject(self, objId, pos, rot, scale):
+    def sendCreateObject(self, objId, pos, rot, scale, tok):
         RayTargetID = UUID()
+        RayTargetID.random()
+        print("CREATE OBJECT WITH UUID", RayTargetID)
 
         self.client.region.objects.object_add(self.client.agent_id, self.client.session_id,
-                        PCodeEnum.Primitive, 
+                        PCodeEnum.Primitive,
                         Material = 3, AddFlags = 2, PathCurve = 16,
                         ProfileCurve = 1, PathBegin = 0, PathEnd = 0,
                         PathScaleX = 100, PathScaleY = 100, PathShearX = 0,
                         PathShearY = 0, PathTwist = 0, PathTwistBegin = 0,
                         PathRadiusOffset = 0, PathTaperX = 0, PathTaperY = 0,
                         PathRevolutions = 0, PathSkew = 0, ProfileBegin = 0,
-                        ProfileEnd = 0, ProfileHollow = 0, BypassRaycast = 1,
+                        ProfileEnd = 0, ProfileHollow = tok, BypassRaycast = 1,
                         RayStart = pos, RayEnd = pos,
                         RayTargetID = RayTargetID, RayEndIsIntersection = 0,
                         Scale = scale, Rotation = rot,
@@ -382,20 +445,16 @@ class BlenderAgent(object):
             else:
                 print("cant find object")
 
-    def sendAutopilot(self, agent, pos):
+    def sendLocalTeleport(self, agent, pos):
+        if not agent.FullID == self.agent_id:
+            print("Trying to move an agent for other user")
         t_id = uuid.uuid4()
         client = self.client
         invoice_id = UUID()
-        #data_x = struct.pack("<f",pos[0])
-        #data_y = struct.pack("<f",pos[1])
-        #data_z = struct.pack("<f",pos[2])
-        data_x = str(pos[0])
-        data_y = str(pos[1])
-        data_z = str(pos[2])
-        print("send autopilot")
-        self.client.teleport(region_handle=client.region.RegionHandle, position=Vector3(X=pos[0], Y=pos[1],
-                                                            Z=pos[2]))
-        """
+        self.client.teleport(region_handle=client.region.RegionHandle, 
+                             position=Vector3(X=pos[0], Y=pos[1], Z=pos[2]))
+
+    def sendAutopilot(self, agent, pos):
         packet = Message('GenericMessage',
                         Block('AgentData',
                                 AgentID = client.agent_id,
@@ -408,7 +467,7 @@ class BlenderAgent(object):
                         Block('ParamList', Parameter=data_y),
                         Block('ParamList', Parameter=data_z))
         self.client.region.enqueue_message(packet)
-        """
+
     def onObjectPermissions(self, packet):
         self.logger.debug("PERMISSIONS!!!")
 
@@ -443,7 +502,6 @@ class BlenderAgent(object):
         # GodTakeCopy = 5,
         # Delete = 6,
         # Return = 9
-
         tr_id = UUID(str(uuid.uuid4()))
         packet = Message('DeRezObject',
                         Block('AgentData',
@@ -458,15 +516,6 @@ class BlenderAgent(object):
                                  PacketNumber = 0),
                         Block('ObjectData',
                                 ObjectLocalID = obj.LocalID))
-        """
-        packet = Message('ObjectDelete',
-                        Block('AgentData',
-                                AgentID = self.client.agent_id,
-                                SessionID = self.client.session_id,
-                                Force = False),
-                        Block('ObjectData',
-                                ObjectLocalID = obj.LocalID))
-        """
         # send
         self.client.region.enqueue_message(packet)
 
@@ -474,52 +523,44 @@ class BlenderAgent(object):
                      scale, b64data):
         # create asset
         obj_uuid = UUID(obj_uuid_str)
-        mesh_uuid = uuid.UUID(mesh_uuid_str)
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
+        self._next_create = (self._next_create + 1) % (256*256)
+        obj_idx = self._next_create
         def finishupload(asset_id):
-            print("ASSET READY CREATING OBJECT")
-            self.tosend = None
-            self.onuploadfinished = None
+            # asset uploaded, we have its uuid and can proceed now
             tok = UUID(str(uuid.uuid4()))
             def finish_creating(real_uuid):
+                # object finished creating and here we get its real uuid and can
+                # confirm creation to the client sending the new uuids.
+                del self._creating_cb[obj_idx]
                 args = {"RexMeshUUID": str(asset_id),
                         "RexIsVisible": True}
                 self.sendRexPrimData(real_uuid, args)
                 self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                     str(real_uuid), str(asset_id)])
-                self.creating = False
-                self.creating_cb = False
-            self.creating = tok
-            self.creating_cb = finish_creating
-            self.sendCreateObject(obj_uuid, pos, rot, scale)
+            self._creating_cb[obj_idx] = finish_creating
+            self.sendCreateObject(obj_uuid, pos, rot, scale, obj_idx)
 
-        self.tosend = data # hack for now
-        self.onuploadfinished = finishupload
-        self.client.asset_manager.upload_asset(mesh_uuid,
-                                          AssetType.OgreMesh,
-                                          False,
-                                          True,
-                                          None)
+        # send the asset data and wait for ack from the uploader
+        assetID = self.uploader.uploadAsset(AssetType.OgreMesh, data, finishupload)
 
     def cloneObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
                      scale):
         # create asset
         obj_uuid = UUID(obj_uuid_str)
+        self._next_create = (self._next_create + 1) % (256*256)
+        obj_idx = self._next_create
 
-        print("CLONING OBJECT")
         tok = UUID(str(uuid.uuid4()))
         def finish_creating(real_uuid):
-            print("FINISH CLONING OBJECT")
+            del self._creating_cb[obj_idx]
             args = {"RexMeshUUID": mesh_uuid_str,
                     "RexIsVisible": True}
             self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                 str(real_uuid), mesh_uuid_str])
             self.sendRexPrimData(real_uuid, args)
-            self.creating = False
-            self.creating_cb = False
-        self.creating = tok
-        self.creating_cb = finish_creating
-        self.sendCreateObject(obj_uuid, pos, rot, scale)
+        self._creating_cb[obj_idx] = finish_creating
+        self.sendCreateObject(obj_uuid, pos, rot, scale, obj_idx)
 
     def onCoarseLocationUpdate(self, packet):
         #print("COARSE LOCATION UPDATE")
@@ -541,8 +582,6 @@ class BlenderAgent(object):
                             str(packet["AgentBlock"][0]["AgentID"])])
 
     def onRegionHandshake(self, packet):
-        print("REGION HANDSHAKE REPLY")
-        print(packet)
         regionInfo = packet["RegionInfo"][0]
 
         pars = {}
@@ -600,7 +639,6 @@ class BlenderAgent(object):
         server_url = parsed_url.scheme + '://' + server_name
         #if not server_url.endswith("/"):
             #    server_url = server_url + "/"
-        print("LOGIN TO", regionname)
         loginuri = server_url
         api.spawn(client.login, loginuri, firstname, lastname, password,
                   start_location = region, connect_region = True)
@@ -623,6 +661,7 @@ class BlenderAgent(object):
         #res.subscribe(self.onKillObject)
 
         self.inventory.enable_callbacks()
+        self.uploader = XferUploadManager(self.client)
 
         res = client.region.message_handler.register("OnlineNotification")
         res.subscribe(self.onOnlineNotification)
@@ -635,12 +674,6 @@ class BlenderAgent(object):
         res.subscribe(self.onCoarseLocationUpdate)
         res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
         res.subscribe(self.onImprovedTerseObjectUpdate)
-        res = client.region.message_handler.register("AssetUploadComplete")
-        res.subscribe(self.onAssetUploadComplete)
-        res = client.region.message_handler.register("ConfirmXferPacket")
-        res.subscribe(self.onConfirmXferPacket)
-        res = client.region.message_handler.register("RequestXfer")
-        res.subscribe(self.onRequestXfer)
         res = client.region.message_handler.register("GenericMessage")
         res.subscribe(self.onGenericMessage)
         res = client.region.message_handler.register("ParcelOverlay")
@@ -745,7 +778,7 @@ class BlenderAgent(object):
                 if not obj:
                     obj = client.region.objects.get_avatar_from_store(FullID=UUID(cmd[1]))
                     if obj:
-                        self.sendAutopilot(obj, cmd[2])
+                        self.sendLocalTeleport(obj, cmd[2])
                         continue
                 if obj:
                     pos = cmd[2]
@@ -848,13 +881,15 @@ class BlenderAgent(object):
         self.logger.debug("received sim stats!"+str(packet))
 
     def onObjectUpdate(self, packet):
-        if self.creating:
-            for ObjectData_block in packet['ObjectData']:
-                self.creating_cb(ObjectData_block["FullID"])
-            return
         out_queue = self.out_queue
         for ObjectData_block in packet['ObjectData']:
-           #print ObjectData_block.name, ObjectData_block.get_variable("ID"), ObjectData_block.var_list, ObjectData_block.get_variable("State")
+           if ObjectData_block['ProfileHollow'] in self._creating_cb:
+               # we use ProfileHollow as a key for our object creation since
+               # its the only way I found to keep some transaction id around and
+               # we dont use the value anyways.
+               self._creating_cb[ObjectData_block["ProfileHollow"]](ObjectData_block["FullID"])
+               return
+
            objdata = ObjectData_block["ObjectData"]
            obj_uuid = uuid_to_s(ObjectData_block["FullID"])
            obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
