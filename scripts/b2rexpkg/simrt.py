@@ -751,19 +751,19 @@ class BlenderAgent(object):
             api.sleep(0)
 
 
-        print("connected")
-        f = open("/home/caedes/Firefox_wallpaper.png", "rb")
-        data = f.read()
-        f.close
-        def uploadcheck(*blah):
-            print("XFER: UploadDone!!", blah)
-        print("Sending xfer")
-        self.uploader.uploadAsset(0, data, uploadcheck)
-        print("Sending xfer sent")
+        #print("connected")
+        #f = open("/home/caedes/Firefox_wallpaper.png", "rb")
+        #data = f.read()
+        #f.close
+        #def uploadcheck(*blah):
+            #    print("XFER: UploadDone!!", blah)
+            #print("Sending xfer")
+            #self.uploader.uploadAsset(0, data, uploadcheck)
+            #print("Sending xfer sent")
 
 
         self.sendThrottle()
-        api.sleep(100.3)
+        api.sleep(0.3)
 
         # speak up the first line
         client.say(str(firstline))
