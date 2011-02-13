@@ -32,6 +32,10 @@ class B2RexImageProps(B2RexBaseProps):
 
 class B2RexMaterialProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
+    autodetect = BoolProperty(name="autodetect", default=True)
+    shader = StringProperty(name='shader',
+                              default='',
+                              description='')
 
 class B2RexProps(bpy.types.IDPropertyGroup):
     #B2RexProps.credentials = PasswordManager("b2rex")
