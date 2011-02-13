@@ -257,6 +257,13 @@ class Importer25(object):
     def get_current_scene(self):
         return bpy.context.scene
 
+    def set_immutable(self, obj, val=True):
+        obj.lock_location = (val, val, val)
+        obj.lock_scale = (val, val, val)
+        obj.lock_rotation = (val, val, val)
+        obj.lock_rotations_4d = val
+        obj.lock_rotation_w = val
+
 class Importer24(object):
     def import_submesh(self, meshId, new_mesh, vertex, vbuffer, indices, materialName,
                        matIdx):
@@ -384,6 +391,9 @@ class Importer24(object):
     def get_current_scene(self):
         scene = Blender.Scene.GetCurrent ()
         return scene
+
+    def set_immutable(self, obj, val):
+        pass
 
 
 # Common

@@ -17,7 +17,7 @@ from .importer import Importer
 from .exporter import Exporter
 from .tools.terraindecoder import TerrainDecoder, TerrainEncoder
 
-from .tools.simtypes import RexDrawType, AssetType
+from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
 
 import bpy
 
@@ -85,6 +85,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('pos', self.processPosCommand)
         self.registerCommand('rot', self.processRotCommand)
         self.registerCommand('scale', self.processScaleCommand)
+        self.registerCommand('props', self.processPropsCommand)
         self.registerCommand('delete', self.processDeleteCommand)
         self.registerCommand('msg', self.processMsgCommand)
         self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
@@ -104,18 +105,21 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('texturearrived', self.processTextureArrived)
 
     def processAgentMovementComplete(self, agentID, pos, lookat):
-        print("AgentMovementComplete", pos, lookat)
-        if agentID in bpy.data.objects:
-            agent = bpy.data.objects[agentID]
-        else:
-            camera = bpy.data.cameras.new(agentID)
-            agent = bpy.data.objects.new(agentID, camera)
-            scene = self.get_current_scene()
-            scene.objects.link(agent)
-
+        agent = self.getAgent(agentID)
         agent.rotation_euler = lookat
         self.apply_position(agent, pos)
 
+    def getAgent(self, agentID):
+        agent = self.findWithUUID(agentID)
+        if not agent:
+            camera = bpy.data.cameras.new(agentID)
+            agent = bpy.data.objects.new(agentID, camera)
+            self.set_uuid(agent, agentID)
+            scene = self.get_current_scene()
+            scene.objects.link(agent)
+            if not agentID == self.agent_id:
+                self.set_immutable(agent)
+        return agent
 
     def processRegionHandshake(self, regionID, pars):
         print("REGUION HANDSHAKE", pars)
@@ -271,7 +275,14 @@ class BaseApplication(Importer, Exporter):
     def processDeleteCommand(self, objId):
         obj = self.findWithUUID(objId)
         if obj:
+            # delete from object cache
+            if objId in self._total['objects']:
+                del self._total['objects'][objId]
+            # clear uuid
             obj.opensim.uuid = ""
+            scene = self.get_current_scene()
+            # unlink
+            scene.objects.unlink(obj)
             self.queueRedraw()
 
     def processRexPrimDataCommand(self, objId, pars):
@@ -315,6 +326,24 @@ class BaseApplication(Importer, Exporter):
                                                meshId)
                 else:
                     logger.warning("unhandled rexdata of type " + str(asset_type))
+
+    def processPropsCommand(self, objId, pars):
+        if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
+            agent = self.getAgent(objId) # creates the agent
+            if "NameValues" in pars:
+                props = pars["NameValues"]
+                if "FirstName" in props and "LastName" in props:
+                    agent.name = props['FirstName']+" "+props["LastName"]
+                    self._total['objects'][objId] = agent.name
+        else:
+            if "ParentID" in pars:
+                parentId = pars["ParentID"]
+                parent = self.findWithUUID(objId)
+                if parent:
+                    pass # XXX apply parent
+            self.processObjectPropertiesCommand(objId, pars)
+
+
 
     def processObjectPropertiesCommand(self, objId, pars):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")

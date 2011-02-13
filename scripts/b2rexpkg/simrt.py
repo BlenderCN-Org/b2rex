@@ -8,6 +8,7 @@ import popen2
 import base64
 import struct
 import urlparse
+from collections import defaultdict
 from threading import Thread
 #from terraindecoder import TerrainDecoder
 
@@ -32,6 +33,7 @@ from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
 from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.enums import PCodeEnum
+from pyogp.lib.client.namevalue import NameValueList
 from pyogp.lib.base.message.message import Message, Block
 
 # Extra asset and inventory types for rex
@@ -69,10 +71,11 @@ def unpack_v3(data, offset, min, max):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self.nlayers = 0
         self.creating = False
+        self._eatupdates = defaultdict(int)
         self.client = None
         self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
@@ -112,21 +115,19 @@ class BlenderAgent(object):
     def onKillObject(self, packet):
         localID = packet["ObjectData"][0]["ID"]
         obj = self.client.region.objects.get_object_from_store(LocalID = localID)
+        if not obj:
+            obj = self.client.region.objects.get_avatar_from_store(LocalID = localID)
         if obj:
-            #print("DELETE ARRIVED FOR OBJECT", obj.FullID, localID)
             self.out_queue.put(["delete", str(obj.FullID)])
-            #else:
-            #print("CANT FIND OBJECT TO DELETE", localID)
-            #print("PROCEEDING WITH DELETE")
         self.old_kill_object(packet)
 
     def setThrottle(self, bps):
-        print("SET THROTTLE TO", bps)
         if not bps == self.bps:
             self.bps = bps
             client = self.client
             if client and client.connected and client.region.connected:
                 self.sendThrottle(bps)
+
     def sendThrottle(self, bps=None):
         if not bps:
             bps = self.bps
@@ -183,7 +184,6 @@ class BlenderAgent(object):
         self.out_queue.put(["AgentMovementComplete", agent_id, pos, lookat])
 
     def sendLayerData(self, x, y, b64data):
-        print("SENDING LAYERDATA FOR", x, y)
         bindata = base64.urlsafe_b64decode(b64data.encode('ascii'))
         packet = Message('LayerData',
                         Block('LayerID',
@@ -194,13 +194,8 @@ class BlenderAgent(object):
 
     def onLayerData(self, packet):
         data = packet["LayerData"][0]["Data"]
-        #stride = struct.unpack("<H", data[0:2])[0]
-        #patchSize = struct.unpack("<B", data[2])[0]
         layerType = struct.unpack("<B", data[3])[0]
         if layerType == LayerTypes.LayerLand or True:
-            #patches = self.decompressLand(stride, patchSize, data) # tricky
-            #print(patches)
-            # stuff... (check naali/EnvironmentModule)
             b64data = base64.urlsafe_b64encode(data).decode('ascii')
             self.out_queue.put(["LayerData", layerType, b64data])
 
@@ -321,28 +316,51 @@ class BlenderAgent(object):
         for packet_ObjectData in packet['ObjectData']:
             data = packet_ObjectData['Data']
             localID = struct.unpack("<I", data[0:4])[0]
-            attachPoint = struct.unpack("<b", data[4])[0]
-            hasPlane = struct.unpack("<?", data[5])[0]
-            idx = 6
-            if hasPlane:
-                collisionPlane = Quaternion(data[idx:idx+16])
-                idx += 16
-            minlen = idx+12+6+6+6+8
-            if len(data) < minlen:
-                data = data + ('\0'*(minlen-len(data)))
+            naaliProto = False
+            if len(data) == 30:
+                print("NAALI PACKET!")
+                is_avatar = True
+                naaliProto = True
+                idx = 4
+            else:
+                attachPoint = struct.unpack("<b", data[4])[0]
+                is_avatar = struct.unpack("<?", data[5])[0]
+                idx = 6
+                if is_avatar:
+                    collisionPlane = Quaternion(data[idx:idx+16])
+                    idx += 16
+                minlen = idx+12+6+6+6+8
+                if is_avatar:
+                    minlen += 16
+                if len(data) < minlen:
+                    data = data + ('\0'*(minlen-len(data)))
             pos = Vector3(data[idx:idx+12])
-            idx = idx+12
+            idx += 12
             vel = unpack_v3(data, idx, -128.0, 128.0)
-            accel = unpack_v3(data, idx+6, -64.0, 64.0)
-            rot = unpack_q(data, idx+12)
-            angular_vel = unpack_v3(data, idx+20, -64.0, 64.0)
-            obj = self.client.region.objects.get_object_from_store(LocalID = localID)
+            idx += 6
+            if not naaliProto:
+                accel = unpack_v3(data, idx, -64.0, 64.0)
+                idx += 6
+            rot = unpack_q(data, idx)
+            idx += 8
+            if not naaliProto:
+                angular_vel = unpack_v3(data, idx, -64.0, 64.0)
+            if is_avatar:
+                obj = self.client.region.objects.get_avatar_from_store(LocalID = localID)
+                print("Avatar!", obj)
+            else:
+                obj = self.client.region.objects.get_object_from_store(LocalID = localID)
             # print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
             if obj:
+                if self._eatupdates[obj.LocalID]:
+                    self._eatupdates[obj.LocalID]-= 1
+                    return
                 obj_uuid = str(obj.FullID)
                 obj.pos = v3_to_list(pos)
                 obj.rot = q_to_list(rot)
                 self.out_queue.put(['pos', obj_uuid, v3_to_list(pos), q_to_list(rot)])
+            else:
+                print("cant find object")
 
     def onObjectPermissions(self, packet):
         self.logger.debug("PERMISSIONS!!!")
@@ -650,6 +668,7 @@ class BlenderAgent(object):
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
                 if obj:
                     data = cmd[2]
+                    self._eatupdates[obj.LocalID] += 1
                     client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                               client.session_id,
                                               obj.LocalID, data, cmd_type)
@@ -694,6 +713,7 @@ class BlenderAgent(object):
                 cmd_type = 11 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
+        self._eatupdates[obj.LocalID] += 1
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
@@ -756,8 +776,20 @@ class BlenderAgent(object):
            objdata = ObjectData_block["ObjectData"]
            obj_uuid = uuid_to_s(ObjectData_block["FullID"])
            obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
-           out_queue.put(['props', obj_uuid,
-                                  {"OwnerID": str(ObjectData_block["OwnerID"])}])
+           if obj and self._eatupdates[obj.LocalID]:
+               self._eatupdates[obj.LocalID]-= 1
+               return
+           pars = { "OwnerID": str(ObjectData_block["OwnerID"]),
+                    "PCode":ObjectData_block["PCode"] }
+           parent_id = ObjectData_block["ParentID"]
+           if parent_id:
+               parent =  self.client.region.objects.get_object_from_store(LocalID=parent_id)
+               if parent:
+                   pars["ParentID"] = str(parent.FullID)
+           namevalue = NameValueList(ObjectData_block['NameValue'])
+           if namevalue._dict:
+               pars['NameValues'] = namevalue._dict
+           out_queue.put(['props', obj_uuid, pars])
            if "Scale" in ObjectData_block.var_list:
                scale = ObjectData_block["Scale"]
                if obj:

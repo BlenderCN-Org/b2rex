@@ -5,6 +5,16 @@ class LayerTypes:
     LayerWind = 0x37
     LayerCloud = 0x38
 
+# pyogp.lib.enums.PCodeEnum
+class PCodeEnum(object):
+    """ classifying the PCode of objects """
+    Primitive = 9          # 0x09
+    Avatar = 47            # 0x2F
+    Grass = 95             # 0x5F
+    NewTree = 111          # 0x6F
+    ParticleSystem = 143   # 0x8F
+    Tree = 255   
+
 class RexDrawType:
     Prim = 0
     Mesh = 1
