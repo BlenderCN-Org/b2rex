@@ -3,6 +3,7 @@ import re
 import uuid
 import getpass, sys, logging
 import time
+from array import array
 import math
 from hashlib import md5
 import popen2
@@ -79,6 +80,34 @@ class XferUploader(object):
     def __init__(self, data, cb):
         self.cb = cb
         self.data = data
+        self.total = len(data)/1024
+        self.first = True
+        self.nseq = 1
+        self.xferID = None
+    def getNextPacket(self):
+        if not len(self.data):
+            return
+        if len(self.data) <= 1024:
+            nextdata = self.data
+            self.data = b''
+            ongoing = 0x80000000 # last packet
+        else:
+            nextdata = self.data[:1024]
+            self.data = self.data[1024:]
+            ongoing = 0x00000000 # last packet
+        if self.first:
+            nextdata = b'\0\0\0\0' + nextdata
+            self.first = False
+
+        packet = Message('SendXferPacket',
+                        Block('XferID',
+                                ID = self.xferID,
+                                Packet = ongoing|self.nseq),
+                         # first packet needs 4 bytes padding if we dont
+                         # bootstrap some data ???
+                        Block('DataPacket', Data=array('c',nextdata)))
+        self.nseq += 1
+        return packet
 
 class XferUploadManager(object):
     def __init__(self, agent):
@@ -98,13 +127,19 @@ class XferUploadManager(object):
         """
         tr_uuid = UUID()
         tr_uuid.random()
-        assetID = uuid_combine(tr_uuid, self._agent.secure_session_id)
-        self._uploaders[str(assetID)] = XferUploader(data, cb)
+        init_data = None
+        if len(data) < 1024:
+            init_data = array('c', data)
+        else:
+            assetID = uuid_combine(tr_uuid, self._agent.secure_session_id)
+            newuploader = XferUploader(data, cb)
+            self._uploaders[str(assetID)] = newuploader
+
         self._agent.asset_manager.upload_asset(tr_uuid,
                                                assetType,
                                                False, # tempfile
                                                True, # storelocal
-                                               None) # asset_data
+                                               init_data) # asset_data
         return  assetID
 
     def onRequestXfer(self, packet):
@@ -115,14 +150,9 @@ class XferUploadManager(object):
         vfile_id = packet["XferID"][0]["VFileID"] # key and uuid of new asset
         if str(vfile_id) in self._uploaders:
             uploader = self._uploaders[str(vfile_id)]
-            ongoing = 0x80000000 # last packet
-            packet = Message('SendXferPacket',
-                            Block('XferID',
-                                    ID = xfer_id,
-                                    Packet = ongoing|1),
-                             # first packet needs 4 bytes padding if we dont
-                             # bootstrap some data ???
-                            Block('DataPacket', Data=b'\0\0\0\0'+uploader.data))
+            self._uploaders[xfer_id] = uploader
+            uploader.xferID = xfer_id
+            packet = uploader.getNextPacket()
             self._agent.region.enqueue_message(packet)
         else:
             print("NO UPLOAD FOR TRANSFER REQUEST!!", vfile_id,
@@ -132,17 +162,25 @@ class XferUploadManager(object):
         """
         Confirmation for one of our upload packets.
         """
-        print("ConfirmXferPacket")
+        xfer_id = packet["XferID"][0]["ID"]
+        if xfer_id in self._uploaders:
+            uploader = self._uploaders[xfer_id]
+            print("ConfirmXferPacket", packet["XferID"][0]["Packet"],
+                  uploader.total)
+            packet = uploader.getNextPacket()
+            if packet:
+                self._agent.region.enqueue_message(packet)
 
     def onAssetUploadComplete(self, packet):
         """
         Confirmation for completion of the asset upload.
         """
         assetID = packet['AssetBlock'][0]['UUID']
-        print("AssetUploadComplete", assetID)
         if str(assetID) in self._uploaders:
             print("AssetUploadComplete Go On", assetID)
             self._uploaders[str(assetID)].cb(assetID)
+            xfer_id = self._uploaders[str(assetID)].xferID
+            del self._uploaders[xferID]
             del self._uploaders[str(assetID)]
         else:
             print("NO UPLOAD FOR ASSET UPLOAD COMPLETE!!", assetID,
@@ -712,9 +750,20 @@ class BlenderAgent(object):
                 caps_sent = True
             api.sleep(0)
 
-        api.sleep(0.3)
+
+        print("connected")
+        f = open("/home/caedes/Firefox_wallpaper.png", "rb")
+        data = f.read()
+        f.close
+        def uploadcheck(*blah):
+            print("XFER: UploadDone!!", blah)
+        print("Sending xfer")
+        self.uploader.uploadAsset(0, data, uploadcheck)
+        print("Sending xfer sent")
+
 
         self.sendThrottle()
+        api.sleep(100.3)
 
         # speak up the first line
         client.say(str(firstline))
