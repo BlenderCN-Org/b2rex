@@ -183,6 +183,8 @@ class TerrainSync(object):
         """
         Apply a set of data to a patch of land
         """
+        if self.terraindirty:
+            return
         lod = self.lodlevels[self.lod]
         fullpatchsize = 16
         patchsize = int(fullpatchsize/lod)

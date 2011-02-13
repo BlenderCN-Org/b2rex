@@ -3,6 +3,7 @@ import time
 import uuid
 import traceback
 import threading
+import math
 import base64
 from collections import defaultdict
 
@@ -116,6 +117,7 @@ class BaseApplication(Importer, Exporter):
             agent = bpy.data.objects.new(agentID, camera)
             self.set_uuid(agent, agentID)
             self._agents[agentID] = agentID
+
             scene = self.get_current_scene()
             scene.objects.link(agent)
             try:
@@ -148,6 +150,7 @@ class BaseApplication(Importer, Exporter):
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id
         self.agent_access = agent_access
+        print("CONNECTED AS", agent_id)
 
     def default_error_db(self, request, error):
         logger.warning("error downloading "+str(request)+": "+str(error))
@@ -281,6 +284,7 @@ class BaseApplication(Importer, Exporter):
     def processDeleteCommand(self, objId):
         obj = self.findWithUUID(objId)
         if obj:
+            print("DELETE FOR",objId)
             # delete from object cache
             if objId in self._total['objects']:
                 del self._total['objects'][objId]
@@ -500,6 +504,7 @@ class BaseApplication(Importer, Exporter):
             scale = list(scale)
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
                 self.stats[1] += 1
+                print("sending object position", obj_uuid)
                 self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
                 self.positions[obj_uuid] = pos
                 self.rotations[obj_uuid] = rot
@@ -643,6 +648,10 @@ class BaseApplication(Importer, Exporter):
 
         selected = set(self.getSelected())
         all_selected = set()
+        # changes in our own avatar
+        agent = self.findWithUUID(self.agent_id)
+        if agent:
+            self.processUpdate(agent)
         # look for changes in objects
         for obj in selected:
             obj_id = self.get_uuid(obj)

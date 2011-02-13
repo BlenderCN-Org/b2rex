@@ -71,7 +71,7 @@ def unpack_v3(data, offset, min, max):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self.nlayers = 0
         self.creating = False
@@ -212,6 +212,9 @@ class BlenderAgent(object):
         t_id = uuid.uuid4()
         invoice_id = UUID()
         data = b''
+        materials = []
+        if "materials" in args:
+            materials=args["materials"]
         # drawType (1 byte)
         if 'drawType' in args:
             data += struct.pack('<b', args['drawType'])
@@ -225,12 +228,14 @@ class BlenderAgent(object):
                 data += struct.pack('<?', args[prop])
             else:
                 data += struct.pack('<?', False)
+
         # float properties
         for prop in ['RexDrawDistance', 'RexLOD']:
             if prop in args:
                 data += struct.pack('<f', args[prop])
             else:
                 data += struct.pack('<f', 0.0)
+
         # uuid properties
         for prop in ['RexMesh', 'RexCollisionMesh',
                      'RexParticleScript', 'RexAnimationPackage']:
@@ -239,7 +244,17 @@ class BlenderAgent(object):
                 data += bytes(UUID(args[prop]).data().bytes)
             else:
                 data += bytes(UUID().data().bytes)
-        data += b'\0'*(200-len(data))
+
+        data += b'\0' # empty animation name
+        data += struct.pack("<f", 0) # animation rate
+
+        data += struct.pack("<b", len(materials)) # materials count
+        for idx, matID in enumerate(materials):
+            data += struct.pack('<b', AssetType.OgreMaterial)
+            data += bytes(UUID(matID).data().bytes)
+            data += struct.pack('<b', idx)
+
+        data += b'\0'*(200-len(data)) # just in case :P
         # prepare packet
         packet = Message('GenericMessage',
                         Block('AgentData',
@@ -278,6 +293,7 @@ class BlenderAgent(object):
         if obj:
             obj.rexdata = pars
         self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
+        # animation
         animname = ""
         idx = 78
         while rexdata[idx] != '\0':
@@ -285,6 +301,7 @@ class BlenderAgent(object):
         animname = rexdata[78:idx+1]
         pos = idx+1
         RexAnimationRate = struct.unpack("<f", rexdata[pos:pos+4])[0]
+        # materials
         materialsCount = struct.unpack("<b", rexdata[pos+4])[0]
         pos = pos+5
         materials = []
@@ -347,7 +364,6 @@ class BlenderAgent(object):
                 angular_vel = unpack_v3(data, idx, -64.0, 64.0)
             if is_avatar:
                 obj = self.client.region.objects.get_avatar_from_store(LocalID = localID)
-                print("Avatar!", obj)
             else:
                 obj = self.client.region.objects.get_object_from_store(LocalID = localID)
             # print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
@@ -362,6 +378,33 @@ class BlenderAgent(object):
             else:
                 print("cant find object")
 
+    def sendAutopilot(self, agent, pos):
+        t_id = uuid.uuid4()
+        client = self.client
+        invoice_id = UUID()
+        #data_x = struct.pack("<f",pos[0])
+        #data_y = struct.pack("<f",pos[1])
+        #data_z = struct.pack("<f",pos[2])
+        data_x = str(pos[0])
+        data_y = str(pos[1])
+        data_z = str(pos[2])
+        print("send autopilot")
+        self.client.teleport(region_handle=client.region.RegionHandle, position=Vector3(X=pos[0], Y=pos[1],
+                                                            Z=pos[2]))
+        """
+        packet = Message('GenericMessage',
+                        Block('AgentData',
+                                AgentID = client.agent_id,
+                                SessionID = client.session_id,
+                             TransactionID = t_id),
+                        Block('MethodData',
+                                Method = 'autopilot',
+                                Invoice = invoice_id),
+                        Block('ParamList', Parameter=data_x),
+                        Block('ParamList', Parameter=data_y),
+                        Block('ParamList', Parameter=data_z))
+        self.client.region.enqueue_message(packet)
+        """
     def onObjectPermissions(self, packet):
         self.logger.debug("PERMISSIONS!!!")
 
@@ -556,6 +599,10 @@ class BlenderAgent(object):
         while client.connected == False:
             api.sleep(0)
 
+        # inform our client of connection success
+        out_queue.put(["connected", str(client.agent_id),
+                             str(client.agent_access)])
+ 
         # we pre-hook KillObject in a special way because we need to use the
         # cache one last time
         self.old_kill_object = self.client.region.objects.onKillObject
@@ -618,10 +665,7 @@ class BlenderAgent(object):
         # speak up the first line
         client.say(str(firstline))
 
-        # inform our client of connection success
-        out_queue.put(["connected", str(client.agent_id),
-                             str(client.agent_access)])
-        # send inventory skeleton
+       # send inventory skeleton
         if hasattr(self.client, 'login_response') and 'inventory-skeleton' in self.client.login_response:
             out_queue.put(["InventorySkeleton",  self.client.login_response['inventory-skeleton']])
         # main loop for the agent
@@ -674,9 +718,16 @@ class BlenderAgent(object):
                                               obj.LocalID, data, cmd_type)
             elif cmd[0] == "pos":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
+                if not obj:
+                    print("try finding avatar", cmd[1])
+                    obj = client.region.objects.get_avatar_from_store(FullID=UUID(cmd[1]))
+                    if obj:
+                        self.sendAutopilot(obj, cmd[2])
+                        continue
                 if obj:
                     pos = cmd[2]
                     rot = cmd[3]
+                    print("Sending position update for", cmd[1])
                     self.sendPositionUpdate(obj, pos, rot)
             elif cmd[0] == "updatepermissions":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
@@ -992,8 +1043,10 @@ class ClientHandler(object):
         json_socket.close()
         if running:
             running.addCmd(["quit"])
+            running = None
             # run_main = False
-        raise eventlet.StopServe
+        # live..
+        #raise eventlet.StopServe
 
 run_main = True
 def main():
