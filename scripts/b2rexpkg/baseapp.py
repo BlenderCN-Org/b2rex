@@ -54,6 +54,7 @@ class BaseApplication(Importer, Exporter):
         self.pool = ThreadPool(1)
         self.workpool = ThreadPool(4)
         self.rawselected = set()
+        self.simstats = None
         self.agent_id = ""
         self.loglevel = "standard"
         self.agent_access = ""
@@ -103,6 +104,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
+        self.registerCommand('SimStats', self.processSimStats)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
@@ -114,6 +116,9 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
+
+    def processSimStats(self, X, Y, Flags, ObjectCapacity, *args):
+        self.simstats = [X, Y, Flags, ObjectCapacity] + list(args)
 
     def processOnlineNotification(self, agentID):
         self._agents[agentID] = agentID

@@ -191,7 +191,7 @@ class XferUploadManager(object):
 
 class BlenderAgent(object):
     do_megahal = False
-    verbose = True
+    verbose = False
     def __init__(self, in_queue, out_queue):
         self.inventory = None
         self.nlayers = 0
@@ -848,7 +848,7 @@ class BlenderAgent(object):
     def onInventoryDescendents(self, packet):
         folder_id = packet['AgentData'][0]['FolderID']
         folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID)} for member in self.inventory.folders if str(member.ParentID) == str(folder_id)]
-        return # needs update on pyogp
+        # return # needs update on pyogp
         items =  [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID)} for member in self.inventory.items if str(member.FolderID) == str(folder_id)] 
 
         self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
@@ -924,10 +924,17 @@ class BlenderAgent(object):
         return client
 
     def onSimStats(self, packet):
-        return
+        pars = []
         for stat in packet["Stat"]:
-            self.logger.debug(str(stat["StatID"]) + " " + str(stat["StatValue"]))
-        self.logger.debug("received sim stats!"+str(packet))
+            pars.append(stat["StatValue"])
+            #print(str(stat["StatID"]) + " " + str(stat["StatValue"]))
+        Region = packet["Region"][0]
+        X = Region['RegionX']
+        Y = Region['RegionY']
+        Flags = Region['RegionFlags']
+        ObjectCapacity = Region['ObjectCapacity']
+        self.out_queue.put(["SimStats", X, Y, Flags, ObjectCapacity] + pars)
+        #print("received sim stats!"+str(packet))
 
     def onObjectUpdate(self, packet):
         out_queue = self.out_queue
