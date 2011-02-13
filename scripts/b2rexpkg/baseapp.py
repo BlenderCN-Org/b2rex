@@ -98,12 +98,23 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
+        self.registerCommand('OnlineNotification',
+                             self.processOnlineNotification)
+        self.registerCommand('OfflineNotification',
+                             self.processOfflineNotification)
         self.registerCommand('AgentMovementComplete',
                              self.processAgentMovementComplete)
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
+
+    def processOnlineNotification(self, agentID):
+        self._agents[agentID] = agentID
+
+    def processOfflineNotification(self, agentID):
+        pass # should get a kill..
+        # self._agents[agentID] = agentID
 
     def processAgentMovementComplete(self, agentID, pos, lookat):
         agent = self.getAgent(agentID)
@@ -119,6 +130,8 @@ class BaseApplication(Importer, Exporter):
             self._agents[agentID] = agentID
 
             scene = self.get_current_scene()
+            if agentID in self.positions:
+                self.apply_position(agentID, self.positions[agentID], raw=True)
             scene.objects.link(agent)
             try:
                 agent.show_name = True

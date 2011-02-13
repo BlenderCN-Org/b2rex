@@ -338,7 +338,6 @@ class BlenderAgent(object):
             localID = struct.unpack("<I", data[0:4])[0]
             naaliProto = False
             if len(data) == 30:
-                print("NAALI PACKET!")
                 is_avatar = True
                 naaliProto = True
                 idx = 4
@@ -367,6 +366,8 @@ class BlenderAgent(object):
                 angular_vel = unpack_v3(data, idx, -64.0, 64.0)
             if is_avatar:
                 obj = self.client.region.objects.get_avatar_from_store(LocalID = localID)
+                if not obj:
+                    print("cant find avatar!!")
             else:
                 obj = self.client.region.objects.get_object_from_store(LocalID = localID)
             # print("onImprovedTerseObjectUpdate", localID, pos, vel, accel, obj)
@@ -531,6 +532,14 @@ class BlenderAgent(object):
 
             self.out_queue.put(["CoarseLocationUpdate", str(agent), (X, Y, Z)])
 
+    def onOnlineNotification(self, packet):
+        self.out_queue.put(["OnlineNotification",
+                            str(packet["AgentBlock"][0]["AgentID"])])
+
+    def onOfflineNotification(self, packet):
+        self.out_queue.put(["OfflineNotification",
+                            str(packet["AgentBlock"][0]["AgentID"])])
+
     def onRegionHandshake(self, packet):
         print("REGION HANDSHAKE REPLY")
         print(packet)
@@ -613,7 +622,12 @@ class BlenderAgent(object):
         #res = client.region.message_handler.register("KillObject")
         #res.subscribe(self.onKillObject)
 
-        self.inventory.enable_callbacks() 
+        self.inventory.enable_callbacks()
+
+        res = client.region.message_handler.register("OnlineNotification")
+        res.subscribe(self.onOnlineNotification)
+        res = client.region.message_handler.register("OfflineNotification")
+        res.subscribe(self.onOfflineNotification)
 
         res = client.region.message_handler.register("RegionHandshake")
         res.subscribe(self.onRegionHandshake)
@@ -729,7 +743,6 @@ class BlenderAgent(object):
             elif cmd[0] == "pos":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
                 if not obj:
-                    print("try finding avatar", cmd[1])
                     obj = client.region.objects.get_avatar_from_store(FullID=UUID(cmd[1]))
                     if obj:
                         self.sendAutopilot(obj, cmd[2])
@@ -737,7 +750,6 @@ class BlenderAgent(object):
                 if obj:
                     pos = cmd[2]
                     rot = cmd[3]
-                    print("Sending position update for", cmd[1])
                     self.sendPositionUpdate(obj, pos, rot)
             elif cmd[0] == "updatepermissions":
                 obj = client.region.objects.get_object_from_store(FullID=cmd[1])
@@ -753,7 +765,8 @@ class BlenderAgent(object):
 
     def onInventoryDescendents(self, packet):
         folder_id = packet['AgentData'][0]['FolderID']
-        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID)} for member in self.inventory.folders if str(member.ParentID) == str(folder_id)] 
+        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID)} for member in self.inventory.folders if str(member.ParentID) == str(folder_id)]
+        return # needs update on pyogp
         items =  [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID)} for member in self.inventory.items if str(member.FolderID) == str(folder_id)] 
 
         self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
