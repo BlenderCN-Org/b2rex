@@ -115,8 +115,14 @@ class BaseApplication(Importer, Exporter):
             camera = bpy.data.cameras.new(agentID)
             agent = bpy.data.objects.new(agentID, camera)
             self.set_uuid(agent, agentID)
+            self._agents[agentID] = agentID
             scene = self.get_current_scene()
             scene.objects.link(agent)
+            try:
+                agent.show_name = True
+                agent.show_x_ray = True
+            except:
+                pass # blender2.5 only
             if not agentID == self.agent_id:
                 self.set_immutable(agent)
         return agent

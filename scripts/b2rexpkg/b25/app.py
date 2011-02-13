@@ -1,4 +1,5 @@
 import traceback
+import math
 
 from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
@@ -147,6 +148,9 @@ class B2Rex(BaseApplication):
 
     def _processRotCommand(self, obj, objId, rot):
         self.apply_rotation(obj, rot)
+        if objId in self._agents:
+            rot = obj.rotation_euler
+            obj.rotation_euler = (rot[0]+math.pi/2.0, rot[1], rot[2]+math.pi/2.0)
         self.rotations[objId] = list(obj.rotation_euler)
         self.queueRedraw()
 
