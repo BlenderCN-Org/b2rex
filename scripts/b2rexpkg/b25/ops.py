@@ -176,3 +176,15 @@ class SetMaskOff(bpy.types.Operator):
         return {'FINISHED'}
    
 
+class FolderStatus(bpy.types.Operator):
+    bl_idname = "b2rex.folder"
+    bl_label = "Folder"
+    expand = bpy.props.BoolProperty(name="Expand")
+    folder_id = bpy.props.StringProperty(name="Folder ID")
+
+    def execute(self, context):
+        setattr(context.scene.b2rex_props, "e_" + self.folder_id.split('-')[0], self.expand)
+        if self.expand == True:
+            bpy.b2rex_session.simrt.addCmd(['sendFetchInventoryDescendentsRequest', self.folder_id])
+
+        return {'FINISHED'}

@@ -36,6 +36,8 @@ from pyogp.lib.client.enums import PCodeEnum
 from pyogp.lib.client.namevalue import NameValueList
 from pyogp.lib.base.message.message import Message, Block
 
+import pyogp.lib.client.inventory
+from pyogp.lib.client.inventory import UDP_Inventory
 # Extra asset and inventory types for rex
 import pyogp.lib.client.enums
 
@@ -73,6 +75,7 @@ class BlenderAgent(object):
     do_megahal = False
     verbose = True
     def __init__(self, in_queue, out_queue):
+        self.inventory = None
         self.nlayers = 0
         self.creating = False
         self._eatupdates = defaultdict(int)
@@ -561,7 +564,7 @@ class BlenderAgent(object):
         out_queue = self.out_queue
 
         client = self.initialize_agent()
-
+        self.inventory = UDP_Inventory(client)
         # Now let's log it in
         region = regionname
         firstname, lastname = username.split(" ", 1)
@@ -610,6 +613,8 @@ class BlenderAgent(object):
         #res = client.region.message_handler.register("KillObject")
         #res.subscribe(self.onKillObject)
 
+        self.inventory.enable_callbacks() 
+
         res = client.region.message_handler.register("RegionHandshake")
         res.subscribe(self.onRegionHandshake)
         res = client.region.message_handler.register("CoarseLocationUpdate")
@@ -644,6 +649,8 @@ class BlenderAgent(object):
         res.subscribe(self.onObjectProperties)
         res = client.region.objects.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
+        res = client.region.message_handler.register("InventoryDescendents")
+        res.subscribe(self.onInventoryDescendents)
 
         caps_sent = False
         caps = {}
@@ -668,6 +675,9 @@ class BlenderAgent(object):
        # send inventory skeleton
         if hasattr(self.client, 'login_response') and 'inventory-skeleton' in self.client.login_response:
             out_queue.put(["InventorySkeleton",  self.client.login_response['inventory-skeleton']])
+
+        self.inventory._parse_folders_from_login_response()    
+
         # main loop for the agent
         selected = set()
         while client.running == True:
@@ -737,8 +747,16 @@ class BlenderAgent(object):
                     self.updatePermissions(obj, mask, val)
             elif cmd[0] == "LayerData":
                 self.sendLayerData(*cmd[1:])
-              
-                
+            elif cmd[0] == "sendFetchInventoryDescendentsRequest":
+                func = getattr(self.inventory, cmd[0])
+                func(*cmd[1:])
+
+    def onInventoryDescendents(self, packet):
+        folder_id = packet['AgentData'][0]['FolderID']
+        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID)} for member in self.inventory.folders if str(member.ParentID) == str(folder_id)] 
+        items =  [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID)} for member in self.inventory.items if str(member.FolderID) == str(folder_id)] 
+
+        self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
 
     def sendPositionUpdate(self, obj, pos, rot):
         cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,

@@ -3,8 +3,10 @@
 """
 
 import bpy
+import uuid
 
 from b2rexpkg.b25.ops import getLogLabel
+from ..properties import B2RexProps
 
 
 class ConnectionPanel(bpy.types.Panel):
@@ -100,7 +102,71 @@ class ConnectionPanel(bpy.types.Panel):
 
         self.draw_stats(layout, session, props)
         self.draw_settings(layout, session, props)
+        self.draw_inventory(layout, session, props)
 
+    def draw_folder(self, folder_id, indent):
+ 
+        props = bpy.context.scene.b2rex_props
+    
+        folders = dict()
+        items = dict()
+        if hasattr(B2RexProps, 'folders'):
+            folders = getattr(props, 'folders')
+
+        if hasattr(B2RexProps, '_items'):
+            items = getattr(props, '_items')
+
+        folder = folders[folder_id]
+
+        session = bpy.b2rex_session
+        row = self.layout.row()
+
+        for i in range(indent):
+            row.separator()
+
+        folder_expand = "e_" +  str(folder_id).split('-')[0]
+        if hasattr(B2RexProps, folder_expand):
+            if not getattr(props, folder_expand):
+                oper = row.operator('b2rex.folder', text=folder['Name'], icon='ZOOMIN', emboss=False)
+                oper.expand = True
+            else:
+                oper = row.operator('b2rex.folder', text=folder['Name'], icon='ZOOMOUT', emboss=False)
+                for f_id,folder in folders.items():
+                    if folder['ParentID'] == folder_id:
+                        self.draw_folder(f_id, indent + 1) 
+                for i_if,item in items.items():
+                    if item['FolderID'] == folder_id:
+                        row = self.layout.row()
+                        for i in range(indent + 1):
+                            row.separator()
+
+                        row.label(text=item['Name'], icon='OBJECT_DATA')
+                oper.expand = False
+
+            oper.folder_id = folder_id
+        else:
+            row.label(text="Loading...")
+        
+    def draw_inventory(self, layout, session, props):
+        row = layout.column()
+        row.alignment = 'CENTER'
+        if props.inventory_expand:
+            row.prop(props, 'inventory_expand', icon="TRIA_DOWN", text="Inventory")
+        else:
+            row.prop(props, 'inventory_expand', icon="TRIA_RIGHT", text="Inventory")
+            return
+            
+        try:
+            inventory = session.inventory
+        except:
+            row = layout.column()
+            row.label(text='Inventory not loaded')
+            return
+
+        
+        if hasattr(B2RexProps, "root_folder"): 
+            root_folder = getattr(props, "root_folder")
+            self.draw_folder(root_folder, 0)
 
     def draw_stats(self, layout, session, props):
         row = layout.row() 

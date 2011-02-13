@@ -138,10 +138,12 @@ class BaseApplication(Importer, Exporter):
         for header, layer in terrpackets:
             self.terrain.apply_patch(layer, header.x, header.y)
 
+    def processInventoryDescendents(self, folder_id, folders, items):
+        pass
+        
+
     def processInventorySkeleton(self, inventory):
-        self.inventory = inventory
-        #for inv in inventory:
-            #    print(inv['parent_id'])
+        pass
 
     def processCoarseLocationUpdate(self, agent_id, pos):
         #print("COARSE LOCATION UPDATE", agent_id, pos)
