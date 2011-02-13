@@ -8,6 +8,13 @@ import uuid
 from b2rexpkg.b25.ops import getLogLabel
 from ..properties import B2RexProps
 
+simstats_labels = ["X", "Y", "Flags", "ObjectCapacity", "TimeDilation",
+                   "SimFPS", "PhysicsFPS", "AgentUpdates", "Agents",
+                   "ChildAgents", "TotalPrim", "ActivePrim", "FrameMS", "NetMS",
+                  "PhysicsMS", "ImageMS", "OtherMS", "InPacketsPerSecond",
+                   "OutPacketsPerSecond", "UnAckedBytes", "AgentMS",
+                   "PendingDownloads", "PendingUploads", "ActiveScripts",
+                   "ScriptLinesPerSecond"]
 
 class ConnectionPanel(bpy.types.Panel):
     bl_label = "b2rex" #baseapp.title
@@ -55,17 +62,51 @@ class ConnectionPanel(bpy.types.Panel):
         box.label(text="Status: "+session.status)
 
     def draw_chat(self, layout, session, props):
-        if len(props.chat):
-            row = layout.row() 
-            row.label(text="Chat")
-            row = layout.row() 
-            row.template_list(props, 'chat', props, 'selected_chat',
-                              rows=5)
-            if props.next_chat:
-                session.simrt.addCmd(["msg", props.next_chat])
-                props.next_chat = ""
-            row = layout.row()
-            row.prop(props, 'next_chat')
+        if not len(props.chat):
+            return
+        row = layout.column()
+        if props.chat_expand:
+            row.prop(props, 'chat_expand', icon="TRIA_DOWN", text="Chat")
+        else:
+            row.prop(props, 'chat_expand', icon="TRIA_RIGHT", text="Chat")
+            return
+
+        row = layout.row() 
+        row.label(text="Chat")
+        row = layout.row() 
+        row.template_list(props, 'chat', props, 'selected_chat',
+                          rows=5)
+        if props.next_chat:
+            session.simrt.addCmd(["msg", props.next_chat])
+            props.next_chat = ""
+        row = layout.row()
+        row.prop(props, 'next_chat')
+
+    def draw_regions(self, layout, session, props):
+        row = layout.column()
+        if not len(props.regions):
+            return
+        if props.regions_expand:
+            row.prop(props, 'regions_expand', icon="TRIA_DOWN", text="Regions")
+        else:
+            row.prop(props, 'regions_expand', icon="TRIA_RIGHT", text="Regions")
+            return
+
+        row = layout.row() 
+        row.template_list(props, 'regions', props, 'selected_region')
+        if props.selected_region > -1:
+            col = layout.column_flow(0)
+            col.operator("b2rex.exportupload", text="Export/Upload")
+            col.operator("b2rex.export", text="Upload")
+            col.operator("b2rex.export", text="Clear")
+            col.operator("b2rex.check", text="Check")
+            col.operator("b2rex.sync", text="Sync")
+            col.operator("b2rex.import", text="Import")
+
+        row = layout.column()
+        for k in session.region_report:
+            row.label(text=k)
+
 
     def draw(self, context):
         if self.cb_view == None:
@@ -80,29 +121,12 @@ class ConnectionPanel(bpy.types.Panel):
 
         self.draw_connection_panel(layout, session, props)
 
-        if len(props.regions):
-            row = layout.row() 
-            row.template_list(props, 'regions', props, 'selected_region')
-
         self.draw_chat(layout, session, props)
-
-        if props.selected_region > -1:
-            col = layout.column_flow(0)
-            col.operator("b2rex.exportupload", text="Export/Upload")
-            col.operator("b2rex.export", text="Upload")
-            col.operator("b2rex.export", text="Clear")
-            col.operator("b2rex.check", text="Check")
-            col.operator("b2rex.sync", text="Sync")
-            col.operator("b2rex.import", text="Import")
-
-        row = layout.column()
-
-        for k in session.region_report:
-            row.label(text=k)
+        self.draw_inventory(layout, session, props)
+        self.draw_regions(layout, session, props)
 
         self.draw_stats(layout, session, props)
         self.draw_settings(layout, session, props)
-        self.draw_inventory(layout, session, props)
 
     def draw_folder(self, folder_id, indent):
  
@@ -150,6 +174,8 @@ class ConnectionPanel(bpy.types.Panel):
     def draw_inventory(self, layout, session, props):
         row = layout.column()
         row.alignment = 'CENTER'
+        if not hasattr(session, 'inventory'):
+            return
         if props.inventory_expand:
             row.prop(props, 'inventory_expand', icon="TRIA_DOWN", text="Inventory")
         else:
@@ -170,8 +196,9 @@ class ConnectionPanel(bpy.types.Panel):
 
     def draw_stats(self, layout, session, props):
         row = layout.row() 
-        if not props.show_stats:
-            row.prop(props,"show_stats", icon="TRIA_DOWN", text="Stats", emboss=False)
+        if props.show_stats:
+            row.prop(props,"show_stats", icon="TRIA_DOWN", text="Stats",
+                     emboss=True)
             box = layout.box()
             if session.simrt:
                 if session.agent_id:
@@ -182,14 +209,19 @@ class ConnectionPanel(bpy.types.Panel):
             box.label(text="queue pending: %d last time: %d"%tuple(session.stats[5:7])+" last sec: "+str(session.second_budget))
             box.label(text="threads workers: "+str(session.stats[7]))
             box.label(text="updates cmd: %d view: %d"%tuple(session.stats[8:10]))
+            if session.simstats:
+                for idx, a in enumerate(session.simstats):
+                    box.label(text=simstats_labels[idx]+": "+str(a))
         else:
-            row.prop(props,"show_stats", icon="TRIA_RIGHT", text="Stats", emboss=False)
+            row.prop(props,"show_stats", icon="TRIA_RIGHT", text="Stats",
+                     emboss=True)
 
 
     def draw_settings(self, layout, session, props):
         row = layout.row()
-        if not props.expand:
-            row.prop(props,"expand", icon="TRIA_DOWN", text="Settings", emboss=False)
+        if props.expand:
+            row.prop(props,"expand", icon="TRIA_DOWN", text="Settings",
+                     emboss=True)
             for prop in ["pack", "path", "server_url", "username", "password",
                          "loc"]:
                 row = layout.row()
@@ -216,4 +248,5 @@ class ConnectionPanel(bpy.types.Panel):
             box = layout.row()
             box.prop(props, "terrainLOD")
         else:
-            row.prop(props,"expand", icon="TRIA_RIGHT", text="Settings", emboss=False)
+            row.prop(props,"expand", icon="TRIA_RIGHT", text="Settings",
+                     emboss=True)
