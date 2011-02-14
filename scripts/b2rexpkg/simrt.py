@@ -49,6 +49,7 @@ from pyogp.lib.client.inventory import UDP_Inventory
 # Extra asset and inventory types for rex
 import pyogp.lib.client.enums
 
+from rt.handlers.chat import ChatHandler
 from rt.handlers.online import OnlineHandler
 from rt.handlers.simstats import SimStatsHandler
 from rt.handlers.xferupload import XferUploadManager
@@ -529,6 +530,7 @@ class AgentManager(object):
         self.addHandler(OnlineHandler(self))
         self.addHandler(RegionHandshakeHandler(self))
         self.addHandler(SimStatsHandler(self))
+        self.addHandler(ChatHandler(self))
 
         # Now let's log it in
         firstname, lastname = username.split(" ", 1)
