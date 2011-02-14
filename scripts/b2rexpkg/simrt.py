@@ -20,7 +20,7 @@ from threading import Thread
 import eventlet
 from eventlet import api
 from eventlet import Queue
-if sys.version_info[0] == 2:
+if __name__ == '__main__':
     simrt_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append(os.path.join(simrt_path, 'tools'))
 try:
