@@ -22,6 +22,7 @@ from eventlet import api
 from eventlet import Queue
 if __name__ == '__main__':
     simrt_path = os.path.dirname(os.path.realpath(__file__))
+    sys.path.append(os.path.join(simrt_path))
     sys.path.append(os.path.join(simrt_path, 'tools'))
 try:
     from jsonsocket import JsonSocket
@@ -43,155 +44,19 @@ from pyogp.lib.client.enums import PCodeEnum
 from pyogp.lib.client.namevalue import NameValueList
 from pyogp.lib.base.message.message import Message, Block
 
+
 import pyogp.lib.client.inventory
 from pyogp.lib.client.inventory import UDP_Inventory
 # Extra asset and inventory types for rex
 import pyogp.lib.client.enums
 
-def v3_to_list(v3):
-    return [v3.X, v3.Y, v3.Z]
-def q_to_list(q):
-    return [q.X, q.Y, q.Z, q.W]
-def b_to_s(b):
-    return b.decode('utf-8')
-def uuid_to_s(b):
-    return str(b)
-def unpack_q(data, offset):
-    min = -1.0
-    max = 1.0
-    q = Quaternion(X=Helpers.packed_u16_to_float(data, offset,
-                                                     min, max),
-                        Y=Helpers.packed_u16_to_float(data, offset+2,
-                                                     min, max),
-                        Z=Helpers.packed_u16_to_float(data, offset+4,
-                                                     min, max),
-                        W=Helpers.packed_u16_to_float(data, offset+6,
-                                                     min, max))
-    return q
+from rt.handlers.online import OnlineHandler
+from rt.handlers.simstats import SimStatsHandler
+from rt.handlers.xferupload import XferUploadManager
+from rt.handlers.regionhandshake import RegionHandshakeHandler
 
-def unpack_v3(data, offset, min, max):
-    vector3 = Vector3(X=Helpers.packed_u16_to_float(data, offset,
-                                                     min, max),
-                        Y=Helpers.packed_u16_to_float(data, offset+2,
-                                                     min, max),
-                        Z=Helpers.packed_u16_to_float(data, offset+4,
-                                                     min, max))
-    return vector3
-
-def uuid_combine(uuid_one, uuid_two):
-    return UUID(bytes=md5(uuid_one.uuid.bytes+uuid_two.uuid.bytes).digest())
-
-class XferUploader(object):
-    def __init__(self, data, cb):
-        self.cb = cb
-        self.data = data
-        self.total = len(data)/1024
-        self.first = True
-        self.nseq = 1
-        self.xferID = None
-    def getNextPacket(self):
-        if not len(self.data):
-            return
-        if len(self.data) <= 1024:
-            nextdata = self.data
-            self.data = b''
-            ongoing = 0x80000000 # last packet
-        else:
-            nextdata = self.data[:1024]
-            self.data = self.data[1024:]
-            ongoing = 0x00000000
-        if self.first:
-            nextdata = b'\0\0\0\0' + nextdata
-            self.first = False
-
-        packet = Message('SendXferPacket',
-                        Block('XferID',
-                                ID = self.xferID,
-                                Packet = ongoing|self.nseq),
-                         # first packet needs 4 bytes padding if we dont
-                         # bootstrap some data ???
-                        Block('DataPacket', Data=array('c',nextdata)))
-        self.nseq += 1
-        return packet
-
-class XferUploadManager(object):
-    def __init__(self, agent):
-        self._agent = agent
-        region = agent.region
-        self._uploaders = {}
-        res = region.message_handler.register("AssetUploadComplete")
-        res.subscribe(self.onAssetUploadComplete)
-        res = region.message_handler.register("ConfirmXferPacket")
-        res.subscribe(self.onConfirmXferPacket)
-        res = region.message_handler.register("RequestXfer")
-        res.subscribe(self.onRequestXfer)
-
-    def uploadAsset(self, assetType, data, cb):
-        """
-        Request an asset upload from the simulator
-        """
-        tr_uuid = UUID()
-        tr_uuid.random()
-        init_data = None
-        if len(data) < 1024:
-            init_data = array('c', data)
-        else:
-            assetID = uuid_combine(tr_uuid, self._agent.secure_session_id)
-            newuploader = XferUploader(data, cb)
-            self._uploaders[str(assetID)] = newuploader
-
-        self._agent.asset_manager.upload_asset(tr_uuid,
-                                               assetType,
-                                               False, # tempfile
-                                               True, # storelocal
-                                               init_data) # asset_data
-        return  assetID
-
-    def onRequestXfer(self, packet):
-        """
-        Confirmation for our asset upload. Now send data.
-        """
-        xfer_id = packet["XferID"][0]["ID"]
-        vfile_id = packet["XferID"][0]["VFileID"] # key and uuid of new asset
-        if str(vfile_id) in self._uploaders:
-            uploader = self._uploaders[str(vfile_id)]
-            self._uploaders[xfer_id] = uploader
-            uploader.xferID = xfer_id
-            packet = uploader.getNextPacket()
-            self._agent.region.enqueue_message(packet)
-        else:
-            print("NO UPLOAD FOR TRANSFER REQUEST!!", vfile_id,
-                  self._uploaders.keys())
-
-    def onConfirmXferPacket(self, packet):
-        """
-        Confirmation for one of our upload packets.
-        """
-        xfer_id = packet["XferID"][0]["ID"]
-        if xfer_id in self._uploaders:
-            uploader = self._uploaders[xfer_id]
-            print("ConfirmXferPacket", packet["XferID"][0]["Packet"],
-                  uploader.total)
-            packet = uploader.getNextPacket()
-            if packet:
-                self._agent.region.enqueue_message(packet)
-
-    def onAssetUploadComplete(self, packet):
-        """
-        Confirmation for completion of the asset upload.
-        """
-        assetID = packet['AssetBlock'][0]['UUID']
-        if str(assetID) in self._uploaders:
-            print("AssetUploadComplete Go On", assetID)
-            self._uploaders[str(assetID)].cb(assetID)
-            xferID = self._uploaders[str(assetID)].xferID
-            del self._uploaders[xferID]
-            del self._uploaders[str(assetID)]
-        else:
-            print("NO UPLOAD FOR ASSET UPLOAD COMPLETE!!", assetID,
-                  self._uploaders.keys())
-
-
+from rt.tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
+from rt.tools import unpack_v3, unpack_q, b_to_s
 
 
 class AgentManager(object):
@@ -204,6 +69,7 @@ class AgentManager(object):
         self._creating_cb = {}
         self._next_create = 1000
         self._eatupdates = defaultdict(int)
+        self._handlers = {}
         self.client = None
         self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
@@ -616,47 +482,14 @@ class AgentManager(object):
 
             self.out_queue.put(["CoarseLocationUpdate", str(agent), (X, Y, Z)])
 
-    def onOnlineNotification(self, packet):
-        self.out_queue.put(["OnlineNotification",
-                            str(packet["AgentBlock"][0]["AgentID"])])
-
-    def onOfflineNotification(self, packet):
-        self.out_queue.put(["OfflineNotification",
-                            str(packet["AgentBlock"][0]["AgentID"])])
-
-    def onRegionHandshake(self, packet):
-        regionInfo = packet["RegionInfo"][0]
-
-        pars = {}
-
-        for prop in ['RegionFlags', 'SimAccess', 'SimName', 'WaterHeight',
-                     'BillableFactor', 'TerrainStartHeight00',
-                     'IsEstateManager',
-                     'TerrainStartHeight01', 'TerrainStartHeight10',
-                     'TerrainStartHeight11', 'TerrainHeightRange00',
-                     'TerrainHeightRange01', 'TerrainHeightRange10',
-                     'TerrainHeightRange11']:
-            pars[prop] = regionInfo[prop]
-
-        for prop in ["SimOwner", 'CacheID', 'TerrainBase0', 'TerrainBase1',
-                     'TerrainBase2', 'TerrainDetail0', 'TerrainDetail1',
-                     'TerrainDetail2', 'TerrainDetail3']:
-            pars[prop] = str(regionInfo[prop])
-
-        pars["RegionID"] = str(packet["RegionInfo2"][0]["RegionID"])
-        pars["CPUClassID"] = packet["RegionInfo3"][0]["CPUClassID"]
-        pars["CPURatio"] = packet["RegionInfo3"][0]["CPURatio"]
-
-        self.out_queue.put(["RegionHandshake", pars["RegionID"], pars])
-
     def subscribe_region_callbacks(self, region):
-        res = region.message_handler.register("OnlineNotification")
-        res.subscribe(self.onOnlineNotification)
-        res = region.message_handler.register("OfflineNotification")
-        res.subscribe(self.onOfflineNotification)
+        for handler in self._handlers.values():
+            handler.onRegionConnected(region)
 
-        res = region.message_handler.register("RegionHandshake")
-        res.subscribe(self.onRegionHandshake)
+    def subscribe_region_pre_callbacks(self, region):
+        for handler in self._handlers.values():
+            handler.onRegionConnect(region)
+
         res = region.message_handler.register("CoarseLocationUpdate")
         res.subscribe(self.onCoarseLocationUpdate)
         res = region.message_handler.register("ImprovedTerseObjectUpdate")
@@ -671,10 +504,6 @@ class AgentManager(object):
         res.subscribe(self.onLayerData)
         res = region.message_handler.register("ChatFromSimulator")
         res.subscribe(self.onChatFromViewer)
-        res = region.objects.message_handler.register("ObjectUpdate")
-        res.subscribe(self.onObjectUpdate)
-        res = region.message_handler.register("SimStats")
-        res.subscribe(self.onSimStats)
         res = region.message_handler.register("RexPrimData")
         res.subscribe(self.onRexPrimData)
         res = region.message_handler.register("ObjectPermissions")
@@ -685,6 +514,8 @@ class AgentManager(object):
         res.subscribe(self.onRexPrimData)
         res = region.message_handler.register("InventoryDescendents")
         res.subscribe(self.onInventoryDescendents)
+        res = region.objects.message_handler.register("ObjectUpdate")
+        res.subscribe(self.onObjectUpdate)
 
     def prepare_server_name(self, server_url):
         parsed_url = urlparse.urlparse(server_url)
@@ -710,6 +541,9 @@ class AgentManager(object):
         server_url = parsed_url.scheme + '://' + server_name
         return server_url
 
+    def addHandler(self, handler):
+        self._handlers[handler.getName()] = handler
+
     def login(self, server_url, username, password, regionname, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
@@ -718,6 +552,12 @@ class AgentManager(object):
         client = self.initialize_agent()
 
         self.inventory = UDP_Inventory(client)
+
+        self.uploader = XferUploadManager(self)
+        self.addHandler(self.uploader)
+        self.addHandler(OnlineHandler(self))
+        self.addHandler(RegionHandshakeHandler(self))
+        self.addHandler(SimStatsHandler(self))
 
         # Now let's log it in
         firstname, lastname = username.split(" ", 1)
@@ -732,7 +572,10 @@ class AgentManager(object):
         while client.connected == False:
             api.sleep(0)
 
-        self.subscribe_region_callbacks(client.region)
+        for handler in self._handlers.values():
+            handler.onAgentConnected(client)
+
+        self.subscribe_region_pre_callbacks(client.region)
 
         # inform our client of connection success
         out_queue.put(["connected", str(client.agent_id),
@@ -746,7 +589,6 @@ class AgentManager(object):
         #res.subscribe(self.onKillObject)
 
         self.inventory.enable_callbacks()
-        self.uploader = XferUploadManager(self.client)
 
         caps_sent = False
         caps = {}
@@ -761,6 +603,7 @@ class AgentManager(object):
                 caps_sent = True
             api.sleep(0)
 
+        self.subscribe_region_callbacks(client.region)
 
         self.sendThrottle()
 
@@ -926,20 +769,6 @@ class AgentManager(object):
             megahal_r, megahal_w = popen2.popen2("/usr/bin/megahal-personal -p -b -w -d /home/caedes/bots/lorea/.megahal")
             firstline = megahal_r.readline()
         return client
-
-    def onSimStats(self, packet):
-        pars = []
-
-        for stat in packet["Stat"]:
-            pars.append(stat["StatValue"])
-
-        Region = packet["Region"][0]
-        X = Region['RegionX']
-        Y = Region['RegionY']
-        Flags = Region['RegionFlags']
-        ObjectCapacity = Region['ObjectCapacity']
-
-        self.out_queue.put(["SimStats", X, Y, Flags, ObjectCapacity] + pars)
 
     def onObjectUpdate(self, packet):
         out_queue = self.out_queue
