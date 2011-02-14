@@ -5,6 +5,11 @@ class Handler(object):
         self.out_queue = manager.out_queue
         self.manager = manager
         self.logger = logging.getLogger('simrt.rt.'+self.getName())
+    def getServiceName(self):
+        """
+        Return the service under which you want to be registered on the manager
+        """
+        return None
     def getName(self):
         """
         Return the name under which this handler should be registered.

@@ -53,4 +53,7 @@ class ChatHandler(Handler):
                 megahal_w.flush()
                 client.say(str(megahal_r.readline()))
 
+    def processMsg(self, message):
+        self.manager.client.say(message)
+
 

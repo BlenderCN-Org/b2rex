@@ -44,7 +44,10 @@ from pyogp.lib.client.inventory import UDP_Inventory
 from rt.handlers.chat import ChatHandler
 from rt.handlers.layerdata import LayerDataHandler
 from rt.handlers.parcel import ParcelHandler
+from rt.handlers.rexdata import RexDataHandler
+from rt.handlers.throttle import ThrottleHandler
 from rt.handlers.online import OnlineHandler
+from rt.handlers.bootstrap import BootstrapHandler
 from rt.handlers.simstats import SimStatsHandler
 from rt.handlers.xferupload import XferUploadManager
 from rt.handlers.agentmovement import AgentMovementHandler
@@ -65,25 +68,12 @@ class AgentManager(object):
         self._next_create = 1000
         self._eatupdates = defaultdict(int)
         self._handlers = {}
+        self._generichandlers = {}
         self._cmdhandlers = defaultdict(list)
         self.client = None
-        self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
         self.out_queue = out_queue
         self.initialize_logger()
-
-    def processBootstrap(self):
-        print("BOOTSTRAP CLIENT")
-        for obj in self.client.region.objects.object_store:
-            obj_uuid = str(obj.FullID)
-            if hasattr(obj, "pos") and hasattr(obj, "rot"):
-                self.out_queue.put(['pos', obj_uuid, obj.pos, obj.rot])
-            if hasattr(obj, "scale"):
-                self.out_queue.put(['scale', obj_uuid, obj.scale])
-            if hasattr(obj, "rexdata"):
-                self.out_queue.put(['RexPrimData', obj_uuid, obj.rexdata])
-            if hasattr(obj, "props"):
-                self.out_queue.put(["ObjectProperties", obj_uuid, obj.props])
 
     def onKillObject(self, packet):
         localID = packet["ObjectData"][0]["ID"]
@@ -93,36 +83,6 @@ class AgentManager(object):
         if obj:
             self.out_queue.put(["delete", str(obj.FullID)])
         self.old_kill_object(packet)
-
-    def processThrottle(self, bps):
-        if not bps == self.bps:
-            self.bps = bps
-            client = self.client
-            if client and client.connected and client.region.connected:
-                self.sendThrottle(bps)
-
-    def sendThrottle(self, bps=None):
-        if not bps:
-            bps = self.bps
-        bps = bps*8 # we use bytes per second :)
-        data = b''
-        data += struct.pack('<f', bps*0.1) # resend
-        data += struct.pack('<f', bps*0.1) # land
-        data += struct.pack('<f', bps*0.2) # wind
-        data += struct.pack('<f', bps*0.2) # cloud
-        data += struct.pack('<f', bps*0.25) # task
-        data += struct.pack('<f', bps*0.26) # texture
-        data += struct.pack('<f', bps*0.25) # asset
-        counter = 0
-        packet = Message('AgentThrottle',
-                        Block('AgentData',
-                                AgentID = self.client.agent_id,
-                                SessionID = self.client.session_id,
-                             CircuitCode = self.client.circuit_code),
-                        Block('Throttle',
-                              GenCounter=counter,
-                              Throttles=data))
-        self.client.region.enqueue_message(packet)
 
     def sendCreateObject(self, objId, pos, rot, scale, tok):
         RayTargetID = UUID()
@@ -142,125 +102,14 @@ class AgentManager(object):
                         Scale = scale, Rotation = rot,
                         State = 0)
 
-    def sendRexPrimData(self, obj_uuid, args):
-        agent_id = self.client.agent_id
-        session_id = self.client.session_id
-        t_id = uuid.uuid4()
-        invoice_id = UUID()
-        data = b''
-        materials = []
-        if "materials" in args:
-            materials=args["materials"]
-        # drawType (1 byte)
-        if 'drawType' in args:
-            data += struct.pack('<b', args['drawType'])
-        else:
-            data += struct.pack('<b', 1) # where is this 1 coming from ??
-        # bool properties
-        for prop in ['RexIsVisible', 'RexCastShadows',
-                     'RexLightCreatesShadows', 'RexDescriptionTexture',
-                     'RexDescriptionTexture']:
-            if prop in args:
-                data += struct.pack('<?', args[prop])
-            else:
-                data += struct.pack('<?', False)
 
-        # float properties
-        for prop in ['RexDrawDistance', 'RexLOD']:
-            if prop in args:
-                data += struct.pack('<f', args[prop])
-            else:
-                data += struct.pack('<f', 0.0)
-
-        # uuid properties
-        for prop in ['RexMesh', 'RexCollisionMesh',
-                     'RexParticleScript', 'RexAnimationPackage']:
-            prop = prop+'UUID'
-            if prop in args:
-                data += bytes(UUID(args[prop]).data().bytes)
-            else:
-                data += bytes(UUID().data().bytes)
-
-        data += b'\0' # empty animation name
-        data += struct.pack("<f", 0) # animation rate
-
-        data += struct.pack("<b", len(materials)) # materials count
-        for idx, matID in enumerate(materials):
-            data += struct.pack('<b', AssetType.OgreMaterial)
-            data += bytes(UUID(matID).data().bytes)
-            data += struct.pack('<b', idx)
-
-        data += b'\0'*(200-len(data)) # just in case :P
-        # prepare packet
-        packet = Message('GenericMessage',
-                        Block('AgentData',
-                                AgentID = agent_id,
-                                SessionID = session_id,
-                             TransactionID = t_id),
-                        Block('MethodData',
-                                Method = 'RexPrimData',
-                                Invoice = invoice_id),
-                        Block('ParamList', Parameter=str(obj_uuid)),
-                        Block('ParamList', Parameter=data))
-        # send
-        self.client.region.enqueue_message(packet)
-
-    def onRexPrimData(self, packet):
-        rexdata = packet[1]["Parameter"]
-        if len(rexdata) < 102:
-            rexdata = rexdata + ('\0'*(102-len(rexdata)))
-        obj_uuid = UUID(packet[0]["Parameter"])
-        obj_uuid_str = str(obj_uuid)
-        pars = {}
-        pars["drawType"] = struct.unpack("<b", rexdata[0])[0]
-
-        pars["RexIsVisible"]= struct.unpack("<?", rexdata[1])[0]
-        pars["RexCastShadows"]= struct.unpack("<?", rexdata[2])[0]
-        pars["RexLightCreatesShadows"]= struct.unpack("<?", rexdata[3])[0]
-        pars["RexDescriptionTexture"] = struct.unpack("<?", rexdata[4])[0]
-        pars["RexScaleToPrim"]= struct.unpack("<?", rexdata[5])[0]
-        pars["RexDrawDistance"]= struct.unpack("<f", rexdata[6:6+4])[0]
-        pars["RexLOD"]= struct.unpack("<f", rexdata[10:10+4])[0]
-        pars["RexMeshUUID"]= str(UUID(bytes=rexdata[14:14+16]))
-        pars["RexCollisionMeshUUID"]= str(UUID(bytes=rexdata[30:30+16]))
-        pars["RexParticleScriptUUID"]= str(UUID(bytes=rexdata[46:46+16]))
-        pars["RexAnimationPackageUUID"]= str(UUID(bytes=rexdata[62:62+16]))
-        obj = self.client.region.objects.get_object_from_store(FullID = obj_uuid)
-        if obj:
-            obj.rexdata = pars
-        self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
-        # animation
-        animname = ""
-        idx = 78
-        while rexdata[idx] != '\0':
-            idx += 1
-        animname = rexdata[78:idx+1]
-        pos = idx+1
-        RexAnimationRate = struct.unpack("<f", rexdata[pos:pos+4])[0]
-        # materials
-        materialsCount = struct.unpack("<b", rexdata[pos+4])[0]
-        pos = pos+5
-        materials = []
-        for i in range(materialsCount):
-            assettype = struct.unpack("<b", rexdata[pos])[0]
-            matuuid_b = rexdata[pos+1:pos+1+16]
-            matuuid = UUID(bytes=matuuid_b)
-            matindex = struct.unpack("<b", rexdata[pos+17])[0]
-            materials.append([matindex, str(matuuid), assettype])
-            pos = pos + 18
-        pars["Materials"] = materials
-        if not len(rexdata) > pos:
-            #self.logger.debug("RexPrimData: no more data")
-            return
-        idx = pos
-        while rexdata[idx] != '\0':
-              idx += 1
-        RexClassName = rexdata[pos:idx+1]
-        #self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
+    def registerGenericHandler(self, message, handler):
+        self._generichandlers[message] = handler
 
     def onGenericMessage(self, packet):
-        if packet["MethodData"][0]["Method"] == "RexPrimData":
-            self.onRexPrimData(packet["ParamList"])
+        methodname = packet["MethodData"][0]["Method"]
+        if methodname in self._generichandlers:
+            self._generichandlers[methodname](packet["ParamList"])
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
             print(packet)
@@ -405,7 +254,7 @@ class AgentManager(object):
                 del self._creating_cb[obj_idx]
                 args = {"RexMeshUUID": str(asset_id),
                         "RexIsVisible": True}
-                self.sendRexPrimData(real_uuid, args)
+                self.rexdata.sendRexPrimData(real_uuid, args)
                 self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                     str(real_uuid), str(asset_id)])
             self._creating_cb[obj_idx] = finish_creating
@@ -428,7 +277,7 @@ class AgentManager(object):
                     "RexIsVisible": True}
             self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                 str(real_uuid), mesh_uuid_str])
-            self.sendRexPrimData(real_uuid, args)
+            self.rexdata.sendRexPrimData(real_uuid, args)
         self._creating_cb[obj_idx] = finish_creating
         self.sendCreateObject(obj_uuid, pos, rot, scale, obj_idx)
 
@@ -451,14 +300,10 @@ class AgentManager(object):
         for handler in self._handlers.values():
             handler.onRegionConnect(region)
 
-        res = region.message_handler.register("RexPrimData")
-        res.subscribe(self.onRexPrimData)
         res = region.message_handler.register("ObjectPermissions")
         res.subscribe(self.onObjectPermissions)
         res = region.message_handler.register("ObjectProperties")
         res.subscribe(self.onObjectProperties)
-        #res = region.objects.message_handler.register("RexPrimData")
-        #res.subscribe(self.onRexPrimData)
         res = region.message_handler.register("InventoryDescendents")
         res.subscribe(self.onInventoryDescendents)
 
@@ -475,7 +320,9 @@ class AgentManager(object):
         self._handlers[handler.getName()] = handler
         for a in dir(handler):
             if a.startswith("process"):
-                self._cmdhandlers[a[7:]].append(handler)
+                self._cmdhandlers[a[7:]].append(getattr(handler, a))
+        service = handler.getName().lower()
+        setattr(self, service, handler)
 
     def login(self, server_url, username, password, regionname, firstline=""):
         """ login an to a login endpoint """ 
@@ -494,6 +341,8 @@ class AgentManager(object):
         self.addHandler(AgentMovementHandler(self))
         self.addHandler(LayerDataHandler(self))
         self.addHandler(ParcelHandler(self))
+        self.addHandler(ThrottleHandler(self))
+        self.addHandler(RexDataHandler(self))
         self.addHandler(ChatHandler(self))
 
         # Now let's log it in
@@ -542,7 +391,7 @@ class AgentManager(object):
 
         self.subscribe_region_callbacks(client.region)
 
-        self.sendThrottle()
+        self.throttle.sendThrottle()
 
         # speak up the first line
         client.say(str(firstline))
@@ -608,9 +457,6 @@ class AgentManager(object):
             pos = pos
             rot = rot
             self.sendPositionUpdate(obj, pos, rot)
-
-    def processMsg(self, message):
-        self.client.say(message)
 
     def processSelect(self, *args):
         client = self.client
