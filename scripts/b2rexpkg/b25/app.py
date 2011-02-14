@@ -1,12 +1,14 @@
 import traceback
 import math
 import uuid
+from io import StringIO
 
 from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
 from .properties import B2RexObjectProps
 from .properties import B2RexProps
+from .material import RexMaterialIO
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
@@ -30,7 +32,7 @@ class B2Rex(BaseApplication):
         if not self.connected:
             return False
         while(len(props.regions) > 0):
-            props.regions.remove(0)
+                props.regions.remove(0)
         for key, region in self.regions.items():
             props.regions.add()
             regionss = props.regions[-1]
@@ -38,9 +40,24 @@ class B2Rex(BaseApplication):
 #            regionss.description = region['id']
 
     def onCheck(self, context):
-        props = context.scene.b2rex_props
         self.region_uuid = list(self.regions.keys())[props.selected_region]
         self.do_check()
+
+    def onTest(self, context):
+        print("export materials")
+        props = context.scene.b2rex_props
+        current = context.active_object
+        if current:
+            for mat in current.data.materials:
+                face = None
+                if current.data.uv_textures:
+                    face = current.data.uv_textures[0].data[0]
+                matio = RexMaterialIO(self, current.data, face,
+                                     False)
+                f = StringIO()
+                matio.write(f)
+                f.seek(0)
+                print(f.read())
 
     def onProcessQueue(self, context):
         self.processUpdates()
@@ -68,7 +85,8 @@ class B2Rex(BaseApplication):
                                         'POST_PIXEL'))
     def unregister_draw_callbacks(self, context):
         for cb in self.cb_pixel:
-            context.region.callback_remove(cb)
+            if context.region:
+                context.region.callback_remove(cb)
         self.cb_pixel = []
 
     def onToggleRt(self, context=None):
@@ -183,6 +201,7 @@ class B2Rex(BaseApplication):
 
         for area in bpy.context.screen.areas:
             area.tag_redraw()
+
     def queueRedraw(self):
         screen = bpy.context.screen
         for area in screen.areas:
@@ -196,7 +215,7 @@ class B2Rex(BaseApplication):
             expand_prop = "e_" + str(folder['FolderID']).split('-')[0]
             if not hasattr(B2RexProps, expand_prop):
                 prop = BoolProperty(name="expand", default=False)
-                setattr(B2RexProps, expand_prop, prop) 
+                setattr(B2RexProps, expand_prop, prop)
             cached_folders[folder['FolderID']] = folder
 
     def update_items(self, items):
@@ -224,7 +243,7 @@ class B2Rex(BaseApplication):
                     setattr(B2RexProps, "root_folder", inv['folder_id'])
                 setattr(props, "root_folder", inv['folder_id'])
                 self.update_folders([{'FolderID' : inv['folder_id'], 'ParentID' : inv['parent_id'], 'Name' : inv['name']}])
-            session.simrt.addCmd(['sendFetchInventoryDescendentsRequest', inv['folder_id']])
+            session.simrt.FetchInventoryDescendents(inv['folder_id'])
 
         session.inventory = inventory
         

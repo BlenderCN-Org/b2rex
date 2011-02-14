@@ -32,10 +32,18 @@ class ClientThread(Thread):
                 if e.errno == 9:
                     self.cleanup()
                     return
+                raise e
         self.cleanup()
     def cleanup(self):
         logger.debug("exit client thread")
         self.parent = None
+
+class ProxyFunction(object):
+    def __init__(self, name, parent):
+        self._name = name
+        self._parent = parent
+    def __call__(self, *args):
+        self._parent.addCmd([self._name]+list(args))
 
 class ProxyAgent(Thread):
     def __init__ (self, context, server_url, username, password, region,
@@ -58,6 +66,8 @@ class ProxyAgent(Thread):
     def dataArrived(self, data):
         self.queue.append(data)
         self.redraw()
+    def __getattr__(self, name):
+        return ProxyFunction(name, self)
     def addCmd(self, cmd):
         if cmd[0] == 'quit':
             self.alive = False
@@ -141,8 +151,12 @@ class ProxyAgent(Thread):
             if self.running:
                 cmd = self.out_queue.get()
                 if cmd[0] == "quit":
-                    self.socket.send(cmd)
-                    self.socket.close()
+                    try:
+                        self.socket.send(cmd)
+                        self.socket.close()
+                    except socket.error as e:
+                        if not e.errno == 32: # broken pipe
+                            raise e
                     break
                 try:
                     self.socket.send(cmd)

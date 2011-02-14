@@ -52,7 +52,7 @@ class BaseApplication(Importer, Exporter):
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
-        self.workpool = ThreadPool(4)
+        self.workpool = ThreadPool(8)
         self.rawselected = set()
         self.simstats = None
         self.agent_id = ""
@@ -106,6 +106,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         self.registerCommand('InventoryDescendents', self.processInventoryDescendents)
         self.registerCommand('SimStats', self.processSimStats)
+        self.registerCommand('LayerDataDecoded', self.processLayerDataDecoded)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
@@ -158,10 +159,21 @@ class BaseApplication(Importer, Exporter):
         print("REGION HANDSHAKE", pars)
 
     def processLayerData(self, layerType, b64data):
+        self.workpool.addRequest(self.decodeTerrainBlock, [b64data],
+                             self.terrainDecoded, self.default_error_db)
+
+
+    def decodeTerrainBlock(self, b64data):
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         terrpackets = TerrainDecoder.decode(data)
+        return terrpackets
+ 
+    def terrainDecoded(self, request, terrpackets):
         for header, layer in terrpackets:
-            self.terrain.apply_patch(layer, header.x, header.y)
+            self.command_queue.insert(0, ['LayerDataDecoded', header, layer])
+
+    def processLayerDataDecoded(self, header, layer):
+        self.terrain.apply_patch(layer, header.x, header.y)
 
     def processInventoryDescendents(self, folder_id, folders, items):
         pass
@@ -259,7 +271,7 @@ class BaseApplication(Importer, Exporter):
         if context:
             self.exportSettings = context.scene.b2rex_props
         if self.rt_on:
-            self.simrt.addCmd(["quit"])
+            self.simrt.quit()
             self.rt_on = False
             self.simrt = None
         else:
@@ -271,7 +283,7 @@ class BaseApplication(Importer, Exporter):
                                           self.exportSettings.username,
                                           self.exportSettings.password,
                                           region_name, firstline)
-            self.simrt.addCmd(["throttle", self.exportSettings.kbytesPerSecond*1024])
+            self.simrt.Throttle(self.exportSettings.kbytesPerSecond*1024)
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
@@ -448,7 +460,7 @@ class BaseApplication(Importer, Exporter):
         if selected:
             for obj in selected:
                 if obj.opensim.uuid:
-                    self.simrt.addCmd(['delete', obj.opensim.uuid])
+                    self.simrt.Delete(obj.opensim.uuid)
 
     def sendObjectClone(self, obj):
         obj_name = obj.name
@@ -460,9 +472,9 @@ class BaseApplication(Importer, Exporter):
         mesh_uuid = mesh.opensim.uuid
         pos, rot, scale = self.getObjectProperties(obj)
         
-        self.simrt.addCmd(['clone', obj_name, obj_uuid, mesh_name, mesh_uuid,
+        self.simrt.Clone(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            self.unapply_position(pos),
-                           self.unapply_rotation(rot), list(scale)])
+                           self.unapply_rotation(rot), list(scale))
 
     def sendObjectUpload(self, obj, mesh, data):
         b64data = base64.urlsafe_b64encode(data).decode('ascii')
@@ -472,9 +484,9 @@ class BaseApplication(Importer, Exporter):
         mesh_uuid = mesh.opensim.uuid
         pos, rot, scale = self.getObjectProperties(obj)
         
-        self.simrt.addCmd(['create', obj_name, obj_uuid, mesh_name, mesh_uuid,
+        self.simrt.Create(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            self.unapply_position(pos),
-                           self.unapply_rotation(rot), list(scale), b64data])
+                           self.unapply_rotation(rot), list(scale), b64data)
 
     def doRtObjectUpload(self, context, obj):
         mesh = obj.data
@@ -592,7 +604,7 @@ class BaseApplication(Importer, Exporter):
             self.stats[2] += 1
             for cmd in cmds:
                 currbudget = time.time()-starttime
-                if currbudget < budget and self.second_budget+currbudget < second_budget or cmd[0] == 'pos':
+                if currbudget < budget and self.second_budget+currbudget < second_budget: #or cmd[0] in ['pos']:
                     self.processCommand(*cmd)
                     processed += 1
                 else:
@@ -641,7 +653,7 @@ class BaseApplication(Importer, Exporter):
 
     def terrainEncoded(self, request, result):
         _, x, y = request.args[0]
-        self.simrt.addCmd(['LayerData', x, y, result])
+        self.simrt.LayerData(x, y, result)
 
     def checkUuidConsistency(self, selected):
         # look for duplicates
@@ -687,7 +699,7 @@ class BaseApplication(Importer, Exporter):
                 all_selected.add(obj_id)
         # update selection
         if not all_selected == self.sim_selection:
-            self.simrt.addCmd(["select"]+list(all_selected))
+            self.simrt.Select(*all_selected)
             self.sim_selection = all_selected
 
     def go(self):

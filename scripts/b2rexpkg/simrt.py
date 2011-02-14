@@ -99,7 +99,7 @@ class XferUploader(object):
         else:
             nextdata = self.data[:1024]
             self.data = self.data[1024:]
-            ongoing = 0x00000000 # last packet
+            ongoing = 0x00000000
         if self.first:
             nextdata = b'\0\0\0\0' + nextdata
             self.first = False
@@ -194,12 +194,13 @@ class XferUploadManager(object):
 
 
 
-class BlenderAgent(object):
+class AgentManager(object):
     do_megahal = False
     verbose = False
     def __init__(self, in_queue, out_queue):
         self.inventory = None
         self.nlayers = 0
+        self._selected = set()
         self._creating_cb = {}
         self._next_create = 1000
         self._eatupdates = defaultdict(int)
@@ -209,7 +210,7 @@ class BlenderAgent(object):
         self.out_queue = out_queue
         self.initialize_logger()
 
-    def bootstrapClient(self):
+    def processBootstrap(self):
         print("BOOTSTRAP CLIENT")
         for obj in self.client.region.objects.object_store:
             obj_uuid = str(obj.FullID)
@@ -231,7 +232,7 @@ class BlenderAgent(object):
             self.out_queue.put(["delete", str(obj.FullID)])
         self.old_kill_object(packet)
 
-    def setThrottle(self, bps):
+    def processThrottle(self, bps):
         if not bps == self.bps:
             self.bps = bps
             client = self.client
@@ -291,7 +292,7 @@ class BlenderAgent(object):
         pos = [pos.X, pos.Y, pos.Z]
         self.out_queue.put(["AgentMovementComplete", agent_id, pos, lookat])
 
-    def sendLayerData(self, x, y, b64data):
+    def processLayerData(self, x, y, b64data):
         bindata = base64.urlsafe_b64decode(b64data.encode('ascii'))
         packet = Message('LayerData',
                         Block('LayerID',
@@ -536,7 +537,7 @@ class BlenderAgent(object):
                 obj.props = pars
             self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
-    def deleteObject(self, obj_id):
+    def processDelete(self, obj_id):
         obj = self.client.region.objects.get_object_from_store(FullID=obj_id)
         # SaveToExistingUserInventoryItem = 0,
         # TakeCopy = 1,
@@ -561,7 +562,7 @@ class BlenderAgent(object):
         # send
         self.client.region.enqueue_message(packet)
 
-    def createObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
+    def processCreate(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
                      scale, b64data):
         # create asset
         obj_uuid = UUID(obj_uuid_str)
@@ -586,7 +587,7 @@ class BlenderAgent(object):
         # send the asset data and wait for ack from the uploader
         assetID = self.uploader.uploadAsset(AssetType.OgreMesh, data, finishupload)
 
-    def cloneObject(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
+    def processClone(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
                      scale):
         # create asset
         obj_uuid = UUID(obj_uuid_str)
@@ -648,6 +649,44 @@ class BlenderAgent(object):
 
         self.out_queue.put(["RegionHandshake", pars["RegionID"], pars])
 
+    def subscribe_region_callbacks(self, region):
+        res = region.message_handler.register("OnlineNotification")
+        res.subscribe(self.onOnlineNotification)
+        res = region.message_handler.register("OfflineNotification")
+        res.subscribe(self.onOfflineNotification)
+
+        res = region.message_handler.register("RegionHandshake")
+        res.subscribe(self.onRegionHandshake)
+        res = region.message_handler.register("CoarseLocationUpdate")
+        res.subscribe(self.onCoarseLocationUpdate)
+        res = region.message_handler.register("ImprovedTerseObjectUpdate")
+        res.subscribe(self.onImprovedTerseObjectUpdate)
+        res = region.message_handler.register("GenericMessage")
+        res.subscribe(self.onGenericMessage)
+        res = region.message_handler.register("ParcelOverlay")
+        res.subscribe(self.onParcelOverlay)
+        res = region.message_handler.register("AgentMovementComplete")
+        res.subscribe(self.onAgentMovementComplete)
+        res = region.message_handler.register("LayerData")
+        res.subscribe(self.onLayerData)
+        res = region.message_handler.register("ChatFromSimulator")
+        res.subscribe(self.onChatFromViewer)
+        res = region.objects.message_handler.register("ObjectUpdate")
+        res.subscribe(self.onObjectUpdate)
+        res = region.message_handler.register("SimStats")
+        res.subscribe(self.onSimStats)
+        res = region.message_handler.register("RexPrimData")
+        res.subscribe(self.onRexPrimData)
+        res = region.message_handler.register("ObjectPermissions")
+        res.subscribe(self.onObjectPermissions)
+        res = region.message_handler.register("ObjectProperties")
+        res.subscribe(self.onObjectProperties)
+        res = region.objects.message_handler.register("RexPrimData")
+        res.subscribe(self.onRexPrimData)
+        res = region.message_handler.register("InventoryDescendents")
+        res.subscribe(self.onInventoryDescendents)
+
+
     def login(self, server_url, username, password, regionname, firstline=""):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
@@ -691,6 +730,8 @@ class BlenderAgent(object):
         while client.connected == False:
             api.sleep(0)
 
+        self.subscribe_region_callbacks(client.region)
+
         # inform our client of connection success
         out_queue.put(["connected", str(client.agent_id),
                              str(client.agent_access)])
@@ -704,42 +745,6 @@ class BlenderAgent(object):
 
         self.inventory.enable_callbacks()
         self.uploader = XferUploadManager(self.client)
-
-        res = client.region.message_handler.register("OnlineNotification")
-        res.subscribe(self.onOnlineNotification)
-        res = client.region.message_handler.register("OfflineNotification")
-        res.subscribe(self.onOfflineNotification)
-
-        res = client.region.message_handler.register("RegionHandshake")
-        res.subscribe(self.onRegionHandshake)
-        res = client.region.message_handler.register("CoarseLocationUpdate")
-        res.subscribe(self.onCoarseLocationUpdate)
-        res = client.region.message_handler.register("ImprovedTerseObjectUpdate")
-        res.subscribe(self.onImprovedTerseObjectUpdate)
-        res = client.region.message_handler.register("GenericMessage")
-        res.subscribe(self.onGenericMessage)
-        res = client.region.message_handler.register("ParcelOverlay")
-        res.subscribe(self.onParcelOverlay)
-        res = client.region.message_handler.register("AgentMovementComplete")
-        res.subscribe(self.onAgentMovementComplete)
-        res = client.region.message_handler.register("LayerData")
-        res.subscribe(self.onLayerData)
-        res = client.region.message_handler.register("ChatFromSimulator")
-        res.subscribe(self.onChatFromViewer)
-        res = client.region.objects.message_handler.register("ObjectUpdate")
-        res.subscribe(self.onObjectUpdate)
-        res = client.region.message_handler.register("SimStats")
-        res.subscribe(self.onSimStats)
-        res = client.region.message_handler.register("RexPrimData")
-        res.subscribe(self.onRexPrimData)
-        res = client.region.message_handler.register("ObjectPermissions")
-        res.subscribe(self.onObjectPermissions)
-        res = client.region.message_handler.register("ObjectProperties")
-        res.subscribe(self.onObjectProperties)
-        res = client.region.objects.message_handler.register("RexPrimData")
-        res.subscribe(self.onRexPrimData)
-        res = client.region.message_handler.register("InventoryDescendents")
-        res.subscribe(self.onInventoryDescendents)
 
         caps_sent = False
         caps = {}
@@ -779,75 +784,81 @@ class BlenderAgent(object):
         self.inventory._parse_folders_from_login_response()    
 
         # main loop for the agent
-        selected = set()
         while client.running == True:
-            api.sleep()
+            api.sleep(0)
             cmd = in_queue.get()
             cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
             #   # 10-rot
-            if cmd[0] == "quit":
-                continue # ignore
-                out_queue.put(["quit"])
-                client.logout()
-                return
-            elif cmd[0] == "throttle":
-                self.setThrottle(*cmd[1:])
-            elif cmd[0] == "bootstrap":
-                self.bootstrapClient()
-            elif cmd[0] == "create":
-                self.createObject(*cmd[1:])
-            elif cmd[0] == "delete":
-                self.deleteObject(*cmd[1:])
-            elif cmd[0] == "clone":
-                self.cloneObject(*cmd[1:])
-            elif cmd[0] == "select":
-                selected_cmd = set(cmd[1:])
-                newselected = selected_cmd.difference(selected)
-                deselected = selected.difference(selected_cmd)
-                for obj_id in newselected:
-                    obj = client.region.objects.get_object_from_store(FullID=obj_id)
-                    if obj:
-                        obj.select(client)
-                    else:
-                        print("cant find "+obj_id)
-                for obj_id in deselected:
-                    obj = client.region.objects.get_object_from_store(FullID=obj_id)
-                    if obj:
-                        obj.deselect(client)
-                selected = selected_cmd
-            elif cmd[0] == "msg":
-                client.say(cmd[1])
-            elif cmd[0] == "scale":
-                cmd_type = 12
-                obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                if obj:
-                    data = cmd[2]
-                    self._eatupdates[obj.LocalID] += 1
-                    client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
-                                              client.session_id,
-                                              obj.LocalID, data, cmd_type)
-            elif cmd[0] == "pos":
-                obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                if not obj:
-                    obj = client.region.objects.get_avatar_from_store(FullID=UUID(cmd[1]))
-                    if obj:
-                        self.sendLocalTeleport(obj, cmd[2])
-                        continue
-                if obj:
-                    pos = cmd[2]
-                    rot = cmd[3]
-                    self.sendPositionUpdate(obj, pos, rot)
-            elif cmd[0] == "updatepermissions":
-                obj = client.region.objects.get_object_from_store(FullID=cmd[1])
-                if obj:
-                    mask = cmd[2]
-                    val = cmd[3]
-                    self.updatePermissions(obj, mask, val)
-            elif cmd[0] == "LayerData":
-                self.sendLayerData(*cmd[1:])
-            elif cmd[0] == "sendFetchInventoryDescendentsRequest":
-                func = getattr(self.inventory, cmd[0])
+            command = cmd[0]
+            handler = 'process'+command[0].upper()+command[1:]
+            try:
+                # look for a function called processCommandName with first
+                # letter of command capitalized, so quit, becomes processQuit
+                func = getattr(self, handler)
+            except:
+                print("Cant find handler for ", handler)
+            else:
                 func(*cmd[1:])
+
+
+    def processFetchInventoryDescendents(self, *args):
+        self.inventory.sendFetchInventoryDescendentsRequest(*args)
+
+    def processScale(self, objId, scale):
+        client = self.client
+        cmd_type = 12
+        obj = client.region.objects.get_object_from_store(FullID=objId)
+        if obj:
+            data = scale
+            self._eatupdates[obj.LocalID] += 1
+            client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
+                                      client.session_id,
+                                      obj.LocalID, data, cmd_type)
+
+    def processUpdatePermissions(self, objId, mask, value):
+        obj = client.region.objects.get_object_from_store(FullID=objId)
+        if obj:
+            self.updatePermissions(obj, mask, value)
+
+    def processPos(self, objId, pos, rot=None):
+        client = self.client
+        obj = client.region.objects.get_object_from_store(FullID=objId)
+        if not obj:
+            obj = client.region.objects.get_avatar_from_store(FullID=UUID(objId))
+            if obj:
+                self.sendLocalTeleport(obj, pos)
+                return
+        if obj:
+            pos = pos
+            rot = rot
+            self.sendPositionUpdate(obj, pos, rot)
+
+    def processMsg(self, message):
+        self.client.say(message)
+
+    def processSelect(self, *args):
+        client = self.client
+        selected = self._selected
+        selected_cmd = set(args)
+        newselected = selected_cmd.difference(selected)
+        deselected = selected.difference(selected_cmd)
+        for obj_id in newselected:
+            obj = client.region.objects.get_object_from_store(FullID=obj_id)
+            if obj:
+                obj.select(client)
+            else:
+                print("cant find "+obj_id)
+        for obj_id in deselected:
+            obj = client.region.objects.get_object_from_store(FullID=obj_id)
+            if obj:
+                obj.deselect(client)
+        selected = selected_cmd
+
+    def processQuit(self):
+        return # ignore
+        out_queue.put(["quit"])
+        client.logout()
+        return
 
     def onInventoryDescendents(self, packet):
         folder_id = packet['AgentData'][0]['FolderID']
@@ -1051,6 +1062,13 @@ class BlenderAgent(object):
         self.logger.debug("chat:"+packet["ChatData"][0]["FromName"])
 
 
+class ProxyFunction(object):
+    def __init__(self, name, parent):
+        self._name = name
+        self._parent = parent
+    def __call__(self, *args):
+        self._parent.addCmd([self._name]+list(args))
+
 class GreenletsThread(Thread):
     def __init__ (self, server_url, username, password, region, firstline="Hello"):
         self.running = True
@@ -1070,12 +1088,15 @@ class GreenletsThread(Thread):
         cmd = ['pos', obj_uuid, pos, rot]
         self.addCmd(cmd)
 
+    def __getattr__(self, name):
+        return ProxyFunction(name, self)
+
     def apply_scale(self, obj_uuid, scale):
         cmd = ['scale', obj_uuid, scale]
         self.addCmd(cmd)
 
     def run(self):
-        agent = BlenderAgent(self.in_queue,
+        agent = AgentManager(self.in_queue,
                    self.out_queue)
         agent.login(self.server_url,
                     self.username,
@@ -1094,6 +1115,7 @@ class GreenletsThread(Thread):
         while self.out_queue.qsize():
             out_queue.append(self.out_queue.get())
         return out_queue
+
 
 running = False
 

@@ -77,7 +77,7 @@ class ConnectionPanel(bpy.types.Panel):
         row.template_list(props, 'chat', props, 'selected_chat',
                           rows=5)
         if props.next_chat:
-            session.simrt.addCmd(["msg", props.next_chat])
+            session.simrt.Msg(props.next_chat)
             props.next_chat = ""
         row = layout.row()
         row.prop(props, 'next_chat')

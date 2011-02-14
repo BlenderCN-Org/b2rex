@@ -159,8 +159,9 @@ class SetMaskOn(bpy.types.Operator):
     bl_label = "SetMaskOn"
     mask = bpy.props.IntProperty(name="Mask")
     def execute(self, context):
+        simrt = bpy.b2rex_session.simrt
         for obj in context.selected_objects:
-            bpy.b2rex_session.simrt.addCmd(['updatepermissions', obj.opensim.uuid, self.mask, 1])
+            simrt.UpdatePermissions(obj.opensim.uuid, self.mask, 1)
         
         return {'FINISHED'}
         
@@ -170,8 +171,9 @@ class SetMaskOff(bpy.types.Operator):
     mask = bpy.props.IntProperty(name="Mask")
 
     def execute(self, context):
+        simrt = bpy.b2rex_session.simrt
         for obj in context.selected_objects:
-            bpy.b2rex_session.simrt.addCmd(['updatepermissions', obj.opensim.uuid, self.mask, 0])
+            simrt.UpdatePermissions(obj.opensim.uuid, self.mask, 0)
  
         return {'FINISHED'}
    
@@ -185,6 +187,6 @@ class FolderStatus(bpy.types.Operator):
     def execute(self, context):
         setattr(context.scene.b2rex_props, "e_" + self.folder_id.split('-')[0], self.expand)
         if self.expand == True:
-            bpy.b2rex_session.simrt.addCmd(['sendFetchInventoryDescendentsRequest', self.folder_id])
+            bpy.b2rex_session.simrt.FetchInventoryDescendents(self.folder_id)
 
         return {'FINISHED'}

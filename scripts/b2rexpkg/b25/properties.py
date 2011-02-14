@@ -9,7 +9,6 @@ import logging
 class B2RexRegions(bpy.types.IDPropertyGroup):
     pass
 
-
 class B2RexChatLine(bpy.types.IDPropertyGroup):
     pass
 
