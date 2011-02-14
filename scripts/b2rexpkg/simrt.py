@@ -42,6 +42,7 @@ from pyogp.lib.client.inventory import UDP_Inventory
 
 # internal rt module
 from rt.handlers.chat import ChatHandler
+from rt.handlers.layerdata import LayerDataHandler
 from rt.handlers.parcel import ParcelHandler
 from rt.handlers.online import OnlineHandler
 from rt.handlers.simstats import SimStatsHandler
@@ -64,6 +65,7 @@ class AgentManager(object):
         self._next_create = 1000
         self._eatupdates = defaultdict(int)
         self._handlers = {}
+        self._cmdhandlers = defaultdict(list)
         self.client = None
         self.bps = 100*1024 # bytes per second
         self.in_queue = in_queue
@@ -139,22 +141,6 @@ class AgentManager(object):
                         RayTargetID = RayTargetID, RayEndIsIntersection = 0,
                         Scale = scale, Rotation = rot,
                         State = 0)
-
-    def processLayerData(self, x, y, b64data):
-        bindata = base64.urlsafe_b64decode(b64data.encode('ascii'))
-        packet = Message('LayerData',
-                        Block('LayerID',
-                                Type = LayerTypes.LayerLand),
-                        Block('LayerData',
-                              Data=bindata))
-        self.client.region.enqueue_message(packet)
-
-    def onLayerData(self, packet):
-        data = packet["LayerData"][0]["Data"]
-        layerType = struct.unpack("<B", data[3])[0]
-        if layerType == LayerTypes.LayerLand or True:
-            b64data = base64.urlsafe_b64encode(data).decode('ascii')
-            self.out_queue.put(["LayerData", layerType, b64data])
 
     def sendRexPrimData(self, obj_uuid, args):
         agent_id = self.client.agent_id
@@ -482,13 +468,14 @@ class AgentManager(object):
         res.subscribe(self.onImprovedTerseObjectUpdate)
         res = region.message_handler.register("GenericMessage")
         res.subscribe(self.onGenericMessage)
-        res = region.message_handler.register("LayerData")
-        res.subscribe(self.onLayerData)
         res = region.objects.message_handler.register("ObjectUpdate")
         res.subscribe(self.onObjectUpdate)
 
     def addHandler(self, handler):
         self._handlers[handler.getName()] = handler
+        for a in dir(handler):
+            if a.startswith("process"):
+                self._cmdhandlers[a[7:]].append(handler)
 
     def login(self, server_url, username, password, regionname, firstline=""):
         """ login an to a login endpoint """ 
@@ -505,6 +492,8 @@ class AgentManager(object):
         self.addHandler(RegionHandshakeHandler(self))
         self.addHandler(SimStatsHandler(self))
         self.addHandler(AgentMovementHandler(self))
+        self.addHandler(LayerDataHandler(self))
+        self.addHandler(ParcelHandler(self))
         self.addHandler(ChatHandler(self))
 
         # Now let's log it in
@@ -570,15 +559,22 @@ class AgentManager(object):
             cmd = in_queue.get()
             #   # 10-rot
             command = cmd[0]
-            handler = 'process'+command[0].upper()+command[1:]
-            try:
-                # look for a function called processCommandName with first
-                # letter of command capitalized, so quit, becomes processQuit
-                func = getattr(self, handler)
-            except:
-                print("Cant find handler for ", handler)
+            command = command[0].upper()+command[1:]
+            if command in self._cmdhandlers:
+                # we have a registered handler
+                for handler in self._cmdhandlers[command]:
+                    handler(*cmd[1:])
             else:
-                func(*cmd[1:])
+                # try a function in this class
+                handler = 'process'+command
+                try:
+                    # look for a function called processCommandName with first
+                    # letter of command capitalized, so quit, becomes processQuit
+                    func = getattr(self, handler)
+                except:
+                    print("Cant find handler for ", handler)
+                else:
+                    func(*cmd[1:])
 
 
     def processFetchInventoryDescendents(self, *args):
