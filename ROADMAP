@@ -1,0 +1,57 @@
+0.8 - Real time editing and b2.5 support:
+ Goals:
+  - B2rex compatible with blender 2.5 and 2.4
+  - Real time connection
+ Done:
+  - Working in b2.5
+  - Connect to opensim natively
+  - Two way synchronization of terrain using compressed blocks
+  - Upload or clone objects (manages RexPrimData, asset upload
+    and ObjectAdd)
+  - See avatars
+  - Opensim region chat
+  - LocalTeleport own avatar by moving its camera
+  - Set permissions
+  - Fine grained control of performance parameters
+ Blockers:
+  - Frequent crashes in blender 2.5 (if 2.4 doesnt crash maybe 
+    its ok, but its less tested at the moment)
+  - b2.4 support partially broken
+  - Upload and download material and textures
+  - Make blender run simrt without the user noticing
+  - Refactor connection settings to allow multiple server settings and protect the password
+
+0.9 - Logic
+ Goals:
+  - Control of rex logic
+  - Control of ll state scripts
+  - Some sort of graphical state machine editor
+  - Maybe direct support for editing logic using blender bricks
+  - Doors, pickables, physics
+  - Maybe support for running in game engine mode
+
+1.0 - Release
+ Goals:
+  - Package
+  - Easy install on windows, linux and macosx
+  - Document
+  - Polish user interface
+
+X.X - Extra
+  - Collada support
+  - Investigate new second life / opensim mesh support
+  - Estate management
+  - Full admin/permission/god management
+  - Creating new regions from blender
+  - Connect to several regions (either linked or completely independent)
+  - General region/grid map
+  - Connect with several agents independently
+  - Investigate other login methods for federated access
+  - Better support for grid mode
+  - Investigate uploading assets with POST caps
+  - Backup terrain upload method using full image POST caps
+  - Serialize specific blender information into lost bits or available
+    places in the protocol.
+  - More faithful real time render inside blender
+  - Running pyogp inside python3
+
