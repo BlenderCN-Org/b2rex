@@ -686,17 +686,7 @@ class AgentManager(object):
         res = region.message_handler.register("InventoryDescendents")
         res.subscribe(self.onInventoryDescendents)
 
-
-    def login(self, server_url, username, password, regionname, firstline=""):
-        """ login an to a login endpoint """ 
-        in_queue = self.in_queue
-        out_queue = self.out_queue
-
-        client = self.initialize_agent()
-        self.inventory = UDP_Inventory(client)
-        # Now let's log it in
-        region = regionname
-        firstname, lastname = username.split(" ", 1)
+    def prepare_server_name(self, server_url):
         parsed_url = urlparse.urlparse(server_url)
         split_netloc = parsed_url.netloc.split(":")
         if len(split_netloc) == 2:
@@ -718,11 +708,23 @@ class AgentManager(object):
         else:
             server_name = server_name + '/xml-rpc.php'
         server_url = parsed_url.scheme + '://' + server_name
-        #if not server_url.endswith("/"):
-            #    server_url = server_url + "/"
-        loginuri = server_url
+        return server_url
+
+    def login(self, server_url, username, password, regionname, firstline=""):
+        """ login an to a login endpoint """ 
+        in_queue = self.in_queue
+        out_queue = self.out_queue
+
+        client = self.initialize_agent()
+
+        self.inventory = UDP_Inventory(client)
+
+        # Now let's log it in
+        firstname, lastname = username.split(" ", 1)
+        loginuri = self.prepare_server_name(server_url)
+
         api.spawn(client.login, loginuri, firstname, lastname, password,
-                  start_location = region, connect_region = True)
+                  start_location = regionname, connect_region = True)
 
         client.sit_on_ground()
 
@@ -760,34 +762,21 @@ class AgentManager(object):
             api.sleep(0)
 
 
-        #print("connected")
-        #f = open("/home/caedes/Firefox_wallpaper.png", "rb")
-        #data = f.read()
-        #f.close
-        #def uploadcheck(*blah):
-            #    print("XFER: UploadDone!!", blah)
-            #print("Sending xfer")
-            #self.uploader.uploadAsset(0, data, uploadcheck)
-            #print("Sending xfer sent")
-
-
         self.sendThrottle()
-        api.sleep(0.3)
 
         # speak up the first line
         client.say(str(firstline))
 
        # send inventory skeleton
-        if hasattr(self.client, 'login_response') and 'inventory-skeleton' in self.client.login_response:
-            out_queue.put(["InventorySkeleton",  self.client.login_response['inventory-skeleton']])
+        if hasattr(self.client, 'login_response') and 'inventory-skeleton' in client.login_response:
+            out_queue.put(["InventorySkeleton",  client.login_response['inventory-skeleton']])
 
-        self.inventory._parse_folders_from_login_response()    
+        self.inventory._parse_folders_from_login_response()
 
         # main loop for the agent
         while client.running == True:
             api.sleep(0)
             cmd = in_queue.get()
-            cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
             #   # 10-rot
             command = cmd[0]
             handler = 'process'+command[0].upper()+command[1:]
@@ -940,16 +929,17 @@ class AgentManager(object):
 
     def onSimStats(self, packet):
         pars = []
+
         for stat in packet["Stat"]:
             pars.append(stat["StatValue"])
-            #print(str(stat["StatID"]) + " " + str(stat["StatValue"]))
+
         Region = packet["Region"][0]
         X = Region['RegionX']
         Y = Region['RegionY']
         Flags = Region['RegionFlags']
         ObjectCapacity = Region['ObjectCapacity']
+
         self.out_queue.put(["SimStats", X, Y, Flags, ObjectCapacity] + pars)
-        #print("received sim stats!"+str(packet))
 
     def onObjectUpdate(self, packet):
         out_queue = self.out_queue
