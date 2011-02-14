@@ -4,6 +4,7 @@ from eventlet import api
 from .base import Handler
 
 class ChatHandler(Handler):
+    do_megahal = False
     def onRegionConnect(self, region):
         res = region.message_handler.register("ChatFromSimulator")
         res.subscribe(self.onChatFromViewer)
