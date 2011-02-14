@@ -493,8 +493,8 @@ class AgentManager(object):
         res.subscribe(self.onObjectPermissions)
         res = region.message_handler.register("ObjectProperties")
         res.subscribe(self.onObjectProperties)
-        res = region.objects.message_handler.register("RexPrimData")
-        res.subscribe(self.onRexPrimData)
+        #res = region.objects.message_handler.register("RexPrimData")
+        #res.subscribe(self.onRexPrimData)
         res = region.message_handler.register("InventoryDescendents")
         res.subscribe(self.onInventoryDescendents)
 

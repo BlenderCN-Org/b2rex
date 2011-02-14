@@ -9,7 +9,7 @@ class ChatHandler(Handler):
         res.subscribe(self.onChatFromViewer)
 
     def onChatFromViewer(self, packet):
-        client = self.client
+        client = self.manager.client
         out_queue = self.out_queue
         fromname = packet["ChatData"][0]["FromName"].split(" ")[0]
         message = packet["ChatData"][0]["Message"]
