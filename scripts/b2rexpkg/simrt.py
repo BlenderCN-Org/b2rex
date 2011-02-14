@@ -30,14 +30,11 @@ except:
 
 # pyogp
 from pyogp.lib.base.exc import LoginError
-from pyogp.lib.base.helpers import Helpers
 from pyogp.lib.base.message.message import Message, Block
-from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
+from pyogp.lib.base.datatypes import UUID, Vector3
 
 from pyogp.lib.client.agent import Agent
-from pyogp.lib.client.enums import PCodeEnum
 from pyogp.lib.client.settings import Settings
-from pyogp.lib.client.namevalue import NameValueList
 
 # internal rt module
 from rt.handlers.chat import ChatHandler
@@ -55,8 +52,7 @@ from rt.handlers.xferupload import XferUploadManager
 from rt.handlers.agentmovement import AgentMovementHandler
 from rt.handlers.regionhandshake import RegionHandshakeHandler
 
-from rt.tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
-from rt.tools import unpack_v3, unpack_q, b_to_s, prepare_server_name
+from rt.tools import prepare_server_name
 
 
 class AgentManager(object):
@@ -73,9 +69,15 @@ class AgentManager(object):
         self.initialize_logger()
 
     def registerGenericHandler(self, message, handler):
+        """
+        Register a callback for a GenericMessage method.
+        """
         self._generichandlers[message] = handler
 
     def onGenericMessage(self, packet):
+        """
+        Function dealing with GenericMessages
+        """
         methodname = packet["MethodData"][0]["Method"]
         if methodname in self._generichandlers:
             self._generichandlers[methodname](packet["ParamList"])
@@ -119,10 +121,16 @@ class AgentManager(object):
             self.out_queue.put(["CoarseLocationUpdate", str(agent), (X, Y, Z)])
 
     def subscribe_region_callbacks(self, region):
+        """
+        Subscribe all region connected callbacks
+        """
         for handler in self._handlers.values():
             handler.onRegionConnected(region)
 
     def subscribe_region_pre_callbacks(self, region):
+        """
+        Subscribe all region connect callbacks. Called just before connecting.
+        """
         for handler in self._handlers.values():
             handler.onRegionConnect(region)
 
@@ -132,6 +140,9 @@ class AgentManager(object):
         res.subscribe(self.onGenericMessage)
 
     def addHandler(self, handler):
+        """
+        Add a handler object. Generally represents a given service.
+        """
         self._handlers[handler.getName()] = handler
         for a in dir(handler):
             if a.startswith("process"):
