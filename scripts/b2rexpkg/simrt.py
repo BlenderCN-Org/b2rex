@@ -7,6 +7,7 @@ import time
 import math
 import popen2
 import base64
+import socket
 import struct
 from collections import defaultdict
 from threading import Thread
@@ -15,40 +16,37 @@ from threading import Thread
 import eventlet
 from eventlet import api
 from eventlet import Queue
+
 if __name__ == '__main__':
     simrt_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append(os.path.join(simrt_path))
     sys.path.append(os.path.join(simrt_path, 'tools'))
 try:
     from jsonsocket import JsonSocket
-    from simtypes import RegionFlags, SimAccess, LayerTypes, AssetType
+    from simtypes import LayerTypes, AssetType
 except:
     from b2rexpkg.tools.jsonsocket import JsonSocket
-    from b2rexpkg.tools.simtypes import RegionFlags, SimAccess, LayerTypes
-    from b2rexpkg.tools.simtypes import AssetType
-import socket
+    from b2rexpkg.tools.simtypes import LayerTypes, AssetType
 
 # pyogp
 from pyogp.lib.base.exc import LoginError
 from pyogp.lib.base.helpers import Helpers
+from pyogp.lib.base.message.message import Message, Block
 from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
 
 from pyogp.lib.client.agent import Agent
-from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.enums import PCodeEnum
+from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.namevalue import NameValueList
-from pyogp.lib.base.message.message import Message, Block
-
-
-import pyogp.lib.client.inventory
 from pyogp.lib.client.inventory import UDP_Inventory
-# Extra asset and inventory types for rex
-import pyogp.lib.client.enums
 
+# internal rt module
 from rt.handlers.chat import ChatHandler
+from rt.handlers.parcel import ParcelHandler
 from rt.handlers.online import OnlineHandler
 from rt.handlers.simstats import SimStatsHandler
 from rt.handlers.xferupload import XferUploadManager
+from rt.handlers.agentmovement import AgentMovementHandler
 from rt.handlers.regionhandshake import RegionHandshakeHandler
 
 from rt.tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
@@ -142,18 +140,6 @@ class AgentManager(object):
                         Scale = scale, Rotation = rot,
                         State = 0)
 
-    def onAgentMovementComplete(self, packet):
-        # some region info
-        AgentData = packet['AgentData'][0]
-        Data = packet['Data'][0]
-        self.logger.debug(packet)
-        pos = Data['Position']
-        lookat = Data['LookAt']
-        agent_id = str(AgentData['AgentID'])
-        lookat = [lookat.X, lookat.Y, lookat.Z]
-        pos = [pos.X, pos.Y, pos.Z]
-        self.out_queue.put(["AgentMovementComplete", agent_id, pos, lookat])
-
     def processLayerData(self, x, y, b64data):
         bindata = base64.urlsafe_b64decode(b64data.encode('ascii'))
         packet = Message('LayerData',
@@ -169,10 +155,6 @@ class AgentManager(object):
         if layerType == LayerTypes.LayerLand or True:
             b64data = base64.urlsafe_b64encode(data).decode('ascii')
             self.out_queue.put(["LayerData", layerType, b64data])
-
-    def onParcelOverlay(self, packet):
-        # some region info
-        self.logger.debug(packet)
 
     def sendRexPrimData(self, obj_uuid, args):
         agent_id = self.client.agent_id
@@ -500,10 +482,6 @@ class AgentManager(object):
         res.subscribe(self.onImprovedTerseObjectUpdate)
         res = region.message_handler.register("GenericMessage")
         res.subscribe(self.onGenericMessage)
-        res = region.message_handler.register("ParcelOverlay")
-        res.subscribe(self.onParcelOverlay)
-        res = region.message_handler.register("AgentMovementComplete")
-        res.subscribe(self.onAgentMovementComplete)
         res = region.message_handler.register("LayerData")
         res.subscribe(self.onLayerData)
         res = region.objects.message_handler.register("ObjectUpdate")
@@ -526,6 +504,7 @@ class AgentManager(object):
         self.addHandler(OnlineHandler(self))
         self.addHandler(RegionHandshakeHandler(self))
         self.addHandler(SimStatsHandler(self))
+        self.addHandler(AgentMovementHandler(self))
         self.addHandler(ChatHandler(self))
 
         # Now let's log it in
