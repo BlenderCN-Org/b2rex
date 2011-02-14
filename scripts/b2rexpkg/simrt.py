@@ -38,12 +38,12 @@ from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.enums import PCodeEnum
 from pyogp.lib.client.settings import Settings
 from pyogp.lib.client.namevalue import NameValueList
-from pyogp.lib.client.inventory import UDP_Inventory
 
 # internal rt module
 from rt.handlers.chat import ChatHandler
 from rt.handlers.layerdata import LayerDataHandler
 from rt.handlers.parcel import ParcelHandler
+from rt.handlers.inventory import InventoryHandler
 from rt.handlers.rexdata import RexDataHandler
 from rt.handlers.throttle import ThrottleHandler
 from rt.handlers.online import OnlineHandler
@@ -61,7 +61,6 @@ class AgentManager(object):
     do_megahal = False
     verbose = False
     def __init__(self, in_queue, out_queue):
-        self.inventory = None
         self.nlayers = 0
         self._selected = set()
         self._creating_cb = {}
@@ -304,8 +303,6 @@ class AgentManager(object):
         res.subscribe(self.onObjectPermissions)
         res = region.message_handler.register("ObjectProperties")
         res.subscribe(self.onObjectProperties)
-        res = region.message_handler.register("InventoryDescendents")
-        res.subscribe(self.onInventoryDescendents)
 
         res = region.message_handler.register("CoarseLocationUpdate")
         res.subscribe(self.onCoarseLocationUpdate)
@@ -331,8 +328,6 @@ class AgentManager(object):
 
         client = self.initialize_agent()
 
-        self.inventory = UDP_Inventory(client)
-
         self.uploader = XferUploadManager(self)
         self.addHandler(self.uploader)
         self.addHandler(OnlineHandler(self))
@@ -343,6 +338,7 @@ class AgentManager(object):
         self.addHandler(ParcelHandler(self))
         self.addHandler(ThrottleHandler(self))
         self.addHandler(RexDataHandler(self))
+        self.addHandler(InventoryHandler(self))
         self.addHandler(ChatHandler(self))
 
         # Now let's log it in
@@ -374,8 +370,6 @@ class AgentManager(object):
         #res = client.region.message_handler.register("KillObject")
         #res.subscribe(self.onKillObject)
 
-        self.inventory.enable_callbacks()
-
         caps_sent = False
         caps = {}
 
@@ -395,12 +389,6 @@ class AgentManager(object):
 
         # speak up the first line
         client.say(str(firstline))
-
-       # send inventory skeleton
-        if hasattr(self.client, 'login_response') and 'inventory-skeleton' in client.login_response:
-            out_queue.put(["InventorySkeleton",  client.login_response['inventory-skeleton']])
-
-        self.inventory._parse_folders_from_login_response()
 
         # main loop for the agent
         while client.running == True:
@@ -425,9 +413,6 @@ class AgentManager(object):
                 else:
                     func(*cmd[1:])
 
-
-    def processFetchInventoryDescendents(self, *args):
-        self.inventory.sendFetchInventoryDescendentsRequest(*args)
 
     def processScale(self, objId, scale):
         client = self.client
@@ -481,14 +466,6 @@ class AgentManager(object):
         out_queue.put(["quit"])
         client.logout()
         return
-
-    def onInventoryDescendents(self, packet):
-        folder_id = packet['AgentData'][0]['FolderID']
-        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID)} for member in self.inventory.folders if str(member.ParentID) == str(folder_id)]
-        # return # needs update on pyogp
-        items =  [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID)} for member in self.inventory.items if str(member.FolderID) == str(folder_id)] 
-
-        self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
 
     def sendPositionUpdate(self, obj, pos, rot):
         cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
