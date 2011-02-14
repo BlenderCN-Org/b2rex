@@ -1,14 +1,9 @@
 # standard
 import os
 import sys
-import uuid
 import logging
 import time
-import math
 import popen2
-import base64
-import socket
-import struct
 from collections import defaultdict
 from threading import Thread
 
@@ -23,15 +18,11 @@ if __name__ == '__main__':
     sys.path.append(os.path.join(simrt_path, 'tools'))
 try:
     from jsonsocket import JsonSocket
-    from simtypes import LayerTypes, AssetType
 except:
     from b2rexpkg.tools.jsonsocket import JsonSocket
-    from b2rexpkg.tools.simtypes import LayerTypes, AssetType
 
 # pyogp
 from pyogp.lib.base.exc import LoginError
-from pyogp.lib.base.message.message import Message, Block
-from pyogp.lib.base.datatypes import UUID, Vector3
 
 from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.settings import Settings
@@ -51,6 +42,7 @@ from rt.handlers.simstats import SimStatsHandler
 from rt.handlers.xferupload import XferUploadManager
 from rt.handlers.agentmovement import AgentMovementHandler
 from rt.handlers.regionhandshake import RegionHandshakeHandler
+from rt.handlers.misc import MiscHandler
 
 from rt.tools import prepare_server_name
 
@@ -85,41 +77,6 @@ class AgentManager(object):
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
             print(packet)
 
-
-    def sendLocalTeleport(self, agent, pos):
-        client = self.client
-        if not agent.FullID == self.client.agent_id:
-            print("Trying to move an agent for other user")
-        t_id = uuid.uuid4()
-        invoice_id = UUID()
-        self.client.teleport(region_handle=client.region.RegionHandle, 
-                             position=Vector3(X=pos[0], Y=pos[1], Z=pos[2]))
-
-    def sendAutopilot(self, agent, pos):
-        packet = Message('GenericMessage',
-                        Block('AgentData',
-                                AgentID = client.agent_id,
-                                SessionID = client.session_id,
-                             TransactionID = t_id),
-                        Block('MethodData',
-                                Method = 'autopilot',
-                                Invoice = invoice_id),
-                        Block('ParamList', Parameter=data_x),
-                        Block('ParamList', Parameter=data_y),
-                        Block('ParamList', Parameter=data_z))
-        self.client.region.enqueue_message(packet)
-
-    def onCoarseLocationUpdate(self, packet):
-        #print("COARSE LOCATION UPDATE")
-        #print(packet)
-        for i, block in enumerate(packet["Location"]):
-            X = block['X']
-            Y = block['Y']
-            Z = block['Z']
-            agent = packet["AgentData"][i]["AgentID"]
-
-            self.out_queue.put(["CoarseLocationUpdate", str(agent), (X, Y, Z)])
-
     def subscribe_region_callbacks(self, region):
         """
         Subscribe all region connected callbacks
@@ -134,8 +91,6 @@ class AgentManager(object):
         for handler in self._handlers.values():
             handler.onRegionConnect(region)
 
-        res = region.message_handler.register("CoarseLocationUpdate")
-        res.subscribe(self.onCoarseLocationUpdate)
         res = region.message_handler.register("GenericMessage")
         res.subscribe(self.onGenericMessage)
 
@@ -171,6 +126,7 @@ class AgentManager(object):
         self.addHandler(ChatHandler(self))
         self.addHandler(SelectHandler(self))
         self.addHandler(ObjectHandler(self))
+        self.addHandler(MiscHandler(self))
 
         # Now let's log it in
         firstname, lastname = username.split(" ", 1)

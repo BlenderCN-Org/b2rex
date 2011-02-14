@@ -1,3 +1,8 @@
+try:
+    from simtypes import AssetType
+except:
+    from b2rexpkg.tools.simtypes import AssetType
+
 import uuid
 import math
 import struct
@@ -239,7 +244,7 @@ class ObjectHandler(Handler):
         if not obj:
             obj = client.region.objects.get_avatar_from_store(FullID=UUID(objId))
             if obj:
-                self.sendLocalTeleport(obj, pos)
+                self.manager.misc.sendLocalTeleport(obj, pos)
                 return
         if obj:
             pos = pos
