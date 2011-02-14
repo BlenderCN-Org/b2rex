@@ -1,5 +1,7 @@
 # standard
+import os
 import re
+import sys
 import uuid
 import getpass, sys, logging
 import time
@@ -18,6 +20,9 @@ from threading import Thread
 import eventlet
 from eventlet import api
 from eventlet import Queue
+if sys.version_info[0] == 2:
+    simrt_path = os.path.dirname(os.path.realpath(__file__))
+    sys.path.append(os.path.join(simrt_path, 'tools'))
 try:
     from jsonsocket import JsonSocket
     from simtypes import RegionFlags, SimAccess, LayerTypes, AssetType
@@ -259,7 +264,6 @@ class BlenderAgent(object):
     def sendCreateObject(self, objId, pos, rot, scale, tok):
         RayTargetID = UUID()
         RayTargetID.random()
-        print("CREATE OBJECT WITH UUID", RayTargetID)
 
         self.client.region.objects.object_add(self.client.agent_id, self.client.session_id,
                         PCodeEnum.Primitive,
