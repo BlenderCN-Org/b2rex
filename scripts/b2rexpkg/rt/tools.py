@@ -1,4 +1,6 @@
 import md5
+import socket
+import urlparse
 
 from pyogp.lib.base.helpers import Helpers
 from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
@@ -38,4 +40,27 @@ def uuid_combine(uuid_one, uuid_two):
 
 
 
+def prepare_server_name(server_url):
+    parsed_url = urlparse.urlparse(server_url)
+    split_netloc = parsed_url.netloc.split(":")
+    if len(split_netloc) == 2:
+        server_name, port = split_netloc
+    else:
+        server_name = parsed_url.netloc
+        port = None
+    try:
+        # reconstruct the url with the ip to avoid problems
+        res_server_name = socket.gethostbyname(server_name)
+        if res_server_name == '::1': # :-P
+            res_server_name = '127.0.0.1'
+            #if res_server_name in ['127.0.01', '::1']:
+        server_name = res_server_name
+    except:
+        pass
+    if port:
+        server_name = server_name + ":" + port
+    else:
+        server_name = server_name + '/xml-rpc.php'
+    server_url = parsed_url.scheme + '://' + server_name
+    return server_url
 

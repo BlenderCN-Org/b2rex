@@ -14,7 +14,6 @@ import struct
 import urlparse
 from collections import defaultdict
 from threading import Thread
-#from terraindecoder import TerrainDecoder
 
 # related
 import eventlet
@@ -56,7 +55,7 @@ from rt.handlers.xferupload import XferUploadManager
 from rt.handlers.regionhandshake import RegionHandshakeHandler
 
 from rt.tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
-from rt.tools import unpack_v3, unpack_q, b_to_s
+from rt.tools import unpack_v3, unpack_q, b_to_s, prepare_server_name
 
 
 class AgentManager(object):
@@ -173,9 +172,6 @@ class AgentManager(object):
         if layerType == LayerTypes.LayerLand or True:
             b64data = base64.urlsafe_b64encode(data).decode('ascii')
             self.out_queue.put(["LayerData", layerType, b64data])
-
-    def decompressLand(self, data, stride, patchSize):
-        return TerrainDecoder.decode(data, stride, patchSize)
 
     def onParcelOverlay(self, packet):
         # some region info
@@ -517,30 +513,6 @@ class AgentManager(object):
         res = region.objects.message_handler.register("ObjectUpdate")
         res.subscribe(self.onObjectUpdate)
 
-    def prepare_server_name(self, server_url):
-        parsed_url = urlparse.urlparse(server_url)
-        split_netloc = parsed_url.netloc.split(":")
-        if len(split_netloc) == 2:
-            server_name, port = split_netloc
-        else:
-            server_name = parsed_url.netloc
-            port = None
-        try:
-            # reconstruct the url with the ip to avoid problems
-            res_server_name = socket.gethostbyname(server_name)
-            if res_server_name == '::1': # :-P
-                res_server_name = '127.0.0.1'
-                #if res_server_name in ['127.0.01', '::1']:
-            server_name = res_server_name
-        except:
-            pass
-        if port:
-            server_name = server_name + ":" + port
-        else:
-            server_name = server_name + '/xml-rpc.php'
-        server_url = parsed_url.scheme + '://' + server_name
-        return server_url
-
     def addHandler(self, handler):
         self._handlers[handler.getName()] = handler
 
@@ -561,7 +533,7 @@ class AgentManager(object):
 
         # Now let's log it in
         firstname, lastname = username.split(" ", 1)
-        loginuri = self.prepare_server_name(server_url)
+        loginuri = prepare_server_name(server_url)
 
         api.spawn(client.login, loginuri, firstname, lastname, password,
                   start_location = regionname, connect_region = True)
