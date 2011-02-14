@@ -48,10 +48,8 @@ from rt.tools import prepare_server_name
 
 
 class AgentManager(object):
-    do_megahal = False
     verbose = False
     def __init__(self, in_queue, out_queue):
-        self.nlayers = 0
         self._handlers = {}
         self._generichandlers = {}
         self._cmdhandlers = defaultdict(list)
@@ -135,15 +133,16 @@ class AgentManager(object):
         api.spawn(client.login, loginuri, firstname, lastname, password,
                   start_location = regionname, connect_region = True)
 
-        client.sit_on_ground()
-
         # wait for the agent to connect to it's region
         while client.connected == False:
             api.sleep(0)
 
+        # notify handlers of agent connection
         for handler in self._handlers.values():
             handler.onAgentConnected(client)
 
+        # subscribe own callbacks and call handler callbacks for about to
+        # connect to region
         self.subscribe_region_pre_callbacks(client.region)
 
         # inform our client of connection success
@@ -163,8 +162,10 @@ class AgentManager(object):
                 caps_sent = True
             api.sleep(0)
 
+        # notify handlers of connection to region
         self.subscribe_region_callbacks(client.region)
 
+        # send throttle
         self.throttle.sendThrottle()
 
         # speak up the first line
@@ -174,7 +175,6 @@ class AgentManager(object):
         while client.running == True:
             api.sleep(0)
             cmd = in_queue.get()
-            #   # 10-rot
             command = cmd[0]
             command = command[0].upper()+command[1:]
             if command in self._cmdhandlers:
@@ -194,15 +194,21 @@ class AgentManager(object):
                     func(*cmd[1:])
 
     def processQuit(self):
+        """
+        Receive Quit command from client, and ignore it for now.
+        """
         return # ignore
         out_queue.put(["quit"])
         client.logout()
         return
 
     def initialize_logger(self):
+        """
+        Initialize application logger and logging parameters.
+        """
         self.logger = logging.getLogger("b2rex.simrt")
 
-        if self.verbose:
+        if self.verbose and __name__ == '__main__':
             console = logging.StreamHandler()
             console.setLevel(logging.DEBUG) # seems to be a no op, set it for the logger
             formatter = logging.Formatter('%(asctime)-30s%(name)-30s: %(levelname)-8s %(message)s')
@@ -226,14 +232,13 @@ class AgentManager(object):
         #First, initialize the agent
         client = Agent(settings = settings, handle_signals=False)
         self.client = client
-        self.do_megahal = False
-        if self.do_megahal:
-            megahal_r, megahal_w = popen2.popen2("/usr/bin/megahal-personal -p -b -w -d /home/caedes/bots/lorea/.megahal")
-            firstline = megahal_r.readline()
         return client
 
 
 class ProxyFunction(object):
+    """
+    A function that instead adds a command to be sent to the queue.
+    """
     def __init__(self, name, parent):
         self._name = name
         self._parent = parent
@@ -241,6 +246,10 @@ class ProxyFunction(object):
         self._parent.addCmd([self._name]+list(args))
 
 class GreenletsThread(Thread):
+    """
+    Main thread for the program. If running stand alone this will be running
+    as a greenlet instead.
+    """
     def __init__ (self, server_url, username, password, region, firstline="Hello"):
         self.running = True
         self.agent = True
@@ -291,12 +300,18 @@ class GreenletsThread(Thread):
 running = False
 
 def run_thread(context, server_url, username, password, region, firstline):
+    """
+    Call from outside the module to start up the agent thread.
+    """
     global running
     running = GreenletsThread(server_url, username, password, region, firstline)
     running.start()
     return running
 
 def stop_thread():
+    """
+    Call from outside to stop the agent thread.
+    """
     global running
     running.stop()
     running = None
@@ -304,6 +319,11 @@ def stop_thread():
 
 # the following is to run in stand alone mode
 class ClientHandler(object):
+    """
+    Manager that accepts a connection and initializes an agent.
+    When no clients are left the agent is killed and will be respawned
+    when someone comes back.
+    """
     def __init__(self):
         self.current = None
         self.deferred_cmds = []
@@ -368,7 +388,11 @@ class ClientHandler(object):
         #raise eventlet.StopServe
 
 run_main = True
+
 def main():
+    """
+    In stand alone mode we will open a port and accept commands.
+    """
     server = eventlet.listen(('0.0.0.0', 11112))
     pool = eventlet.GreenPool(1000)
     while run_main:
@@ -376,11 +400,6 @@ def main():
          client_handler = ClientHandler()
          pool.spawn_n(client_handler.handle_client, JsonSocket(new_sock), pool)
          api.sleep(0)
-
-    #current = GreenletsThread(cmd_queue)
-    #current.start()
-    #while current.isAlive():
-        #    time.sleep(1)
 
 if __name__=="__main__":
     main()
