@@ -1,17 +1,13 @@
 # standard
 import os
-import re
 import sys
 import uuid
-import getpass, sys, logging
+import logging
 import time
-from array import array
 import math
-from hashlib import md5
 import popen2
 import base64
 import struct
-import urlparse
 from collections import defaultdict
 from threading import Thread
 
