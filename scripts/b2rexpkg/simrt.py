@@ -486,6 +486,17 @@ class AgentManager(object):
         for handler in self._handlers.values():
             handler.onRegionConnect(region)
 
+        res = region.message_handler.register("RexPrimData")
+        res.subscribe(self.onRexPrimData)
+        res = region.message_handler.register("ObjectPermissions")
+        res.subscribe(self.onObjectPermissions)
+        res = region.message_handler.register("ObjectProperties")
+        res.subscribe(self.onObjectProperties)
+        res = region.objects.message_handler.register("RexPrimData")
+        res.subscribe(self.onRexPrimData)
+        res = region.message_handler.register("InventoryDescendents")
+        res.subscribe(self.onInventoryDescendents)
+
         res = region.message_handler.register("CoarseLocationUpdate")
         res.subscribe(self.onCoarseLocationUpdate)
         res = region.message_handler.register("ImprovedTerseObjectUpdate")
@@ -498,18 +509,6 @@ class AgentManager(object):
         res.subscribe(self.onAgentMovementComplete)
         res = region.message_handler.register("LayerData")
         res.subscribe(self.onLayerData)
-        res = region.message_handler.register("ChatFromSimulator")
-        res.subscribe(self.onChatFromViewer)
-        res = region.message_handler.register("RexPrimData")
-        res.subscribe(self.onRexPrimData)
-        res = region.message_handler.register("ObjectPermissions")
-        res.subscribe(self.onObjectPermissions)
-        res = region.message_handler.register("ObjectProperties")
-        res.subscribe(self.onObjectProperties)
-        res = region.objects.message_handler.register("RexPrimData")
-        res.subscribe(self.onRexPrimData)
-        res = region.message_handler.register("InventoryDescendents")
-        res.subscribe(self.onInventoryDescendents)
         res = region.objects.message_handler.register("ObjectUpdate")
         res.subscribe(self.onObjectUpdate)
 
@@ -804,53 +803,6 @@ class AgentManager(object):
            else:
                 # missing sizes: 28, 40, 44, 64
                 self.logger.debug("Unparsed update of size "+str(len(objdata)))
-
-    def onChatFromViewer(self, packet):
-        client = self.client
-        out_queue = self.out_queue
-        fromname = packet["ChatData"][0]["FromName"].split(" ")[0]
-        message = packet["ChatData"][0]["Message"]
-        out_queue.put(['msg',fromname, message])
-        if message.startswith("#"):
-            return
-        if fromname.strip() == client.firstname:
-            return
-        elif message == "quit":
-            if self.do_megahal:
-                megahal_w.write("#QUIT\n\n")
-                megahal_w.flush()
-            client.say("byez!")
-            api.sleep(10)
-            if self.do_megahal:
-                megahal_r.close()
-                megahal_w.close()
-            client.logout()
-            api.sleep(50)
-            #while client.connected:
-                #    api.sleep(0)
-        elif message == "sit":
-            client.fly(False)
-            client.sit_on_ground()
-        elif message == "stand":
-            client.fly(False)
-            client.stand()
-        elif message == "fly":
-            client.fly()
-        elif message == "+q":
-            if fromname not in queue:
-                queue.append(fromname)
-                client.say(str(queue))
-        elif message == "-q":
-            if fromname in queue:
-                queue.remove(fromname)
-                client.say(str(queue))
-        else:
-            if self.do_megahal:
-                megahal_w.write(message+"\n\n")
-                megahal_w.flush()
-                client.say(str(megahal_r.readline()))
-        self.logger.debug("chat:"+packet["ChatData"][0]["Message"])
-        self.logger.debug("chat:"+packet["ChatData"][0]["FromName"])
 
 
 class ProxyFunction(object):
