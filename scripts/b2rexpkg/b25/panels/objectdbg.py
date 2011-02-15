@@ -18,6 +18,12 @@ class ObjectDebugPanel(bpy.types.Panel):
     bl_region_type = "TOOLS"
     bl_idname = "b2rex.panel.objectdbg"
 
+    @classmethod
+    def poll(cls, context):
+        for obj in context.selected_objects:
+            if obj.opensim.uuid:
+                return True
+
     def draw(self, context):
         layout = self.layout
         box = layout.box()
