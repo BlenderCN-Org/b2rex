@@ -59,7 +59,7 @@ class Redraw(bpy.types.Operator):
 
     def invoke(self, context, event):
         for area in context.screen.areas:
-            #           if not area.type == 'VIEW_3D':
+            if area.type == 'INFO':
                 area.tag_redraw()
         return {'RUNNING_MODAL'}
     def check(self, context):

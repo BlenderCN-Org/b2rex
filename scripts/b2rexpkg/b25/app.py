@@ -215,7 +215,7 @@ class B2Rex(BaseApplication):
     def queueRedraw(self):
         screen = bpy.context.screen
         for area in screen.areas:
-            #           if not area.type == 'VIEW_3D':
+            if area.type == 'INFO':
                 bpy.ops.b2rex.redraw()
 
     def update_folders(self, folders):

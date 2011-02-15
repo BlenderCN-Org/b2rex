@@ -280,7 +280,7 @@ class BaseApplication(Importer, Exporter):
             region_uuid = list(self.regions.keys())[props.selected_region]
             region_name = self.regions[region_uuid]['name']
             firstline = 'Blender '+ self.getBlenderVersion()
-            self.simrt = simrt.run_thread(context, self.exportSettings.server_url,
+            self.simrt = simrt.run_thread(bpy.data.screens, self.exportSettings.server_url,
                                           self.exportSettings.username,
                                           self.exportSettings.password,
                                           region_name, firstline)
