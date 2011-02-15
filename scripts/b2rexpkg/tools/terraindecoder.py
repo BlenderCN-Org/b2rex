@@ -85,7 +85,9 @@ class BitReader(object):
         self._bit_ofs = 0
         self._elem_ofs = 0
         self._data = data
+        self._currbyte = struct.unpack("<B", self._data[0:1])[0]
         self.len = len(data)*8
+        self.left = self.len
         self.pos = 0
     def ReadBits(self, count):
         data = [0,0,0,0]
@@ -115,18 +117,22 @@ class BitReader(object):
         elif datatype in ["floatle", "float"]:
             return struct.unpack("<f", self.ReadBits(32))[0]
     def BitsLeft(self):
-        return self.len - self.pos
+        return self.left
     def ReadUint(self, nbits):
-        return struct.unpack("<I", self.ReadBits(int(nbits)))[0]
+        return struct.unpack("<I", self.ReadBits(nbits))[0]
     def ReadBit(self):
         if self.BitsLeft() == 0:
             raise Exception("Out of bits!")
-        bit = struct.unpack("<B", self._data[self._elem_ofs:self._elem_ofs+1])[0] & (1 << (self._num_bits_in_elem - 1 - self._bit_ofs)) != 0
+        bit = self._currbyte & (1 << (self._num_bits_in_elem - 1 - self._bit_ofs)) != 0
         self._bit_ofs += 1
         if self._bit_ofs >= self._num_bits_in_elem:
             self._bit_ofs = 0
             self._elem_ofs += 1
+            if self.len - (self._bit_ofs + (self._elem_ofs*8)) > 0:
+                self._currbyte = struct.unpack("<B",
+                                  self._data[self._elem_ofs:self._elem_ofs+1])[0]
         self.pos = self._bit_ofs + (self._elem_ofs*8)
+        self.left = self.len - self.pos
         return bit
 
 class IDCTPrecomputationTables(object):
@@ -231,10 +237,11 @@ class IDCTPrecomputationTables(object):
         total = 0.0
         cStride = 16
         start = OO_SQRT2 * linein[column]
+        cosineTable = self.cosineTable
         for n in range(16):
             total = start
             for u in range(1,16):
-                total += linein[u*cStride + column] * self.cosineTable[u*cStride + n]
+                total += linein[u*cStride + column] * cosineTable[u*cStride + n]
             lineout[16 * n + column] = total
 
 
@@ -243,10 +250,11 @@ class IDCTPrecomputationTables(object):
         lineSize = line * 16
         start = OO_SQRT2 * linein[lineSize]
         total = 0.0
+        cosineTable = self.cosineTable
         for n in range(16):
             total = start
             for u in range(1, 16):
-                total += linein[lineSize + u] * self.cosineTable[u *16 +  n]
+                total += linein[lineSize + u] * cosineTable[u *16 +  n]
             lineout[lineSize+n] = total*oosob
 
 
@@ -354,6 +362,7 @@ class TerrainEncoder(object):
                          EncodePatch()")
         if postquant != 0:
            patch[16*16 - postquant] = 0
+        packuint = output.PackUint
         for i in range(16*16):
             eob = False
             temp = patch[i]
@@ -365,22 +374,22 @@ class TerrainEncoder(object):
                         eob = False
                     j+=1
                 if eob:
-                    output.PackUint(ZERO_EOB, 2)
+                    packuint(ZERO_EOB, 2)
                     return
                 else:
-                    output.PackUint(ZERO_CODE, 1)
+                    packuint(ZERO_CODE, 1)
             else:
                 if temp < 0:
                     temp *= -1
                     if temp > (1 << wbits):
                         temp = 1 << wbits
-                    output.PackUint(NEGATIVE_VALUE, 3)
-                    output.PackUint(temp, wbits)
+                    packuint(NEGATIVE_VALUE, 3)
+                    packuint(temp, wbits)
                 else:
                     if temp > (1 << wbits):
                         temp = 1 << wbits
-                    output.PackUint(POSITIVE_VALUE, 3)
-                    output.PackUint(temp, wbits)
+                    packuint(POSITIVE_VALUE, 3)
+                    packuint(temp, wbits)
 
     def createPatchHeader(self, block, x, y):
         header = PatchHeader(self.patchSize)
@@ -444,25 +453,27 @@ class TerrainDecoder(object):
 
     def decodeTerrainPatch(self, header, data, size):
         area = size*size
-        patchdata = list(range(area))
-        for i in range(size*size):
+        patchdata = array('f', range(area))
+        readbit = data.ReadBit
+        readuint = data.ReadUint
+        for i in range(area):
             if data.len - data.pos <= 0:
                 while i < size*size:
                     patchdata[i] = 0
                     i+=1
                 return patchdata
 
-            if not data.ReadBit():
+            if not readbit():
                 patchdata[i] = 0
                 continue
 
-            if not data.ReadBit():
+            if not readbit():
                 while i < area:
                     patchdata[i] = 0
                     i+=1
                 return patchdata
-            signNegative = data.ReadBit()
-            dataval = data.ReadUint(header.wordBits)
+            signNegative = readbit()
+            dataval = readuint(header.wordBits)
             if signNegative:
                 patchdata[i] = -dataval
             else:
