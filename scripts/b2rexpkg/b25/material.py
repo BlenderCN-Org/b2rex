@@ -28,14 +28,14 @@ class RexMaterialIO(object):
     """
     Material exporter and parser to export for the rex cg supershader
     """
-    def __init__(self, manager, blenderMesh, blenderFace, colouredAmbient):
+    def __init__(self, manager, blenderMesh, blenderFace, blenderMaterial):
         self.manager = manager
         self.mesh = blenderMesh
         self.face = blenderFace
-        self.colouredAmbient = colouredAmbient
+        self.colouredAmbient = False
         # check if a Blender material is assigned
         try:
-            blenderMaterial = self.mesh.materials[0]
+            blenderMaterial = blenderMaterial
         except:
             blenderMaterial = None
         self.TEXFACE = blenderFace and blenderFace.use_twoside

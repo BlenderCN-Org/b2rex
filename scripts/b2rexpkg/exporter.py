@@ -4,20 +4,27 @@ Class holding all export modules.
 
 import os
 import sys
+import base64
 import logging
 import tempfile
 import shutil
+import uuid
+from collections import defaultdict
+
+from io import StringIO
 
 from b2rexpkg import uuidexport
 
 from .siminfo import GridInfo
 from .simconnection import SimConnection
 from .uuidexport import reset_uuids
+from .tools.simtypes import AssetType
 
 if sys.version_info[0] == 2:
     from .b24.ogre_exporter import OgreExporter
 else:
     from .b25.ogre_exporter import OgreExporter
+    from .b25.material import RexMaterialIO
 
 import bpy
 logger = logging.getLogger('b2rex.exporter')
@@ -31,6 +38,7 @@ class Exporter(object):
             self.gridinfo = GridInfo()
         self.sim = SimConnection()
         self.ogre = OgreExporter()
+        self._exporttasks = {}
 
     def connect(self, base_url, username="", password=""):
         """
@@ -153,4 +161,98 @@ class Exporter(object):
         else:
             self.addStatus("Error: Something went wrong uploading", 'ERROR')
 
+
+    def _getFaceRepresentatives(self, mesh):
+        seen_images = []
+        faces = []
+        if mesh.uv_textures:
+            for face in mesh.uv_textures[0].data:
+                if face.use_image and face.image:
+                    if not face.image in seen_images:
+                        seen_images.append(face.image)
+                        faces.append(face)
+        return faces
+
+    def _getFaceMaterial(self, mesh, face):
+        for mat in mesh.materials:
+            for slot in mat.texture_slots:
+                if slot and slot.use_map_color_diffuse and slot.texture:
+                    tex = slot.texture
+                    if tex.type == 'IMAGE' and tex.image and tex.image == face.image:
+                        return mat
+        if mesh.materials:
+            print("returning default material")
+            return mesh.materials[0]
+
+    def uploadImage(self, image):
+        imagepath = os.path.realpath(bpy.path.abspath(image.filepath))
+        if os.path.exists(imagepath):
+            f = open(imagepath, 'rb')
+            encoded = base64.urlsafe_b64encode(f.read()).decode('ascii')
+            f.close()
+            self.simrt.UploadAsset(image.opensim.uuid, 0, encoded)
+            return image.opensim.uuid
+
+    def processAssetUploadFinished(self, newAssetID, assetID):
+        if assetID in self._exporttasks:
+            self._exporttasks[assetID](assetID, newAssetID)
+            del self._exporttasks[assetID]
+
+    def uploadMaterial(self, material, data):
+        encoded = base64.urlsafe_b64encode(data).decode('ascii')
+        self.simrt.UploadAsset(material.opensim.uuid, AssetType.OgreMaterial, encoded)
+        return material.opensim.uuid
+
+
+    def doExportMaterials(self, obj, cb=print):
+        mesh = obj.data
+        faces = self._getFaceRepresentatives(mesh)
+        materials = []
+        materialsdone = []
+        tokens = {}
+        def material_finished(token, newAssetID):
+            idx = materials.index(token)
+            mat = tokens.pop(token)
+            mat.opensim.uuid = newAssetID
+            materials[idx] = newAssetID
+            materialsdone.append(newAssetID)
+            if len(materialsdone) == len(materials):
+                cb(materials)
+
+        def process_materials():
+            # now process materials
+            for face in faces:
+                bmat = self._getFaceMaterial(mesh, face)
+                if not bmat.opensim.uuid:
+                    bmat.opensim.uuid = str(uuid.uuid4())
+                    matio = RexMaterialIO(self, mesh, face, bmat)
+                    f = StringIO()
+                    matio.write(f)
+                    f.seek(0)
+                    id = self.uploadMaterial(bmat, f.read())
+                    if id:
+                        tokens[id] = bmat
+                        self._exporttasks[id] = material_finished
+                else:
+                    materialsdone.append(bmat.opensim.uuid)
+                materials.append(bmat.opensim.uuid)
+            if len(materialsdone) == len(materials):
+                cb(materials)
+
+        def image_finished(token, newAssetID):
+            face = tokens.pop(token)
+            face.image.opensim.uuid = newAssetID
+            if not len(tokens):
+                process_materials()
+
+        # ensure images first
+        for face in faces:
+            if not face.image.opensim.uuid:
+                face.image.opensim.uuid = str(uuid.uuid4())
+                id = self.uploadImage(face.image)
+                if id:
+                    tokens[id] = face
+                    self._exporttasks[id] = image_finished
+        if not len(tokens):
+            process_materials()
 

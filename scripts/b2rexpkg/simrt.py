@@ -173,7 +173,6 @@ class AgentManager(object):
 
         # main loop for the agent
         while client.running == True:
-            api.sleep(0)
             cmd = in_queue.get()
             command = cmd[0]
             command = command[0].upper()+command[1:]

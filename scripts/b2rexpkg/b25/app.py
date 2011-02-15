@@ -18,6 +18,9 @@ from b2rexpkg import IMMEDIATE, ERROR
 
 import bpy
 
+class MyFancyObject(bpy.types.ID):
+    pass
+
 class B2Rex(BaseApplication):
     def __init__(self, context):
         self.region_report = ''
@@ -40,6 +43,10 @@ class B2Rex(BaseApplication):
 #            regionss.description = region['id']
 
     def onCheck(self, context):
+        self.onTest(context)
+        return
+        props = context.scene.b2rex_props
+        self.exportSettings = props
         self.region_uuid = list(self.regions.keys())[props.selected_region]
         self.do_check()
 
@@ -48,6 +55,8 @@ class B2Rex(BaseApplication):
         props = context.scene.b2rex_props
         current = context.active_object
         if current:
+            session = bpy.b2rex_session.doExportMaterials(current)
+            return
             for mat in current.data.materials:
                 face = None
                 if current.data.uv_textures:
@@ -57,6 +66,7 @@ class B2Rex(BaseApplication):
                 f = StringIO()
                 matio.write(f)
                 f.seek(0)
+                print("MATERIAL", mat.opensim.uuid)
                 print(f.read())
 
     def onProcessQueue(self, context):

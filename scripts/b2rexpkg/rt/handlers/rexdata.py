@@ -4,6 +4,8 @@ import struct
 from pyogp.lib.base.datatypes import UUID
 from pyogp.lib.base.message.message import Message, Block
 
+from simtypes import AssetType
+
 from .base import Handler
 
 class RexDataHandler(Handler):
@@ -35,7 +37,6 @@ class RexDataHandler(Handler):
         obj = client.region.objects.get_object_from_store(FullID = obj_uuid)
         if obj:
             obj.rexdata = pars
-        self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
         # animation
         animname = ""
         idx = 78
@@ -56,6 +57,7 @@ class RexDataHandler(Handler):
             materials.append([matindex, str(matuuid), assettype])
             pos = pos + 18
         pars["Materials"] = materials
+        self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
         if not len(rexdata) > pos:
             #self.logger.debug("RexPrimData: no more data")
             return
@@ -75,7 +77,7 @@ class RexDataHandler(Handler):
         data = b''
         materials = []
         if "materials" in args:
-            materials=args["materials"]
+            materials = args["materials"]
         # drawType (1 byte)
         if 'drawType' in args:
             data += struct.pack('<b', args['drawType'])

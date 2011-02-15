@@ -127,7 +127,7 @@ class ObjectHandler(Handler):
                 print("cant find object")
 
     def processCreate(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
-                     scale, b64data):
+                     scale, b64data, materials):
         # create asset
         obj_uuid = UUID(obj_uuid_str)
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
@@ -141,7 +141,8 @@ class ObjectHandler(Handler):
                 # confirm creation to the client sending the new uuids.
                 del self._creating_cb[obj_idx]
                 args = {"RexMeshUUID": str(asset_id),
-                        "RexIsVisible": True}
+                        "RexIsVisible": True,
+                        "materials": materials}
                 self.rexdata.sendRexPrimData(real_uuid, args)
                 self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                     str(real_uuid), str(asset_id)])
@@ -149,10 +150,10 @@ class ObjectHandler(Handler):
             self.sendCreateObject(obj_uuid, pos, rot, scale, obj_idx)
 
         # send the asset data and wait for ack from the uploader
-        assetID = self.uploader.uploadAsset(AssetType.OgreMesh, data, finishupload)
+        assetID = self.manager.uploader.uploadAsset(AssetType.OgreMesh, data, finishupload)
 
     def processClone(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
-                     scale):
+                     scale, materials):
         # create asset
         obj_uuid = UUID(obj_uuid_str)
         self._next_create = (self._next_create + 1) % (256*256)
@@ -162,6 +163,7 @@ class ObjectHandler(Handler):
         def finish_creating(real_uuid):
             del self._creating_cb[obj_idx]
             args = {"RexMeshUUID": mesh_uuid_str,
+                    "materials": materials,
                     "RexIsVisible": True}
             self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                 str(real_uuid), mesh_uuid_str])

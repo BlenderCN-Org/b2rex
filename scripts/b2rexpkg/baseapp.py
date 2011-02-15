@@ -52,7 +52,7 @@ class BaseApplication(Importer, Exporter):
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
-        self.workpool = ThreadPool(8)
+        self.workpool = ThreadPool(1)
         self.rawselected = set()
         self.simstats = None
         self.agent_id = ""
@@ -100,6 +100,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('LayerData', self.processLayerData)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
+        self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
@@ -367,12 +368,12 @@ class BaseApplication(Importer, Exporter):
                     mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
                     if not self.addDownload(mesh_url,
                                      self.meshArrived, 
-                                     (objId, meshId),
+                                     (objId, meshId, materials),
                                             main=self.doMeshDownloadTranscode):
                         self.add_mesh_callback(meshId,
                                                self.createObjectWithMesh,
                                                objId,
-                                               meshId)
+                                               meshId, materials)
                 else:
                     logger.warning("unhandled rexdata of type " + str(asset_type))
 
@@ -412,23 +413,31 @@ class BaseApplication(Importer, Exporter):
             self.parse_material(matId, {"name":matId, "data":data}, meshId,
                                 matIdx)
 
-    def meshArrived(self, mesh, objId, meshId):
-        self.command_queue.append(["mesharrived", mesh, objId, meshId])
+    def meshArrived(self, mesh, objId, meshId, materials):
+        self.command_queue.append(["mesharrived", mesh, objId, meshId, materials])
 
-    def processMeshArrived(self, mesh, objId, meshId):
+    def processMeshArrived(self, mesh, objId, meshId, materials):
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
             return
-        new_mesh = self.create_mesh_fromomesh(meshId, "opensim", mesh)
+        new_mesh = self.create_mesh_fromomesh(meshId, "opensim", mesh, materials)
         if new_mesh:
-            self.createObjectWithMesh(new_mesh, str(objId), meshId)
+            self.createObjectWithMesh(new_mesh, str(objId), meshId, materials)
             self.trigger_mesh_callbacks(meshId, new_mesh)
         else:
             print("No new mesh with processMeshArrived")
 
-    def createObjectWithMesh(self, new_mesh, objId, meshId):
+    def setMeshMaterials(self, mesh, materials):
+        presentIds = list(map(lambda s: s.opensim.uuid, mesh.materials))
+        for idx, matId, asset_type in materials:
+            mat = self.find_with_uuid(matId, bpy.data.materials, 'materials')
+            if mat and not matId in presentIds:
+                mesh.materials.append(mat)
+
+    def createObjectWithMesh(self, new_mesh, objId, meshId, materials=[]):
         obj = self.getcreate_object(objId, "opensim", new_mesh)
+        self.setMeshMaterials(new_mesh, materials)
         if objId in self.positions:
             pos = self.positions[objId]
             self.apply_position(obj, pos, raw=True)
@@ -462,7 +471,7 @@ class BaseApplication(Importer, Exporter):
                 if obj.opensim.uuid:
                     self.simrt.Delete(obj.opensim.uuid)
 
-    def sendObjectClone(self, obj):
+    def sendObjectClone(self, obj, materials):
         obj_name = obj.name
         mesh = obj.data
         if not obj.opensim.uuid:
@@ -474,9 +483,9 @@ class BaseApplication(Importer, Exporter):
         
         self.simrt.Clone(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            self.unapply_position(pos),
-                           self.unapply_rotation(rot), list(scale))
-
-    def sendObjectUpload(self, obj, mesh, data):
+                           self.unapply_rotation(rot), list(scale), materials)
+        
+    def sendObjectUpload(self, obj, mesh, data, materials):
         b64data = base64.urlsafe_b64encode(data).decode('ascii')
         obj_name = obj.name
         obj_uuid = obj.opensim.uuid
@@ -486,18 +495,23 @@ class BaseApplication(Importer, Exporter):
         
         self.simrt.Create(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            self.unapply_position(pos),
-                           self.unapply_rotation(rot), list(scale), b64data)
+                           self.unapply_rotation(rot), list(scale), b64data,
+                          materials)
 
     def doRtObjectUpload(self, context, obj):
         mesh = obj.data
         has_mesh_uuid = mesh.opensim.uuid
         if has_mesh_uuid:
-            self.sendObjectClone(obj)
+            def finish_clone(materials):
+                self.sendObjectClone(obj)
+            self.doExportMaterials(obj, cb=finish_clone)
             return
-        def finish_upload(data):
-            self.sendObjectUpload(obj, mesh, data)
+        def finish_upload(materials):
+            def send_upload(data):
+                self.sendObjectUpload(obj, mesh, data, materials)
+            self.doAsyncExportMesh(context, obj, send_upload)
+        self.doExportMaterials(obj, cb=finish_upload)
         # export mesh
-        self.doAsyncExportMesh(context, obj, finish_upload)
         # upload prim
         # self.sendObjectUpload(selected, mesh, data)
         # send new prim

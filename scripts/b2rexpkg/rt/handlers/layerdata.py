@@ -1,6 +1,6 @@
 import base64
 import struct
-import array
+from array import array
 
 from pyogp.lib.base.message.message import Message, Block
 

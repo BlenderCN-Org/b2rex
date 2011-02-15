@@ -7,10 +7,10 @@ from bpy.props import FloatVectorProperty
 import logging
 
 class B2RexRegions(bpy.types.IDPropertyGroup):
-    pass
+    name = StringProperty(name='name', default='', description='')
 
 class B2RexChatLine(bpy.types.IDPropertyGroup):
-    pass
+    name = StringProperty(name='name', default='', description='')
 
 class B2RexBaseProps(bpy.types.IDPropertyGroup):
     uuid = StringProperty(name='uuid', default='', description='')

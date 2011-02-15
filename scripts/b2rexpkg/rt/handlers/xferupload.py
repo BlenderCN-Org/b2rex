@@ -1,4 +1,6 @@
-import array
+from array import array
+import base64
+
 from pyogp.lib.base.datatypes import UUID
 from pyogp.lib.base.message.message import Message, Block
 
@@ -74,6 +76,12 @@ class XferUploadManager(Handler):
                                                True, # storelocal
                                                init_data) # asset_data
         return  assetID
+
+    def processUploadAsset(self, assetID, assetType, b64data):
+        def finish(newAssetID):
+            self.out_queue.put("AssetUploadFinished", newAssetID, assetID)
+        data = base64.urlsafe_b64decode(data).decode('ascii')
+        self.uploadAsset(assetType, data, finish)
 
     def onRequestXfer(self, packet):
         """
