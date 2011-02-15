@@ -58,7 +58,7 @@ class AgentManager(object):
         self.out_queue = out_queue
         self.initialize_logger()
 
-    def registerGenericHandler(self, message, handler):
+    def register_generic_handler(self, message, handler):
         """
         Register a callback for a GenericMessage method.
         """
@@ -92,7 +92,7 @@ class AgentManager(object):
         res = region.message_handler.register("GenericMessage")
         res.subscribe(self.onGenericMessage)
 
-    def addHandler(self, handler):
+    def add_handler(self, handler):
         """
         Add a handler object. Generally represents a given service.
         """
@@ -111,20 +111,20 @@ class AgentManager(object):
         client = self.initialize_agent()
 
         self.uploader = XferUploadManager(self)
-        self.addHandler(self.uploader)
-        self.addHandler(OnlineHandler(self))
-        self.addHandler(RegionHandshakeHandler(self))
-        self.addHandler(SimStatsHandler(self))
-        self.addHandler(AgentMovementHandler(self))
-        self.addHandler(LayerDataHandler(self))
-        self.addHandler(ParcelHandler(self))
-        self.addHandler(ThrottleHandler(self))
-        self.addHandler(RexDataHandler(self))
-        self.addHandler(InventoryHandler(self))
-        self.addHandler(ChatHandler(self))
-        self.addHandler(SelectHandler(self))
-        self.addHandler(ObjectHandler(self))
-        self.addHandler(MiscHandler(self))
+        self.add_handler(self.uploader)
+        self.add_handler(OnlineHandler(self))
+        self.add_handler(RegionHandshakeHandler(self))
+        self.add_handler(SimStatsHandler(self))
+        self.add_handler(AgentMovementHandler(self))
+        self.add_handler(LayerDataHandler(self))
+        self.add_handler(ParcelHandler(self))
+        self.add_handler(ThrottleHandler(self))
+        self.add_handler(RexDataHandler(self))
+        self.add_handler(InventoryHandler(self))
+        self.add_handler(ChatHandler(self))
+        self.add_handler(SelectHandler(self))
+        self.add_handler(ObjectHandler(self))
+        self.add_handler(MiscHandler(self))
 
         # Now let's log it in
         firstname, lastname = username.split(" ", 1)

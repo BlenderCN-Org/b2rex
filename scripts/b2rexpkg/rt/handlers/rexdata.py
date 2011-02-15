@@ -8,7 +8,7 @@ from .base import Handler
 
 class RexDataHandler(Handler):
     def onAgentConnected(self, agent):
-        self.manager.registerGenericHandler('RexPrimData', self.onRexPrimData)
+        self.manager.register_generic_handler('RexPrimData', self.onRexPrimData)
 
     def onRexPrimData(self, packet):
         rexdata = packet[1]["Parameter"]
