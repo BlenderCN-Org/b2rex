@@ -148,13 +148,24 @@ class ConnectionPanel(bpy.types.Panel):
         for i in range(indent):
             row.separator()
 
+        if folder['Descendents'] > -1:
+            name = folder['Name'] + " (" + str(folder['Descendents']) + " children)"
+        elif folder['Descendents'] == 0:
+            name = folder['Name'] + " (empty)"
+        elif folder['Descendents'] == -1:
+            name = folder['Name'] + " (? children)"
+
         folder_expand = "e_" +  str(folder_id).split('-')[0]
         if hasattr(B2RexProps, folder_expand):
+            if folder['Descendents'] == 0: 
+                oper = row.operator('b2rex.folder', text=name, icon='RIGHTARROW_THIN', emboss=False)
+                oper.expand = False
+                return
             if not getattr(props, folder_expand):
-                oper = row.operator('b2rex.folder', text=folder['Name'], icon='ZOOMIN', emboss=False)
+                oper = row.operator('b2rex.folder', text=name, icon='TRIA_RIGHT', emboss=False)
                 oper.expand = True
             else:
-                oper = row.operator('b2rex.folder', text=folder['Name'], icon='ZOOMOUT', emboss=False)
+                oper = row.operator('b2rex.folder', text=name, icon='TRIA_DOWN', emboss=False)
                 for f_id,folder in folders.items():
                     if folder['ParentID'] == folder_id:
                         self.draw_folder(f_id, indent + 1) 
@@ -165,11 +176,19 @@ class ConnectionPanel(bpy.types.Panel):
                             row.separator()
 
                         row.label(text=item['Name'], icon='OBJECT_DATA')
+
+                
+                if len(folders) + len(items) < folder['Descendents'] or folder['Descendents'] == -1:
+                    row = self.layout.row()
+                    for i in range(indent + 1):
+                        row.separator()
+                    row.label(text="Loading...")
+  
                 oper.expand = False
 
             oper.folder_id = folder_id
         else:
-            row.label(text="Loading...")
+            row.label(text="Loading.......")
         
     def draw_inventory(self, layout, session, props):
         row = layout.column()

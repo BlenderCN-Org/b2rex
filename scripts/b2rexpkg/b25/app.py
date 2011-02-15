@@ -211,11 +211,26 @@ class B2Rex(BaseApplication):
     def update_folders(self, folders):
         props = bpy.context.scene.b2rex_props
         cached_folders = getattr(props, 'folders')
+        
         for folder in folders:
             expand_prop = "e_" + str(folder['FolderID']).split('-')[0]
             if not hasattr(B2RexProps, expand_prop):
                 prop = BoolProperty(name="expand", default=False)
                 setattr(B2RexProps, expand_prop, prop)
+
+            descendents = -1
+            if 'Descendents' in folder:
+                descendents = folder['Descendents']
+            elif folder['FolderID'] in cached_folders:
+                if 'Descendents' in cached_folders[folder['FolderID']]:
+                    cached_folder = cached_folders[folder['FolderID']]
+                    descendents = cached_folder['Descendents'] 
+            
+            if descendents <= 0:
+                setattr(props, expand_prop, False)
+
+            folder['Descendents'] = descendents
+
             cached_folders[folder['FolderID']] = folder
 
     def update_items(self, items):
@@ -225,10 +240,12 @@ class B2Rex(BaseApplication):
             cached_items[item['ItemID']] = item
 
     def processInventoryDescendents(self, folder_id, folders, items):
+        logger.debug("processInventoryDescendents")
         self.update_folders(folders)
         self.update_items(items)
            
     def processInventorySkeleton(self, inventory):
+        logger.debug("processInventorySkeleton")
 
         props = bpy.context.scene.b2rex_props
         session = bpy.b2rex_session
