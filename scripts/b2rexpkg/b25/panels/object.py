@@ -15,7 +15,6 @@ class ObjectPropertiesPanel(bpy.types.Panel):
     bl_idname = "b2rex.panel.object"
 
     def draw_permissions_box(self, obj):
- 
         if not hasattr(obj.opensim, 'EveryoneMask'):
             return
         layout = self.layout
@@ -38,16 +37,33 @@ class ObjectPropertiesPanel(bpy.types.Panel):
         props = context.scene.b2rex_props
         session = bpy.b2rex_session
 
+        if not session.simrt:
+            box = self.layout.box()
+            box.label("Not connected yet")
+            return
+
         box = layout.box()
         for obj in context.selected_objects:
-            self.draw_permissions_box(obj)
-            if obj.opensim.uuid:
-                box.label(text="obj: %s"%(obj.opensim.uuid))
-                if obj.type == 'MESH':
-                    box.label(text="  mesh: %s"%(obj.data.opensim.uuid))
-
-                box.operator('b2rex.delete', text='Delete from simulator')
+            if obj.name.startswith("terrain"):
+                self.draw_terrain(box, obj)
             else:
-                box.operator('b2rex.exportupload', text='Upload to Sim')
+                self.draw_object(box, obj)
+
+    def draw_terrain(self, box, obj):
+        terrain = bpy.b2rex_session.terrain
+        box.label(text="This is the region terrain.")
+        box.label(text="Using lod %s with %s blocks"%(terrain.lod,
+                                                      len(terrain.checksums)))
+
+    def draw_object(self, box, obj):
+        self.draw_permissions_box(obj)
+        if obj.opensim.uuid:
+            box.label(text="obj: %s"%(obj.opensim.uuid))
+            if obj.type == 'MESH':
+                box.label(text="  mesh: %s"%(obj.data.opensim.uuid))
+
+            box.operator('b2rex.delete', text='Delete from simulator')
+        else:
+            box.operator('b2rex.exportupload', text='Upload to Sim')
 
 
