@@ -503,7 +503,7 @@ class BaseApplication(Importer, Exporter):
         has_mesh_uuid = mesh.opensim.uuid
         if has_mesh_uuid:
             def finish_clone(materials):
-                self.sendObjectClone(obj)
+                self.sendObjectClone(obj, materials)
             self.doExportMaterials(obj, cb=finish_clone)
             return
         def finish_upload(materials):
