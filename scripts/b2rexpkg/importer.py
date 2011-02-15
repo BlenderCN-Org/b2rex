@@ -77,8 +77,6 @@ class Importer25(object):
         """
         Import submesh info and fill blender face and vertex information.
         """
-        print("submesh", meshId, matIdx)
-        logger.debug("import_submesh")
         vertex_legend = get_vertex_legend(vertex)
         pos_offset = vertex_legend[VES_POSITION][1]
         no_offset = vertex_legend[VES_NORMAL][1]
@@ -185,8 +183,6 @@ class Importer25(object):
                 new_mesh.materials.append(self._imported_assets[ogremat.uuid])
             if ogremat.btex and ogremat.btex.image:
                 image = ogremat.btex.image
-            if image:
-                logger.debug("found image")
         else:
             material = new_mesh.materials[matIdx]
             for slot in material.texture_slots:
