@@ -54,6 +54,7 @@ else:
     from .b25.ops import Connect, Export, Import, Settings, SetLogLevel, Redraw
     from .b25.ops import Upload, ExportUpload, Sync, Check, ProcessQueue
     from .b25.panels.main import ConnectionPanel
+    from .b25.panels.menu import Menu
     from .b25.panels.object import ObjectPropertiesPanel
     from .b25.properties import B2RexRegions, B2RexProps
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
@@ -63,7 +64,10 @@ else:
 
 import bpy
 
+_oldheader_ = None
+
 def register():
+    global _oldheader_
     bpy.types.Scene.b2rex_props = PointerProperty(type=B2RexProps, name="b2rex props")
     bpy.types.Object.opensim = PointerProperty(type=B2RexObjectProps,
                                                name="b2rex object props")
@@ -76,6 +80,13 @@ def register():
     bpy.types.Image.opensim = PointerProperty(type=B2RexImageProps,
                                                name="b2rex object props")
     bpy.b2rex_session = B2Rex(bpy.context.scene)
+    if hasattr(bpy.types, 'INFO_HT_header'):
+        _oldheader_ = bpy.types.INFO_HT_header
+        bpy.types.unregister( bpy.types.INFO_HT_header )
+    if hasattr(bpy.types, 'INFO_HT_myheader'):
+       bpy.types.unregister( bpy.types.INFO_HT_myheader )
+
+
 #    register_keymaps()
 
 def unregister():
@@ -88,6 +99,7 @@ def unregister():
     del bpy.types.Material.opensim
     del bpy.types.Texture.opensim
     del bpy.types.Image.opensim
+    bpy.types.register( _oldheader_ )
     #testthread.running = False
 #    unregister_keymaps()
 

@@ -51,7 +51,7 @@ class ConnectionPanel(bpy.types.Panel):
                 col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
             else:
                 col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
-            if session.simrt:
+            if session.simrt and False: # now done on menu
                 session.processView()
                 bpy.ops.b2rex.processqueue()
             #col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
