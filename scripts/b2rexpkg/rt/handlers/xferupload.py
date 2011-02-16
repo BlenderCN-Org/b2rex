@@ -63,12 +63,13 @@ class XferUploadManager(Handler):
         tr_uuid = UUID()
         tr_uuid.random()
         init_data = None
-        if len(data) < 1024:
-            init_data = array('c', data)
-        else:
-            assetID = uuid_combine(tr_uuid, self._agent.secure_session_id)
-            newuploader = XferUploader(data, cb)
-            self._uploaders[str(assetID)] = newuploader
+        assetID = uuid_combine(tr_uuid, self._agent.secure_session_id)
+
+        #if len(data) < 1024:
+        #    init_data = array('c', data)
+        #else:
+        newuploader = XferUploader(data, cb)
+        self._uploaders[str(assetID)] = newuploader
 
         self._agent.asset_manager.upload_asset(tr_uuid,
                                                assetType,
