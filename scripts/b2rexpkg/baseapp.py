@@ -696,11 +696,13 @@ class BaseApplication(Importer, Exporter):
         datablock, x, y = args
         bindata = TerrainEncoder.encode([[datablock, x, y]])
         b64data = base64.urlsafe_b64encode(bindata).decode('ascii')
-        return b64data
+        # send directly from the thread
+        self.simrt.LayerData(x, y, b64data)
+        return True
 
     def terrainEncoded(self, request, result):
-        _, x, y = request.args[0]
-        self.simrt.LayerData(x, y, result)
+        if result:
+            pass
 
     def checkUuidConsistency(self, selected):
         # look for duplicates
