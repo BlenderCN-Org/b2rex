@@ -12,15 +12,14 @@
   - Opensim region chat
   - LocalTeleport own avatar by moving its camera
   - Set permissions
+  - Refactor connection settings to allow multiple server settings and protect the password
+  - No crashes but needs some stuff in blender to be completely stable.
   - Fine grained control of performance parameters
  Blockers:
-  - Frequent crashes in blender 2.5 (if 2.4 doesnt crash maybe 
-    its ok, but its less tested at the moment)
   - b2.4 support partially broken
   - Upload and download material and textures
+  - Parenting
   - Make blender run simrt without the user noticing
-  - Refactor connection settings to allow multiple server settings and protect the password
-
 0.9 - Logic
  Goals:
   - Control of rex logic
