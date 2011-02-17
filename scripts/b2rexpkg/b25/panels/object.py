@@ -63,6 +63,7 @@ class ObjectPropertiesPanel(bpy.types.Panel):
                 box.label(text="  mesh: %s"%(obj.data.opensim.uuid))
 
             box.operator('b2rex.delete', text='Delete from simulator')
+            box.operator('b2rex.derezobject', text='Take to inventory')
         else:
             box.operator('b2rex.exportupload', text='Upload to Sim')
 

@@ -213,19 +213,25 @@ class ConnectionPanel(bpy.types.Panel):
                 oper.expand = True
             else:
                 oper = row.operator('b2rex.folder', text=name, icon='TRIA_DOWN', emboss=False)
-                for f_id,folder in folders.items():
-                    if folder['ParentID'] == folder_id:
-                        self.draw_folder(f_id, indent + 1) 
+                count = 0
+                for _id,_folder in folders.items():
+                    if _folder['ParentID'] == folder_id:
+                        count += 1
+                        self.draw_folder(_id, indent + 1) 
                 for i_if,item in items.items():
                     if item['FolderID'] == folder_id:
+                        count += 1
                         row = self.layout.row()
                         for i in range(indent + 1):
                             row.separator()
-
-                        row.label(text=item['Name'], icon='OBJECT_DATA')
-
+                        if item['InvType'] == 6:
+                            row.label(text=item['Name'], icon='OBJECT_DATA')
+                            row.operator('b2rex.rezobject', text="", icon='PARTICLE_DATA', emboss=True).item_id=str(item['ItemID']) 
+                        else:
+                            row.label(text=item['Name'] + str(item['InvType']))
+      
                 
-                if len(folders) + len(items) < folder['Descendents'] or folder['Descendents'] == -1:
+                if count < folder['Descendents'] or folder['Descendents'] == -1:
                     row = self.layout.row()
                     for i in range(indent + 1):
                         row.separator()

@@ -77,6 +77,20 @@ class B2Rex(BaseApplication):
     def onDelete(self, context):
         self.doDelete()
 
+    def onDeRezObject(self):
+        self.doDeRezObject()
+
+    def onRezObject(self, item_id):
+        location_to_rez_x = bpy.context.scene.cursor_location[0]
+        location_to_rez_y = bpy.context.scene.cursor_location[1]
+        location_to_rez_z = bpy.context.scene.cursor_location[2]
+        location_to_rez = (location_to_rez_x, location_to_rez_y, location_to_rez_z)
+        location_to_rez = self.unapply_position(location_to_rez)
+
+        print("onRezObject", item_id, self.unapply_position(location_to_rez))
+        self.simrt.RezObject(item_id, location_to_rez, location_to_rez)
+
+
     def onExport(self, context):
         props = context.scene.b2rex_props
         self.doExport(props, props.loc)
