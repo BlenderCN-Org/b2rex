@@ -46,9 +46,13 @@ class SetLogLevel(bpy.types.Operator):
 class AddConnection(bpy.types.Operator):
     bl_idname = "b2rex.addconnection"
     bl_label = "Add"
+    bl_description = "Perform an action on a connection"
     action = StringProperty(name="action",default='add')
     def __init__(self, context):
         pass
+    def draw(self, context):
+        self.bl_description = self.action+" the current connection"
+        self.description = self.action+" the current connection"
 
     def execute(self, context):
         if self.action == 'add':

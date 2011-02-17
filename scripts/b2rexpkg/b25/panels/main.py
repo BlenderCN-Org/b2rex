@@ -91,11 +91,11 @@ class ConnectionPanel(bpy.types.Panel):
             if props.connection.search in ['add', 'edit']:
                 pass
             else:
-                row.operator("b2rex.addconnection", text="", icon='EDIT',
+                row.operator("b2rex.addconnection", text="", icon='SCRIPT',
                              emboss=False).action = "edit"
-                row.operator("b2rex.addconnection", text="", icon='CANCEL',
+                row.operator("b2rex.addconnection", text="", icon='X',
                              emboss=False).action = "delete"
-                row.operator("b2rex.addconnection", text="", icon='NEW',
+                row.operator("b2rex.addconnection", text="", icon='ZOOMIN',
                              emboss=False).action = "create"
                 if props.connection.search and props.connection.search in props.connection.list:
                     col = row.column()
@@ -288,8 +288,7 @@ class ConnectionPanel(bpy.types.Panel):
         if props.expand:
             row.prop(props,"expand", icon="TRIA_DOWN", text="Settings",
                      emboss=True)
-            for prop in ["pack", "path", "server_url", "username", "password",
-                         "loc"]:
+            for prop in ["pack", "path", "loc"]: #"server_url", "username", "password",
                 row = layout.row()
                 row.prop(props, prop)
 
