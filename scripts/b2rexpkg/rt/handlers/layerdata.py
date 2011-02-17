@@ -23,7 +23,7 @@ class LayerDataHandler(Handler):
                                 Type = LayerTypes.LayerLand),
                         Block('LayerData',
                               Data=array('c', bindata)))
-        self.client.region.enqueue_message(packet)
+        self.manager.client.region.enqueue_message(packet)
 
     def onLayerData(self, packet):
         data = packet["LayerData"][0]["Data"]
