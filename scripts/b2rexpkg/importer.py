@@ -828,6 +828,8 @@ class Importer(ImporterBase):
         Find the object with the given uuid.
         """
         if groupid in self._total[section]:
+            # we get the objects by name to avoid memory corruption issues,
+            # but we're not checking if the names change!
             return objects[self._total[section][groupid]]
         else:
             for obj in objects:
