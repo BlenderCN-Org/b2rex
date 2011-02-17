@@ -46,7 +46,7 @@ class ProxyFunction(object):
         self._parent.addCmd([self._name]+list(args))
 
 class ProxyAgent(Thread):
-    def __init__ (self, screens, server_url, username, password, region,
+    def __init__ (self, parent, server_url, username, password, region,
                   firstline):
         Thread.__init__(self)
         self.server_url = server_url
@@ -54,9 +54,7 @@ class ProxyAgent(Thread):
         self.password = password
         self.firstline = firstline
         self.regionname = region
-        self.screens = screens
-        #self.ctx = context.region
-        #self.screen = context.screen
+        self.link = parent
         self.in_queue = Queue()
         self.out_queue = Queue()
         self.connected = False
@@ -91,10 +89,8 @@ class ProxyAgent(Thread):
         self.addCmd(cmd)
 
     def redraw(self):
-        for screen in self.screens:
-            for area in screen.areas:
-                if area.type == 'INFO':
-                    area.tag_redraw()
+        self.link.redraw()
+
     def disconnected(self):
         if self.running:
             self.running = False
