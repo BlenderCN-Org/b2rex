@@ -54,7 +54,8 @@ def prepare_server_name(server_url):
         if res_server_name == '::1': # :-P
             res_server_name = '127.0.0.1'
             #if res_server_name in ['127.0.01', '::1']:
-        server_name = res_server_name
+        if len(server_name.split(".")) == 1:
+            server_name = res_server_name
     except:
         pass
     if port:
