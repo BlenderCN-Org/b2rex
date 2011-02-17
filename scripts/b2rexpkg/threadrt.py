@@ -21,11 +21,12 @@ class ClientThread(Thread):
         while self.parent.alive:
             try:
                 data = self.parent.socket.recv()
-                self.parent.dataArrived(data)
                 if not data:
                     self.parent.disconnected()
                     self.cleanup()
                     return
+                else:
+                    self.parent.dataArrived(data)
             except socket.timeout:
                 pass
             except socket.error as e:

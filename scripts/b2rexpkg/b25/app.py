@@ -13,6 +13,7 @@ from .material import RexMaterialIO
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty
+from b2rexpkg.tools.passmanager import PasswordManager
 
 from b2rexpkg import IMMEDIATE, ERROR
 
@@ -23,6 +24,7 @@ class MyFancyObject(bpy.types.ID):
 
 class B2Rex(BaseApplication):
     def __init__(self, context):
+        self.credentials = PasswordManager('b2rex')
         self.region_report = ''
         self.cb_pixel = []
         BaseApplication.__init__(self)
@@ -78,6 +80,57 @@ class B2Rex(BaseApplication):
     def onExport(self, context):
         props = context.scene.b2rex_props
         self.doExport(props, props.loc)
+
+    def delete_connection(self, context):
+        props = context.scene.b2rex_props
+        print("no workie")
+
+    def cancel_edit_connection(self, context):
+        props = context.scene.b2rex_props
+        props.connection.search = props.connection.list[0].name
+        form = props.connection.form
+        form.username = ""
+        form.password = ""
+        form.url = ""
+        form.name = ""
+
+    def create_connection(self, context):
+        props = context.scene.b2rex_props
+        form = props.connection.form
+        con = props.connection.list[props.connection.search]
+        form.url = ""
+        form.name = ""
+        form.username = ""
+        props.connection.search = 'add'
+
+    def edit_connection(self, context):
+        props = context.scene.b2rex_props
+        if "add" in props.connection.list:
+            props.connection.list.remove(1)
+        form = props.connection.form
+        con = props.connection.list[props.connection.search]
+        form.url = con.url
+        form.name = con.name
+        form.username = con.username
+        props.connection.search = 'edit'
+
+    def add_connection(self, context):
+        props = context.scene.b2rex_props
+        form = props.connection.form
+        if form.name in props.connection.list:
+            con = props.connection.list[form.name]
+        else:
+            props.connection.list.add()
+            con = props.connection.list[-1]
+        con.name = form.name
+        con.username = form.username
+        con.url = form.url
+        form.name = ""
+        form.url = ""
+        form.username = ""
+        props.connection.search = con.name
+        self.credentials.set_credentials(con.url, con.username, form.password)
+        form.password = ""
 
     def draw_callback_view(self, context):
         self.processView()

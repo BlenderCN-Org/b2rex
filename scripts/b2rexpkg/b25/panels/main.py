@@ -82,6 +82,52 @@ class ConnectionPanel(bpy.types.Panel):
         row = layout.row()
         row.prop(props, 'next_chat')
 
+    def draw_connections(self, layout, session, props):
+        box = layout.box()
+        row = box.row()
+        if len(props.connection.list):
+            row.prop_search(props.connection, 'search', props.connection,
+                            'list', icon='LINK',text='connection')
+            if props.connection.search in ['add', 'edit']:
+                pass
+            else:
+                row.operator("b2rex.addconnection", text="", icon='EDIT',
+                             emboss=False).action = "edit"
+                row.operator("b2rex.addconnection", text="", icon='CANCEL',
+                             emboss=False).action = "delete"
+                row.operator("b2rex.addconnection", text="", icon='NEW',
+                             emboss=False).action = "create"
+                if props.connection.search and props.connection.search in props.connection.list:
+                    col = row.column()
+                    col.alignment = 'RIGHT'
+                    if session.simrt and session.simrt.connected:
+                       col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
+                    else:
+                       col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
+
+        if not len(props.connection.list) or props.connection.search in ['add', 'edit']:
+            row.label("Connection Parameters")
+            box_c = box.box()
+            form = props.connection.form
+            box_c.prop(form, "name")
+            box_c.prop(form, "url")
+            box_c.prop(form, "username")
+            box_c.prop(form, "password")
+            if form.url and form.username and form.password:
+                if form.name in props.connection.list:
+                    text = "Save"
+                else:
+                    text = "Add"
+                box_c.operator("b2rex.addconnection", text=text).action = "add"
+            if len(props.connection.list):
+                box_c.operator("b2rex.addconnection", text="Cancel").action = "cancel"
+        box.label(text="Status: "+session.status)
+
+            #row.prop_enum(props.connection, 'list')
+            #           row.template_list(props.connection, 'list', props.connection,
+            #                 'selected', type='COMPACT')
+
+
     def draw_regions(self, layout, session, props):
         row = layout.column()
         if not len(props.regions):
@@ -119,7 +165,8 @@ class ConnectionPanel(bpy.types.Panel):
         props = context.scene.b2rex_props
         session = bpy.b2rex_session
 
-        self.draw_connection_panel(layout, session, props)
+        #self.draw_connection_panel(layout, session, props)
+        self.draw_connections(layout, session, props)
 
         self.draw_chat(layout, session, props)
         self.draw_inventory(layout, session, props)

@@ -6,6 +6,27 @@ from bpy.props import FloatVectorProperty
 
 import logging
 
+class B2RexConnection(bpy.types.IDPropertyGroup):
+    name = StringProperty(name='name', default='', description='')
+    url = StringProperty(name='url', default='', description='')
+    username = StringProperty(name='username', default='', description='')
+
+class B2RexConnectionForm(bpy.types.IDPropertyGroup):
+    name = StringProperty(name='name', default='')
+    url = StringProperty(name='login url', default='http://')
+    username = StringProperty(name='username', default='')
+    password = StringProperty(name='password', default='')
+
+class B2RexConnections(bpy.types.IDPropertyGroup):
+    list = CollectionProperty(type=B2RexConnection,
+                                     name='Connections',
+                                     description='Sessions on the server')
+    selected = IntProperty(default=-1, description="Expand, to display")
+    search = StringProperty(name='search', default="select connection", description="Expand, to display")
+    expand = BoolProperty(default=False, description="Expand connection controls")
+    form = PointerProperty(type=B2RexConnectionForm, description="Connection form")
+
+
 class B2RexRegions(bpy.types.IDPropertyGroup):
     name = StringProperty(name='name', default='', description='')
 
@@ -79,20 +100,22 @@ class B2RexProps(bpy.types.IDPropertyGroup):
                           description="Expand, to display settings")
     show_stats = BoolProperty(default=False,
                           description="Expand, to display stats")
-    selected_region = IntProperty(default=-1, description="Expand, to display")
-    regions = CollectionProperty(type=B2RexRegions,
-                                 name='Regions',
-                                 description='Sessions on the server')
     chat = CollectionProperty(type=B2RexChatLine,
                                  name='Chat',
                                  description='Chat with the server')
+    connection = PointerProperty(type=B2RexConnections, name="Connections")
     selected_chat = IntProperty(default=-1, description="Expand, to display")
     next_chat = StringProperty(name='next_chat',
                               default='',
                               description='')
     inventory_expand = BoolProperty(default=False, description="Expand inventory")
     #inventory_expand = property(get_expand, set_expand) # XXX doesnt work?
+
+    regions = CollectionProperty(type=B2RexRegions,
+                                 name='Regions',
+                                 description='Sessions on the server')
     regions_expand = BoolProperty(default=False, description="Expand region controls")
+    selected_region = IntProperty(default=-1, description="Expand, to display")
     chat_expand = BoolProperty(default=False, description="Expand chat")
 #    B2RexProps.regions.name = StringProperty(name='Name', description='Name of the session', maxlen=128, default='[session]')
 

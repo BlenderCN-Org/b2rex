@@ -23,6 +23,7 @@ except:
 
 # pyogp
 from pyogp.lib.base.exc import LoginError
+from pyogp.lib.base.datatypes import UUID
 
 from pyogp.lib.client.agent import Agent
 from pyogp.lib.client.settings import Settings

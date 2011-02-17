@@ -50,6 +50,7 @@ class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.command_queue = []
         self.wanted_workers = 1
+        self.terrain = None
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
@@ -242,13 +243,14 @@ class BaseApplication(Importer, Exporter):
         """
         Connect Action
         """
-        self.terrain = TerrainSync(self, self.exportSettings.terrainLOD)
         base_url = self.exportSettings.server_url
         self.addStatus("Connecting to " + base_url, IMMEDIATE)
-        self.connect(base_url, self.exportSettings.username,
-                     self.exportSettings.password)
         self.region_uuid = ''
         self.regionLayout = None
+        self.connect(base_url, self.exportSettings.username,
+                         self.exportSettings.password)
+
+
         try:
             self.regions = self.gridinfo.getRegions()
             self.griddata = self.gridinfo.getGridInfo()
@@ -277,14 +279,29 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = False
             self.simrt = None
         else:
+            if not self.terrain:
+                self.terrain = TerrainSync(self, self.exportSettings.terrainLOD)
+            if sys.version_info[0] == 3:
+                pars = self.exportSettings.connection.list[self.exportSettings.connection.search]
+                server_url = pars.url
+                credentials = self.credentials
+            else:
+                pars = self.exportSettings
+                server_url = pars.server_url
+                credentials = self.exportSettings.credentials
+
             props = self.exportSettings
-            region_uuid = list(self.regions.keys())[props.selected_region]
-            region_name = self.regions[region_uuid]['name']
+            #region_uuid = list(self.regions.keys())[props.selected_region]
+            #region_name = self.regions[region_uuid]['name']
+            region_name = 'last'
             firstline = 'Blender '+ self.getBlenderVersion()
-            self.simrt = simrt.run_thread(self, self.exportSettings.server_url,
-                                          self.exportSettings.username,
-                                          self.exportSettings.password,
+            username, password = self.credentials.get_credentials(server_url,
+                                                                  pars.username)
+            self.simrt = simrt.run_thread(self, server_url,
+                                          pars.username,
+                                          password,
                                           region_name, firstline)
+            self.connected = True
             self.simrt.Throttle(self.exportSettings.kbytesPerSecond*1024)
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)

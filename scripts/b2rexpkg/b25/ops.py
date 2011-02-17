@@ -43,14 +43,36 @@ class SetLogLevel(bpy.types.Operator):
             logger.setLevel(int(self.level))
         return {'FINISHED'}
 
-class Connect(bpy.types.Operator):
-    bl_idname = "b2rex.connect"
-    bl_label = "Connect"
+class AddConnection(bpy.types.Operator):
+    bl_idname = "b2rex.addconnection"
+    bl_label = "Add"
+    action = StringProperty(name="action",default='add')
     def __init__(self, context):
         pass
 
     def execute(self, context):
-        bpy.b2rex_session.onConnect(context)
+        if self.action == 'add':
+            bpy.b2rex_session.add_connection(context)
+        elif self.action == 'edit':
+            bpy.b2rex_session.edit_connection(context)
+        elif self.action == 'cancel':
+            bpy.b2rex_session.cancel_edit_connection(context)
+        elif self.action == 'create':
+            bpy.b2rex_session.create_connection(context)
+        elif self.action == 'delete':
+            bpy.b2rex_session.delete_connection(context)
+
+        return {'FINISHED'}
+
+
+class Connect(bpy.types.Operator):
+    bl_idname = "b2rex.connect"
+    bl_label = "connect"
+    def __init__(self, context):
+        pass
+
+    def execute(self, context):
+        bpy.b2rex_session.onconnect(context)
         return {'FINISHED'}
 
 class Redraw(bpy.types.Operator):
