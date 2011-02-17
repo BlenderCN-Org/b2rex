@@ -65,6 +65,9 @@ class Redraw(bpy.types.Operator):
     def check(self, context):
         return True
     def execute(self, context):
+        if not context.screen:
+            print("not redrawing")
+            return {'FINISHED'}
         for area in context.screen.areas:
             #           if not area.type == 'VIEW_3D':
                 area.tag_redraw()
