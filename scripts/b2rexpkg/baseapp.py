@@ -293,7 +293,7 @@ class BaseApplication(Importer, Exporter):
         if not self.stats[5]:
             # we're using the commands left stats to keep our counter
             self.stats[5] += 1
-            self.queueRedraw()
+            self.queueRedraw(True)
 
     def processCommand(self, cmd, *args):
         self.stats[0] += 1

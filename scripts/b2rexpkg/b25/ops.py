@@ -68,9 +68,22 @@ class Redraw(bpy.types.Operator):
         if not context.screen:
             print("not redrawing")
             return {'FINISHED'}
-        for area in context.screen.areas:
-            #           if not area.type == 'VIEW_3D':
-                area.tag_redraw()
+        for scene in bpy.data.scenes:
+            # what is the best way to trigger a redraw?
+            # only the stuff below the return doesnt seem
+            # to always work.
+            scene.name = scene.name
+            return {'FINISHED'}
+        return
+        if context and context.screen:
+            for area in context.screen.areas:
+                if area.type in ['INFO', 'VIEW_3D']:
+                    area.tag_redraw()
+            return {'FINISHED'}
+        for screen in bpy.data.screens:
+            for area in screen.areas:
+                if area.type == 'INFO':
+                    area.tag_redraw()
         return {'FINISHED'}
 
 

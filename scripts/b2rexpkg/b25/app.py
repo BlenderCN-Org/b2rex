@@ -6,8 +6,8 @@ from io import StringIO
 from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
-from .properties import B2RexObjectProps
-from .properties import B2RexProps
+#from .properties import B2RexObjectProps
+#from .properties import B2RexProps
 from .material import RexMaterialIO
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
@@ -169,12 +169,10 @@ class B2Rex(BaseApplication):
         if not prev_scale == scale:
             obj.scale = scale
             self.scales[objId] = list(obj.scale)
-            self.queueRedraw()
 
     def _processPosCommand(self, obj, objId, pos):
         self.apply_position(obj, pos)
         self.positions[objId] = list(obj.location)
-        self.queueRedraw()
 
     def _processRotCommand(self, obj, objId, rot):
         self.apply_rotation(obj, rot)
@@ -182,7 +180,6 @@ class B2Rex(BaseApplication):
             rot = obj.rotation_euler
             obj.rotation_euler = (rot[0]+math.pi/2.0, rot[1], rot[2]+math.pi/2.0)
         self.rotations[objId] = list(obj.rotation_euler)
-        self.queueRedraw()
 
     def processMsgCommand(self, username, message):
         props = bpy.context.scene.b2rex_props
@@ -205,18 +202,25 @@ class B2Rex(BaseApplication):
                 elif isinstance(value, float):
                     prop = FloatProperty(name=key)
                 if prop:
-                    setattr(B2RexObjectProps, key, prop)
+                    setattr(bpy.types.B2RexObjectProps, key, prop)
                     setattr(obj.opensim, key, value)
         self.queueRedraw()
 
-        for area in bpy.context.screen.areas:
-            area.tag_redraw()
 
-    def queueRedraw(self):
+    def queueRedraw(self, immediate=False):
         screen = bpy.context.screen
+        if screen and not immediate:
+            bpy.ops.b2rex.redraw()
+        else:
+            # no context means we call a redraw for every
+            # screen. this may be happening from a thread
+            # and seems to be problematic.
+            for screen in bpy.data.screens:
+                self.queueRedrawScreen(screen)
+
+    def queueRedrawScreen(self, screen):
         for area in screen.areas:
-            if area.type == 'INFO':
-                bpy.ops.b2rex.redraw()
+                area.tag_redraw()
 
     def update_folders(self, folders):
         props = bpy.context.scene.b2rex_props
@@ -224,9 +228,9 @@ class B2Rex(BaseApplication):
         
         for folder in folders:
             expand_prop = "e_" + str(folder['FolderID']).split('-')[0]
-            if not hasattr(B2RexProps, expand_prop):
+            if not hasattr(bpy.types.B2RexProps, expand_prop):
                 prop = BoolProperty(name="expand", default=False)
-                setattr(B2RexProps, expand_prop, prop)
+                setattr(bpy.types.B2RexProps, expand_prop, prop)
 
             descendents = -1
             if 'Descendents' in folder:
@@ -259,6 +263,7 @@ class B2Rex(BaseApplication):
 
         props = bpy.context.scene.b2rex_props
         session = bpy.b2rex_session
+        B2RexProps = bpy.types.B2RexProps
         if not hasattr(B2RexProps, 'folders'):
             setattr(B2RexProps, 'folders',  dict())
         if not hasattr(B2RexProps, '_items'):

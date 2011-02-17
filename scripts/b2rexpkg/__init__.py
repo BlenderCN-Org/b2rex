@@ -57,10 +57,11 @@ else:
     from .b25.panels.menu import Menu
     from .b25.panels.object import ObjectPropertiesPanel
     from .b25.panels.objectdbg import ObjectDebugPanel
+
     from .b25.properties import B2RexRegions, B2RexProps
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
-    from .b25.properties import B2RexImageProps
+    from .b25.properties import B2RexImageProps, B2RexChatLine
     from .b25.app import B2Rex
 
 import bpy
@@ -69,6 +70,7 @@ _oldheader_ = None
 
 def register():
     global _oldheader_
+
     bpy.types.Scene.b2rex_props = PointerProperty(type=B2RexProps, name="b2rex props")
     bpy.types.Object.opensim = PointerProperty(type=B2RexObjectProps,
                                                name="b2rex object props")

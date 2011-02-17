@@ -19,7 +19,6 @@ class Menu(bpy.types.Header):
             if session.simrt:
                 session.processView()
                 bpy.ops.b2rex.processqueue()
-            #col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
         else:
             layout.operator("b2rex.connect", text="Connect")
         #layout.label(text="Status: "+session.status)
