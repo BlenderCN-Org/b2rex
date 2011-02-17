@@ -611,10 +611,15 @@ class BaseApplication(Importer, Exporter):
             self.second_budget = 0
             self.second_start = time.time()
 
+        # we really dont want to miss some terrain editing.
+        self.checkTerrain(starttime, framebudget)
+
         # process command queue
         if time.time() - starttime < framebudget:
             self.processCommandQueue(starttime, framebudget)
-        elif len(self.command_queue):
+
+        # redraw if we have commands left
+        if len(self.command_queue):
             self.queueRedraw()
 
     def processCommandQueue(self, starttime, budget):
@@ -661,13 +666,7 @@ class BaseApplication(Importer, Exporter):
         self.stats[6] = (currbudget)*1000 # processed
         self.stats[7] = threading.activeCount()-1
 
-        # redraw if we have commands left
-        if len(self.command_queue):
-            self.queueRedraw()
-            return
-        self.checkTerrain()
-
-    def checkTerrain(self, timebudget=20):
+    def checkTerrain(self, starttime, timebudget):
         updated_blocks = []
 
         if bpy.context.mode == 'EDIT_MESH' or bpy.context.mode == 'SCULPT':
@@ -675,19 +674,16 @@ class BaseApplication(Importer, Exporter):
                 if bpy.context.scene.objects.active.name == 'terrain':
                     self.terrain.set_dirty()
         elif self.terrain.is_dirty():
-            start = time.time()
-            while self.terrain.is_dirty() and time.time() - start < timebudget:
+            while self.terrain.is_dirty() and time.time() - starttime < timebudget:
                 updated_blocks.extend(self.terrain.check())
 
-        self.sendTerrainBlocks(updated_blocks)
+        if updated_blocks:
+            self.sendTerrainBlocks(updated_blocks)
 
         if self.terrain.is_dirty() or updated_blocks:
             self.queueRedraw()
 
     def sendTerrainBlocks(self, updated_blocks):
-        if not updated_blocks:
-            return
-
         self.workpool.addRequest(self.encodeTerrainBlock, updated_blocks,
                              self.terrainEncoded, self.default_error_db)
 
