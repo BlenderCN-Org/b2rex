@@ -87,7 +87,7 @@ class ConnectionPanel(bpy.types.Panel):
         row = box.row()
         if len(props.connection.list):
             row.prop_search(props.connection, 'search', props.connection,
-                            'list', icon='LINK',text='connection')
+                            'list', icon='PMARKER_SEL',text='connection')
             if props.connection.search in ['add', 'edit']:
                 pass
             else:

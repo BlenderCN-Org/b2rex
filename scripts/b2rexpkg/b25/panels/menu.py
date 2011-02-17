@@ -31,7 +31,7 @@ class Menu(bpy.types.Header):
                     layout.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
                 else:
                     layout.prop_search(props.connection, 'search', props.connection,
-                            'list', icon='WORLD',text='')
+                            'list', icon='PMARKER_SEL',text='')
                     layout.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
                 if session.simrt:
                     session.processView()
