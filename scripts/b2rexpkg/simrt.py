@@ -333,7 +333,8 @@ class ClientHandler(object):
             data = json_socket.recv()
             if not data:
                 # client disconnected, bail out
-                self.current.out_queue.put(["quit"])
+                if self.current:
+                    self.current.out_queue.put(["quit"])
                 break
             if data[0] == 'connect':
                 if not running:
