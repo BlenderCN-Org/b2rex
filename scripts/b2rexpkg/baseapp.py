@@ -52,7 +52,7 @@ class BaseApplication(Importer, Exporter):
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
-        self.workpool = ThreadPool(1)
+        self.workpool = ThreadPool(5)
         self.rawselected = set()
         self.simstats = None
         self.agent_id = ""
@@ -171,7 +171,7 @@ class BaseApplication(Importer, Exporter):
  
     def terrainDecoded(self, request, terrpackets):
         for header, layer in terrpackets:
-            self.command_queue.insert(0, ['LayerDataDecoded', header, layer])
+            self.command_queue.append(['LayerDataDecoded', header, layer])
 
     def processLayerDataDecoded(self, header, layer):
         self.terrain.apply_patch(layer, header.x, header.y)
@@ -612,22 +612,46 @@ class BaseApplication(Importer, Exporter):
 
     def processCommandQueue(self):
         starttime = time.time()
-        cmds = self.command_queue + self.simrt.getQueue()
+        # the command queue can change while we execute here, but it should
+        # be ok as long as things are just added at the end.
+        # note if they are added at the beginning we would have problems
+        # when deleting things after processing.
+        self.command_queue += self.simrt.getQueue()
+        cmds = self.command_queue
         budget = float(self.exportSettings.rt_budget)/1000.0
         second_budget = float(self.exportSettings.rt_sec_budget)/1000.0
-        self.command_queue = []
+        priority_packets = ['pos', 'LayerData', 'LayerDataDecoded']
         currbudget = 0
-        processed = 0
         self.stats[8] += 1
         if cmds:
             self.stats[2] += 1
-            for cmd in cmds:
+            # first check the priority commands
+            processed = []
+            for idx, cmd in enumerate(cmds):
                 currbudget = time.time()-starttime
-                if currbudget < budget and self.second_budget+currbudget < second_budget: #or cmd[0] in ['pos']:
-                    self.processCommand(*cmd)
-                    processed += 1
+                if currbudget < budget and self.second_budget+currbudget < second_budget:
+                    if cmd[0] in priority_packets:
+                        self.processCommand(*cmd)
+                        processed.append(idx)
                 else:
-                    self.command_queue.append(cmd)
+                    break
+            # delete all processed elements. in reversed order
+            # to avoid problems because of index changing
+            for idx in reversed(processed):
+                cmds.pop(idx)
+            # now all other commands, note there should be no priority
+            # commands so we just ignore they exist and process all commands.
+            if time.time()-starttime < budget:
+                processed = []
+                for idx, cmd in enumerate(cmds):
+                    currbudget = time.time()-starttime
+                    if currbudget < budget and self.second_budget+currbudget < second_budget:
+                        self.processCommand(*cmd)
+                        processed.append(idx)
+                    else:
+                        break
+                for idx in reversed(processed):
+                    cmds.pop(idx)
         self.second_budget += currbudget
         self.stats[5] = len(self.command_queue)
         self.stats[6] = (currbudget)*1000 # processed
