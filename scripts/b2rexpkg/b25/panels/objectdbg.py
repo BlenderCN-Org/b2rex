@@ -4,7 +4,7 @@
 
 import bpy
 
-from ..properties import B2RexObjectProps
+#from ..properties import B2RexObjectProps
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
@@ -33,8 +33,8 @@ class ObjectDebugPanel(bpy.types.Panel):
         for obj in context.selected_objects:
             row = box.row() 
             if obj.opensim.uuid:
-                for propname in set(dir(B2RexObjectProps)):
-                    aprop = getattr(B2RexObjectProps, propname)
+                for propname in set(dir(bpy.types.B2RexObjectProps)):
+                    aprop = getattr(bpy.types.B2RexObjectProps, propname)
                     if propname.startswith("__"):
                         continue
                         
