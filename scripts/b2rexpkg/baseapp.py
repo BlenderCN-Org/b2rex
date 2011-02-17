@@ -23,6 +23,7 @@ from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
 import bpy
 
 ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
+priority_commands = ['pos', 'LayerData', 'LayerDataDecoded']
 
 if sys.version_info[0] == 3:
         import urllib.request as urllib2
@@ -297,8 +298,9 @@ class BaseApplication(Importer, Exporter):
 
     def processCommand(self, cmd, *args):
         self.stats[0] += 1
-        if cmd in self._cmd_matrix:
-            self._cmd_matrix[cmd](*args)
+        cmdHandler = self._cmd_matrix.get(cmd, None)
+        if cmdHandler:
+            cmdHandler(*args)
 
     def processCapabilities(self, caps):
         self.caps = caps
@@ -589,6 +591,8 @@ class BaseApplication(Importer, Exporter):
             self.wanted_workers = self.exportSettings.pool_workers
 
     def processUpdates(self):
+        starttime = time.time()
+        framebudget = float(self.exportSettings.rt_budget)/1000.0
         try:
             self.pool.poll()
         except NoResultsPending:
@@ -608,19 +612,19 @@ class BaseApplication(Importer, Exporter):
             self.second_start = time.time()
 
         # process command queue
-        self.processCommandQueue()
+        if time.time() - starttime < framebudget:
+            self.processCommandQueue(starttime, framebudget)
+        elif len(self.command_queue):
+            self.queueRedraw()
 
-    def processCommandQueue(self):
-        starttime = time.time()
+    def processCommandQueue(self, starttime, budget):
         # the command queue can change while we execute here, but it should
         # be ok as long as things are just added at the end.
         # note if they are added at the beginning we would have problems
         # when deleting things after processing.
         self.command_queue += self.simrt.getQueue()
         cmds = self.command_queue
-        budget = float(self.exportSettings.rt_budget)/1000.0
         second_budget = float(self.exportSettings.rt_sec_budget)/1000.0
-        priority_packets = ['pos', 'LayerData', 'LayerDataDecoded']
         currbudget = 0
         self.stats[8] += 1
         if cmds:
@@ -630,7 +634,7 @@ class BaseApplication(Importer, Exporter):
             for idx, cmd in enumerate(cmds):
                 currbudget = time.time()-starttime
                 if currbudget < budget and self.second_budget+currbudget < second_budget:
-                    if cmd[0] in priority_packets:
+                    if cmd[0] in priority_commands:
                         self.processCommand(*cmd)
                         processed.append(idx)
                 else:
