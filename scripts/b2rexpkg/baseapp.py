@@ -280,7 +280,7 @@ class BaseApplication(Importer, Exporter):
             region_uuid = list(self.regions.keys())[props.selected_region]
             region_name = self.regions[region_uuid]['name']
             firstline = 'Blender '+ self.getBlenderVersion()
-            self.simrt = simrt.run_thread(bpy.data.screens, self.exportSettings.server_url,
+            self.simrt = simrt.run_thread(self, self.exportSettings.server_url,
                                           self.exportSettings.username,
                                           self.exportSettings.password,
                                           region_name, firstline)
@@ -288,6 +288,12 @@ class BaseApplication(Importer, Exporter):
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
+
+    def redraw(self):
+        if not self.stats[5]:
+            # we're using the commands left stats to keep our counter
+            self.stats[5] += 1
+            self.queueRedraw()
 
     def processCommand(self, cmd, *args):
         self.stats[0] += 1
@@ -399,7 +405,6 @@ class BaseApplication(Importer, Exporter):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:
             self.applyObjectProperties(obj, pars)
-        self.stats[5] += 1
 
     def applyObjectProperties(self, obj, pars):
         pass
