@@ -6,7 +6,7 @@ import bpy
 import uuid
 
 from b2rexpkg.b25.ops import getLogLabel
-from ..properties import B2RexProps
+#from ..properties import B2RexProps
 
 simstats_labels = ["X", "Y", "Flags", "ObjectCapacity", "TimeDilation",
                    "SimFPS", "PhysicsFPS", "AgentUpdates", "Agents",
@@ -134,10 +134,10 @@ class ConnectionPanel(bpy.types.Panel):
     
         folders = dict()
         items = dict()
-        if hasattr(B2RexProps, 'folders'):
+        if hasattr(bpy.types.B2RexProps, 'folders'):
             folders = getattr(props, 'folders')
 
-        if hasattr(B2RexProps, '_items'):
+        if hasattr(bpy.types.B2RexProps, '_items'):
             items = getattr(props, '_items')
 
         folder = folders[folder_id]
@@ -156,7 +156,7 @@ class ConnectionPanel(bpy.types.Panel):
             name = folder['Name'] + " (? children)"
 
         folder_expand = "e_" +  str(folder_id).split('-')[0]
-        if hasattr(B2RexProps, folder_expand):
+        if hasattr(bpy.types.B2RexProps, folder_expand):
             if folder['Descendents'] == 0: 
                 oper = row.operator('b2rex.folder', text=name, icon='RIGHTARROW_THIN', emboss=False)
                 oper.expand = False
@@ -209,7 +209,7 @@ class ConnectionPanel(bpy.types.Panel):
             return
 
         
-        if hasattr(B2RexProps, "root_folder"): 
+        if hasattr(bpy.types.B2RexProps, "root_folder"): 
             root_folder = getattr(props, "root_folder")
             self.draw_folder(root_folder, 0)
 
