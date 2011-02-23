@@ -15,11 +15,11 @@
   - Refactor connection settings to allow multiple server settings and protect the password
   - No crashes but needs some stuff in blender to be completely stable.
   - Fine grained control of performance parameters
+  - Parenting
+  - Make blender run simrt without the user noticing
  Blockers:
   - b2.4 support partially broken
   - Upload and download material and textures
-  - Parenting
-  - Make blender run simrt without the user noticing
 0.9 - Logic
  Goals:
   - Control of rex logic
