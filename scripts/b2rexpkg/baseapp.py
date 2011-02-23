@@ -495,7 +495,14 @@ class BaseApplication(Importer, Exporter):
                 if obj.opensim.uuid:
                     self.simrt.Delete(obj.opensim.uuid)
 
-    def sendObjectClone(self, obj, materials):
+    def doDeRezObject(self):
+        selected = self.getSelected()
+        if selected:
+            for obj in selected:
+                if obj.opensim.uuid:
+                    self.simrt.DeRezObject(obj.opensim.uuid)
+
+    def sendRzObjectClone(self, obj, materials):
         obj_name = obj.name
         mesh = obj.data
         if not obj.opensim.uuid:

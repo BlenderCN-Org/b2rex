@@ -198,7 +198,7 @@ class ObjectHandler(Handler):
                 obj.props = pars
             self.out_queue.put(["ObjectProperties", obj_uuid, pars])
 
-    def processDelete(self, obj_id):
+    def processDelete(self, obj_id, destination = 6):
         obj = self.client.region.objects.get_object_from_store(FullID=obj_id)
         # SaveToExistingUserInventoryItem = 0,
         # TakeCopy = 1,
@@ -213,7 +213,7 @@ class ObjectHandler(Handler):
                                 SessionID = self.client.session_id),
                         Block('AgentBlock',
                                  GroupID = UUID(),
-                                 Destination = 6,
+                                 Destination = destination,
                                  DestinationID = UUID(),
                                  TransactionID = tr_id,
                                  PacketCount = 1,
@@ -222,6 +222,9 @@ class ObjectHandler(Handler):
                                 ObjectLocalID = obj.LocalID))
         # send
         self.client.region.enqueue_message(packet)
+
+    def processDeRezObject(self, obj_id):
+        self.processDelete(obj_id, 4)
 
 
     def processScale(self, objId, scale):
@@ -236,6 +239,7 @@ class ObjectHandler(Handler):
                                       obj.LocalID, data, cmd_type)
 
     def processUpdatePermissions(self, objId, mask, value):
+        client = self.client
         obj = client.region.objects.get_object_from_store(FullID=objId)
         if obj:
             self.updatePermissions(obj, mask, value)

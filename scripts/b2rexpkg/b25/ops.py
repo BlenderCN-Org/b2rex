@@ -232,3 +232,24 @@ class FolderStatus(bpy.types.Operator):
             bpy.b2rex_session.simrt.FetchInventoryDescendents(self.folder_id)
 
         return {'FINISHED'}
+
+class DeRezObject(bpy.types.Operator):
+    bl_idname = "b2rex.derezobject"
+    bl_label = "Take item to inventory"
+
+    def execute(self, context):
+        bpy.b2rex_session.onDeRezObject()
+
+        print("Execute")
+        return {'FINISHED'}
+
+class RezObject(bpy.types.Operator):
+    bl_idname = "b2rex.rezobject"
+    bl_label = "Take item from inventory"
+
+    item_id = StringProperty(name="item_id")
+
+    def execute(self, context):
+        bpy.b2rex_session.onRezObject(self.item_id)
+        return {'FINISHED'}
+
