@@ -72,6 +72,7 @@ class Importer25(object):
     def __init__(self):
         self._mesh_mat_idx_empty = []
         self._material_names = {}
+        self._texture_callbacks = defaultdict(list)
     def import_submesh(self, meshId, new_mesh, vertex, vbuffer, indices, materialName,
                        matIdx):
         """
@@ -162,7 +163,13 @@ class Importer25(object):
                     if tex.type == 'IMAGE' and tex.image:
                         materialPresent = True
 
-        if materialName in self._imported_ogre_materials or materialPresent:
+        ogrematPresent = False
+        if materialName in self._imported_ogre_materials:
+            ogremat = self._imported_ogre_materials[materialName]
+            if ogremat.btex and ogremat.btex.image:
+                ogrematPresent = True
+
+        if ogrematPresent or materialPresent:
             self.assign_submesh_images(materialName,
                                      vertex_legend, new_mesh, indices,
                                      vbuffer, uvco_offset, start_face, matIdx)
@@ -608,10 +615,11 @@ class Importer(ImporterBase):
                 else:
                    tex_url = self.caps["GetTexture"] + "?texture_id="+textureId
                    pars = (textureId,) + pars
-                   self.addDownload(tex_url,
+                   if not self.addDownload(tex_url,
                                     self.texture_downloaded, 
                                     pars,
-                                    main=self.doTextureDownloadTranscode)
+                                       main=self.doTextureDownloadTranscode):
+                       self.add_texture_callback(textureId, self.layer_ready, pars[1:])
                 idx += 1
         self._imported_materials[mat["name"]] = bmat
         return bmat
@@ -619,12 +627,19 @@ class Importer(ImporterBase):
     def texture_downloaded(self, *args):
         self.command_queue.append(["texturearrived"]+list(args))
 
+    def add_texture_callback(self, textureId, cb, cb_pars):
+        self._texture_callbacks[textureId].append([cb, cb_pars])
+
     def processTextureArrived(self, data, textureId, bmat, layerName, mat_name,
                            ogremat, idx, meshId, matIdx):
         textureName = 'opensim'+textureId
         btex = self.parse_texture(textureId, textureName, data)
         self.layer_ready(btex, bmat, layerName, mat_name, ogremat, idx, meshId,
                         matIdx)
+        if textureId in self._texture_callbacks:
+            for cb, cb_pars in self._texture_callbacks[textureId]:
+                cb(btex, *cb_pars)
+            del self._texture_callbacks[textureId]
 
     def layer_ready(self, btex, bmat, layerName, mat_name, ogremat, idx, meshId,
                    matIdx):
@@ -679,6 +694,7 @@ class Importer(ImporterBase):
 
     def parse_material(self, matId, mat, meshId, matIdx):
         ogremat = OgreMaterial(mat)
+        ogremat.btex = None
         ogremat.uuid = matId
         bmat = self.create_blender_material(ogremat, mat, meshId, matIdx)
         self._imported_assets[matId] = bmat
