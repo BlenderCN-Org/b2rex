@@ -184,8 +184,11 @@ class Importer25(object):
                 #if len(new_mesh.materials) > matIdx:
                     #new_mesh.materials.insert(matIdx, self._imported_assets[ogremat.uuid])
                     #else:
-                # XXX wrong order but does it matter?
-                new_mesh.materials.append(self._imported_assets[ogremat.uuid])
+                # XXX maybe wrong order
+                bmat = self._imported_assets[ogremat.uuid]
+                if not bmat.name in new_mesh.materials:
+                    new_mesh.materials.append(bmat)
+                    #new_mesh.materials.append(self._imported_assets[ogremat.uuid])
             if ogremat.btex and ogremat.btex.image:
                 image = ogremat.btex.image
         else:
