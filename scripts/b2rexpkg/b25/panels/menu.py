@@ -27,17 +27,24 @@ class Menu(bpy.types.Header):
     def draw_connections(self, layout, session, props):
         if len(props.connection.list):
             if props.connection.search and props.connection.search in props.connection.list:
-                if session.simrt and session.simrt.connected:
-                    layout.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
+                if session.simrt:
+                    if session.simrt.connected:
+                        layout.operator("b2rex.toggle_rt", text="RT",
+                                        icon='PMARKER_ACT')
+                    else:
+                        layout.operator("b2rex.toggle_rt", text="RT",
+                                        icon='PMARKER_SEL')
                 else:
                     layout.prop_search(props.connection, 'search', props.connection,
-                            'list', icon='PMARKER_SEL',text='')
-                    layout.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
+                        'list', icon='PMARKER_SEL',text='')
+                    layout.operator("b2rex.toggle_rt", text="RT", icon='PMARKER')
                 if session.simrt:
                     session.processView()
                     bpy.ops.b2rex.processqueue()
 
-        layout.label(text="q: "+str(session.stats[5]))
+        if session.stats[5] > 10:
+            layout.label(text='',icon='PREVIEW_RANGE')
+            #layout.label('',text="q: "+str(session.stats[5]))
 
 
     def default_menu(self, context, session, props):

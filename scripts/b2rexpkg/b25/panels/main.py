@@ -84,26 +84,32 @@ class ConnectionPanel(bpy.types.Panel):
         row = box.row()
         if len(props.connection.list):
             row.prop_search(props.connection, 'search', props.connection,
-                            'list', icon='PMARKER_SEL',text='connection')
+                            'list', icon='SCRIPTWIN',text='connection')
             if props.connection.search in ['add', 'edit']:
                 pass
             else:
-                row.operator("b2rex.addconnection", text="", icon='SCRIPT',
+                row.operator("b2rex.addconnection", text="", icon='SETTINGS',
                              emboss=False).action = "edit"
-                row.operator("b2rex.addconnection", text="", icon='X',
+                row.operator("b2rex.addconnection", text="", icon='ZOOMOUT',
                              emboss=False).action = "delete"
                 row.operator("b2rex.addconnection", text="", icon='ZOOMIN',
                              emboss=False).action = "create"
                 if props.connection.search and props.connection.search in props.connection.list:
                     col = row.column()
                     col.alignment = 'RIGHT'
-                    if session.simrt and session.simrt.connected:
-                       col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
+                    if session.simrt:
+                        if session.simrt.connected:
+                            col.operator("b2rex.toggle_rt", text="RT",
+                                         icon='PMARKER_ACT')
+                        else:
+                            col.operator("b2rex.toggle_rt", text="RT",
+                                         icon='PMARKER_SEL')
                     else:
-                       col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
+                        col.operator("b2rex.toggle_rt", text="RT", icon='PMARKER')
 
         if not len(props.connection.list) or props.connection.search in ['add', 'edit']:
-            row.label("Connection Parameters")
+            if not len(props.connection.list):
+                row.label("New connection")
             box_c = box.box()
             form = props.connection.form
             box_c.prop(form, "name")
@@ -115,9 +121,10 @@ class ConnectionPanel(bpy.types.Panel):
                     text = "Save"
                 else:
                     text = "Add"
-                box_c.operator("b2rex.addconnection", text=text).action = "add"
+                box_c.operator("b2rex.addconnection", text=text, icon='FILE_TICK').action = "add"
             if len(props.connection.list):
-                box_c.operator("b2rex.addconnection", text="Cancel").action = "cancel"
+                box_c.operator("b2rex.addconnection", text="Cancel",
+                               icon='CANCEL').action = "cancel"
         box.label(text="Status: "+session.status)
 
             #row.prop_enum(props.connection, 'list')
