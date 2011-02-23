@@ -24,6 +24,7 @@ class ObjectHandler(Handler):
     _eatupdates = defaultdict(int)
     _next_create = 1000
     _creating_cb = {}
+    _parent_cb = defaultdict(list)
     def onRegionConnect(self, region):
         res = region.message_handler.register("ObjectPermissions")
         res.subscribe(self.onObjectPermissions)
@@ -32,6 +33,8 @@ class ObjectHandler(Handler):
 
         res = region.message_handler.register("ImprovedTerseObjectUpdate")
         res.subscribe(self.onImprovedTerseObjectUpdate)
+        res = region.objects.message_handler.register("ObjectLink")
+        res.subscribe(self.onObjectLink)
         res = region.objects.message_handler.register("ObjectUpdate")
         res.subscribe(self.onObjectUpdate)
 
@@ -40,6 +43,11 @@ class ObjectHandler(Handler):
         objects = self.client.region.objects
         self.old_kill_object = objects.onKillObject
         objects.onKillObject = self.onKillObject
+
+    def onRegionConnected(self, region):
+        res = region.objects.message_handler.register("ObjectUpdate")
+        res.unsubscribe(self.onObjectUpdate)
+        res.subscribe(self.onObjectUpdate)
 
     def onAgentConnected(self, agent):
         self.client = agent
@@ -286,70 +294,133 @@ class ObjectHandler(Handler):
         client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
                                   client.session_id,
                                   obj.LocalID, data, cmd_type)
+
+    def sendObjectLink(self, link, parentId, *childrenIds):
+        print("linking", parentId, childrenIds)
+        if link:
+            msgname = 'ObjectLink'
+        else:
+            msgname = 'ObjectDelink'
+
+        get_from_store = self.client.region.objects.get_object_from_store
+
+        parent = get_from_store(FullID=parentId)
+
+        if not parent:
+            print("Parenting on an object that doesnt exist", parentId)
+            return
+
+        children_lids = map(lambda s: get_from_store(FullID=s).LocalID,
+                              childrenIds)
+
+        parent_lid = parent.LocalID
+        packet = Message(msgname,
+                        Block('AgentData',
+                                AgentID = self.client.agent_id,
+                                SessionID = self.client.session_id),
+                        Block('ObjectData',
+                                 ObjectLocalID = parent_lid),
+                        *[Block('ObjectData',
+                          ObjectLocalID = childId) for childId in children_lids])
+
+        self.client.region.enqueue_message(packet)
+
+    def processLink(self, parentId, *childrenIds):
+        self.sendObjectLink(True, parentId, *childrenIds)
+
+    def processDelink(self, parentId, *childrenIds):
+        self.sendObjectDelink(False, parentId, *childrenIds)
+
+    def onObjectLink(self, packet):
+        print("receiveLink!!", packet)
+
     def updatePermissions(self, obj, mask, val):
         client = self.client
         obj.update_object_permissions(client, 0x08, val, mask)
 
     def onObjectUpdate(self, packet):
-        out_queue = self.out_queue
         for ObjectData_block in packet['ObjectData']:
-           if ObjectData_block['ProfileHollow'] in self._creating_cb:
-               # we use ProfileHollow as a key for our object creation since
-               # its the only way I found to keep some transaction id around and
-               # we dont use the value anyways.
-               self._creating_cb[ObjectData_block["ProfileHollow"]](ObjectData_block["FullID"])
-               return
+            self.onObjectUpdateSingle(packet, ObjectData_block)
 
-           objdata = ObjectData_block["ObjectData"]
-           obj_uuid = uuid_to_s(ObjectData_block["FullID"])
-           obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
-           if obj and self._eatupdates[obj.LocalID]:
-               self._eatupdates[obj.LocalID]-= 1
-               return
-           pars = { "OwnerID": str(ObjectData_block["OwnerID"]),
-                    "PCode":ObjectData_block["PCode"] }
-           parent_id = ObjectData_block["ParentID"]
-           if parent_id:
-               parent =  self.client.region.objects.get_object_from_store(LocalID=parent_id)
-               if parent:
-                   pars["ParentID"] = str(parent.FullID)
-           namevalue = NameValueList(ObjectData_block['NameValue'])
-           if namevalue._dict:
-               pars['NameValues'] = namevalue._dict
-           out_queue.put(['props', obj_uuid, pars])
-           if "Scale" in ObjectData_block.var_list:
-               scale = ObjectData_block["Scale"]
-               if obj:
-                  obj.scale = v3_to_list(scale)
-               out_queue.put(['scale', obj_uuid,
-                                     v3_to_list(scale)])
-           if len(objdata) == 48:
-               pos_vector = Vector3(objdata)
-               vel = Vector3(objdata[12:])
-               acc = Vector3(objdata[24:])
-               rot = Quaternion(objdata[36:])
-               if obj:
-                   obj.pos = v3_to_list(pos_vector)
-                   obj.rot = q_to_list(rot)
-               out_queue.put(['pos', obj_uuid, v3_to_list(pos_vector),
-                              q_to_list(rot)])
-           elif len(objdata) == 12:
-               if True:
-                   # position only packed as 3 floats
-                   pos = Vector3(objdata)
-                   if obj:
-                      obj.pos = v3_to_list(pos)
-                   out_queue.put(['pos', obj_uuid, v3_to_list(pos)])
-               elif ObjectData_block.Type in [4, 20, 12, 28]:
-                   # position only packed as 3 floats
-                   scale = Vector3(objdata)
-                   out_queue.put(['scale', obj_uuid, v3_to_list(scale)])
-               elif ObjectData_block.Type in [2, 10]:
-                   # rotation only packed as 3 floats
-                   rot = Quaternion(objdata)
-                   out_queue.put(['rot', obj_uuid, q_to_list(rot)])
-         
+
+    def onObjectUpdateSingle(self, packet, ObjectData_block):
+       out_queue = self.out_queue
+       if ObjectData_block['ProfileHollow'] in self._creating_cb:
+           # we use ProfileHollow as a key for our object creation since
+           # its the only way I found to keep some transaction id around and
+           # we dont use the value anyways.
+           self._creating_cb[ObjectData_block["ProfileHollow"]](ObjectData_block["FullID"])
+           return
+
+       objdata = ObjectData_block["ObjectData"]
+       obj_uuid = uuid_to_s(ObjectData_block["FullID"])
+       obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
+       if obj and self._eatupdates[obj.LocalID]:
+           self._eatupdates[obj.LocalID]-= 1
+           return
+       pars = { "OwnerID": str(ObjectData_block["OwnerID"]),
+                "PCode":ObjectData_block["PCode"] }
+       namevalue = NameValueList(ObjectData_block['NameValue'])
+       if namevalue._dict:
+           pars['NameValues'] = namevalue._dict
+       if "Scale" in ObjectData_block.var_list:
+           scale = ObjectData_block["Scale"]
+           if obj:
+              obj.scale = v3_to_list(scale)
+           out_queue.put(['scale', obj_uuid,
+                                 v3_to_list(scale)])
+       parent_id = ObjectData_block["ParentID"]
+       args = (obj_uuid, pars, objdata, parent_id)
+       if parent_id:
+           parent =  self.client.region.objects.get_object_from_store(LocalID=parent_id)
+           if parent:
+               pars["ParentID"] = str(parent.FullID)
            else:
-                # missing sizes: 28, 40, 44, 64
-                self.logger.debug("Unparsed update of size "+str(len(objdata)))
+               self._parent_cb[parent_id].append((self.finishObjectUpdate, args))
+               return
+       else:
+           pars["ParentID"] = ""
+       self.finishObjectUpdate(*args)
+       if obj:
+           for cb, cb_args in self._parent_cb[obj.LocalID]:
+               cb(*cb_args)
+           del self._parent_cb[obj.LocalID]
+       
+    def finishObjectUpdate(self, obj_uuid, pars, objdata, parent_id):
+       if not 'ParentID' in pars:
+           parent =  self.client.region.objects.get_object_from_store(LocalID=parent_id)
+           pars["ParentID"] = str(parent.FullID)
+ 
+       obj = self.client.region.objects.get_object_from_store(FullID=obj_uuid)
+       out_queue = self.out_queue
+       out_queue.put(['props', obj_uuid, pars])
+       if len(objdata) == 48:
+           pos_vector = Vector3(objdata)
+           vel = Vector3(objdata[12:])
+           acc = Vector3(objdata[24:])
+           rot = Quaternion(objdata[36:])
+           if obj:
+               obj.pos = v3_to_list(pos_vector)
+               obj.rot = q_to_list(rot)
+           out_queue.put(['pos', obj_uuid, v3_to_list(pos_vector),
+                          q_to_list(rot)])
+       elif len(objdata) == 12:
+           if True:
+               # position only packed as 3 floats
+               pos = Vector3(objdata)
+               if obj:
+                  obj.pos = v3_to_list(pos)
+               out_queue.put(['pos', obj_uuid, v3_to_list(pos)])
+           elif ObjectData_block.Type in [4, 20, 12, 28]:
+               # position only packed as 3 floats
+               scale = Vector3(objdata)
+               out_queue.put(['scale', obj_uuid, v3_to_list(scale)])
+           elif ObjectData_block.Type in [2, 10]:
+               # rotation only packed as 3 floats
+               rot = Quaternion(objdata)
+               out_queue.put(['rot', obj_uuid, q_to_list(rot)])
+     
+       else:
+            # missing sizes: 28, 40, 44, 64
+            self.logger.debug("Unparsed update of size "+str(len(objdata)))
 

@@ -24,7 +24,7 @@ from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
 import bpy
 
 ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
-priority_commands = ['pos', 'LayerData', 'LayerDataDecoded']
+priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props']
 
 if sys.version_info[0] == 3:
         import urllib.request as urllib2
@@ -47,11 +47,28 @@ except:
 import logging
 logger = logging.getLogger('b2rex.baseapp')
 
+class ObjectState(object):
+    def __init__(self, bobj):
+        self.update(bobj)
+
+    def update(self, bobj):
+        self.pointer = bobj.as_pointer()
+        if hasattr(bobj, 'parent') and bobj.parent and bobj.parent.opensim.uuid:
+            self.parent = bobj.parent.as_pointer()
+            self.parent_uuid = bobj.parent.opensim.uuid
+        else:
+            self.parent = None
+
+class DefaultMap(defaultdict):
+    def __init__(self):
+        defaultdict.__init__(self, list)
+
 class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.command_queue = []
         self.wanted_workers = 1
         self.terrain = None
+        self._callbacks = defaultdict(DefaultMap)
         self.second_start = time.time()
         self.second_budget = 0
         self.pool = ThreadPool(1)
@@ -81,6 +98,17 @@ class BaseApplication(Importer, Exporter):
         self.initializeCommands()
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
+
+    def add_callback(self, section, signal, callback, *parameters):
+        self._callbacks[str(section)][str(signal)].append((callback, parameters))
+
+    def insert_callback(self, section, signal, callback, *parameters):
+        self._callbacks[str(section)][str(signal)].insert(0, (callback, parameters))
+
+    def trigger_callback(self, section, signal):
+        for callback, parameters in self._callbacks[str(section)][str(signal)]:
+            callback(*parameters)
+        del self._callbacks[str(section)][str(signal)]
 
     def registerTextureImage(self, image):
         if not image.opensim.uuid:
@@ -148,7 +176,7 @@ class BaseApplication(Importer, Exporter):
 
             scene = self.get_current_scene()
             if agentID in self.positions:
-                self.apply_position(agentID, self.positions[agentID], raw=True)
+                self.apply_position(agent, self.positions[agentID], raw=True)
             scene.objects.link(agent)
             try:
                 agent.show_name = True
@@ -419,14 +447,56 @@ class BaseApplication(Importer, Exporter):
                     agent.name = props['FirstName']+" "+props["LastName"]
                     self._total['objects'][objId] = agent.name
         else:
-            if "ParentID" in pars:
-                parentId = pars["ParentID"]
-                parent = self.findWithUUID(objId)
-                if parent:
-                    pass # XXX apply parent
+            parentId = pars["ParentID"]
+            obj = self.findWithUUID(objId)
+            if obj:
+                if parentId:
+                    parent = self.findWithUUID(parentId)
+                    if parent:
+                        obj.parent = parent
+                    else:
+                        self.add_callback('object.precreate', parentId, self.processLink,
+                              parentId, objId)
+                        self.processObjectPropertiesCommand(objId, pars)
+
+                else:
+                    obj.parent = None
+                # apply final callbacks
+                self.trigger_callback('object.create', str(objId))
+            elif parentId:
+                # need to wait for object and the parent to appear
+                self.add_callback('object.precreate', objId, self.processLink, parentId, objId)
+            else:
+                # need to wait for the object and afterwards
+                # trigger the object create
+                # need to wait for object and the parent to appear
+                #def call_precreate(obj_id):
+                #    self.trigger_callback('object.create', obj_id)
+                self.insert_callback('object.precreate',
+                                     objId,
+                                     self.trigger_callback,
+                                     'object.create',
+                                     objId)
+                #print("parent for unexisting object!")
+
             self.processObjectPropertiesCommand(objId, pars)
 
-
+    def processLink(self, parentId, *childrenIds):
+        print("link!",parentId,childrenIds)
+        parent = self.findWithUUID(parentId)
+        if parent:
+            for childId in childrenIds:
+                child = self.findWithUUID(childId)
+                if child:
+                    child.parent = parent
+                    print("linked!")
+                # apply final callbacks
+                self.trigger_callback('object.create', childId)
+        else:
+            for childId in childrenIds:
+                self.add_callback('object.precreate', parentId, self.processLink,
+                              parentId, childId)
+            print("No new mesh with processMeshArrived")
 
     def processObjectPropertiesCommand(self, objId, pars):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
@@ -460,6 +530,7 @@ class BaseApplication(Importer, Exporter):
         else:
             print("No new mesh with processMeshArrived")
 
+
     def setMeshMaterials(self, mesh, materials):
         presentIds = list(map(lambda s: s.opensim.uuid, mesh.materials))
         for idx, matId, asset_type in materials:
@@ -485,6 +556,7 @@ class BaseApplication(Importer, Exporter):
         if not obj.name in scene.objects:
             scene.objects.link(obj)
             new_mesh.update()
+        self.trigger_callback('object.precreate', str(objId))
 
 
     def doRtUpload(self, context):
@@ -565,27 +637,32 @@ class BaseApplication(Importer, Exporter):
     def processPosCommand(self, objId, pos, rot=None):
         obj = self.findWithUUID(objId)
         if obj:
+            if objId == "df654a04-7b04-4fce-92c7-665760e492d5":
+                print("POS FOPR",objId, pos)
+            if objId == "112611b5-1870-41f8-b015-b7e0404c7880":
+                print("POS FOPR",objId, pos)
+
             self._processPosCommand(obj, objId, pos)
             if rot:
                 self._processRotCommand(obj, objId, rot)
         else:
-            self.positions[str(objId)] = self._apply_position(pos)
-            if rot:
-                self.rotations[str(objId)] = self._apply_rotation(rot)
+            self.add_callback('object.create', objId, self.processPosCommand, objId, pos, rot)
 
     def processScaleCommand(self, objId, scale):
         obj = self.findWithUUID(objId)
         if obj:
             self._processScaleCommand(obj, objId, scale)
         else:
-            self.scales[str(objId)] = scale
+            self.add_callback('object.create', objId, self.processScaleCommand,
+                              objId, scale)
 
     def processRotCommand(self, objId, rot):
         obj = self.findWithUUID(objId)
         if obj:
             self._processRotCommand(obj, objId, rot)
         else:
-            self.rotations[str(objId)] = self._apply_rotation(rot)
+            self.add_callback('object.create', objId, self.processRotCommand,
+                              objId, rot)
             
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
@@ -594,20 +671,50 @@ class BaseApplication(Importer, Exporter):
             pos = list(pos)
             rot = list(rot)
             scale = list(scale)
+            # check parent
+            if obj_uuid in self.selected:
+                parent_pointer = None
+                prevstate = self.selected[obj_uuid]
+                if obj.parent and obj.parent.opensim.uuid:
+                    parent_pointer = obj.parent.as_pointer()
+                if prevstate.parent != parent_pointer:
+                    if parent_pointer:
+                        parent_uuid = obj.parent.opensim.uuid
+                        self.simrt.Link(parent_uuid, obj_uuid)
+                    else:
+                        parent_uuid = prevstate.parent_uuid
+                        self.simrt.Unlink(parent_uuid, obj_uuid)
+                    # save properties and dont process position updates
+                    prevstate.update(obj)
+                    self.positions[obj_uuid] = pos
+                    self.rotations[obj_uuid] = rot
+                    self.scales[obj_uuid] = scale
+                    return obj_uuid
+
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
                 self.stats[1] += 1
                 print("sending object position", obj_uuid)
-                self.simrt.apply_position(obj_uuid,  self.unapply_position(pos), self.unapply_rotation(rot))
+                if obj.parent:
+                    self.simrt.apply_position(obj_uuid,
+                                              self.unapply_position(pos,0,0,0), self.unapply_rotation(rot))
+                else:
+                    self.simrt.apply_position(obj_uuid,
+                                              self.unapply_position(pos), self.unapply_rotation(rot))
                 self.positions[obj_uuid] = pos
                 self.rotations[obj_uuid] = rot
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
                 self.stats[1] += 1
-                self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
+                print("sending object position", obj_uuid)
+                if obj.parent:
+                    self.simrt.apply_position(obj_uuid, self.unapply_position(pos,0,0,0))
+                else:
+                    self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
                 self.positions[obj_uuid] = pos
             if not obj_uuid in self.scales or not scale == self.scales[obj_uuid]:
                 self.stats[1] += 1
                 self.simrt.apply_scale(obj_uuid, scale)
                 self.scales[obj_uuid] = scale
+
             return obj_uuid
 
 
@@ -748,19 +855,26 @@ class BaseApplication(Importer, Exporter):
             obj_uuid = obj.opensim.uuid
             if obj.type == 'MESH' and obj_uuid:
                 mesh_uuid = obj.data.opensim.uuid
-                if obj.opensim.uuid in oldselected and not oldselected[obj_uuid] == obj.as_pointer():
-                    # copy or clone
-                    if obj.data.opensim.uuid in oldselected and not oldselected[mesh_uuid] == obj.data.as_pointer():
-                        # copy
-                        ismeshcopy = True
-                        obj.data.opensim.uuid = ""
+                if obj.opensim.uuid in oldselected:
+                    prevstate = oldselected[obj_uuid]
+                    if prevstate.pointer == obj.as_pointer():
+                        newselected[obj_uuid] = oldselected[obj_uuid]
+                        if mesh_uuid:
+                            newselected[mesh_uuid] = oldselected[mesh_uuid]
                     else:
-                        # clone
-                        pass
-                    obj.opensim.uuid = ""
+                        # check for copy or clone
+                        # copy or clone
+                        if obj.data.opensim.uuid in oldselected and not oldselected[mesh_uuid].pointer == obj.data.as_pointer():
+                            # copy
+                            ismeshcopy = True
+                            obj.data.opensim.uuid = ""
+                        else:
+                            # clone
+                            pass
+                        obj.opensim.uuid = ""
                 else:
-                    newselected[obj_uuid] = obj.as_pointer()
-                    newselected[mesh_uuid] = obj.data.as_pointer()
+                    newselected[obj_uuid] = ObjectState(obj)
+                    newselected[mesh_uuid] = ObjectState(obj.data)
         self.selected = newselected
         self.rawselected = selected
 
@@ -776,7 +890,7 @@ class BaseApplication(Importer, Exporter):
         # look for changes in objects
         for obj in selected:
             obj_id = self.get_uuid(obj)
-            if obj_id in self.selected and obj.as_pointer() == self.selected[obj_id]:
+            if obj_id in self.selected and obj.as_pointer() == self.selected[obj_id].pointer:
                 self.processUpdate(obj)
                 all_selected.add(obj_id)
         # update selection

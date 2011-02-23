@@ -239,11 +239,15 @@ class Importer25(object):
 
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0, raw=False):
+
         if raw:
             obj.location = pos
         else:
-            obj.location = self._apply_position(pos, offset_x, offset_y,
-                                                    offset_z)
+            if obj.parent:
+                obj.location = self._apply_position(pos, 0, 0, 0)
+            else:
+                obj.location = self._apply_position(pos, offset_x, offset_y,
+                                                        offset_z)
 
     def apply_scale(self, obj, scale):
         obj.scale = (scale[0], scale[1], scale[2])

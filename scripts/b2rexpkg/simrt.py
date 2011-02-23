@@ -192,6 +192,7 @@ class AgentManager(object):
                     print("Cant find handler for ", handler)
                 else:
                     func(*cmd[1:])
+            api.sleep(0)
 
     def processQuit(self):
         """
@@ -330,6 +331,7 @@ class ClientHandler(object):
     def read_client(self, json_socket, pool):
         global running
         while True:
+            api.sleep(0)
             data = json_socket.recv()
             if not data:
                 # client disconnected, bail out
@@ -378,8 +380,7 @@ class ClientHandler(object):
                 #for cmd in self.current.queue.get():
                     #    json_socket.send(cmd)
                     #api.sleep(0)
-            else:
-                api.sleep(0)
+            api.sleep(0)
         json_socket.close()
         if running:
             running.addCmd(["quit"])
