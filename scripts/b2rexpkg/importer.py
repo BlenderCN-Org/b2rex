@@ -123,6 +123,10 @@ class Importer25(object):
                                                 indices_map[indices[f_idx+2]],
                                                 0]]
             new_mesh.faces.foreach_set("vertices_raw", faces)
+            for face in new_mesh.faces:
+                    face.material_index = matIdx
+                    # why doesnt this work?
+                    #new_mesh.faces.foreach_set("material_index", [matIdx])
             del faces
         else:
             faces  = []
@@ -132,6 +136,7 @@ class Importer25(object):
                                     indices_map[indices[f_idx+1]],
                                     indices_map[indices[f_idx+2]]]
                 new_mesh.faces[idx+start_face].vertices = face
+                new_mesh.faces[idx+start_face].material_index = matIdx
         """
             continue
             try:
@@ -630,8 +635,6 @@ class Importer(ImporterBase):
                 mapto = layerMappings[layerName]
             if mapto in ['use_map_color_diffuse', 'COL']:
                 ogremat.btex = btex
-                self.trigger_material_callbacks((meshId,matIdx), ogremat,
-                                                mat_name)
             if bversion == 2:
                 if mapto:
                     mapto = Blender.Texture.MapTo[mapto]
@@ -643,6 +646,9 @@ class Importer(ImporterBase):
                     new_slot.use_map_color_diffuse = False
                 new_slot.texture = btex
                 new_slot.texture_coords = 'ORCO'
+            if mapto in ['use_map_color_diffuse', 'COL']:
+                self.trigger_material_callbacks((meshId,matIdx), ogremat,
+                                                mat_name)
 
 
 

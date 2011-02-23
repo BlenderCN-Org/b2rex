@@ -76,9 +76,6 @@ class ConnectionPanel(bpy.types.Panel):
         row = layout.row() 
         row.template_list(props, 'chat', props, 'selected_chat',
                           rows=5)
-        if props.next_chat:
-            session.simrt.Msg(props.next_chat)
-            props.next_chat = ""
         row = layout.row()
         row.prop(props, 'next_chat')
 
@@ -294,7 +291,7 @@ class ConnectionPanel(bpy.types.Panel):
         if props.expand:
             row.prop(props,"expand", icon="TRIA_DOWN", text="Settings",
                      emboss=True)
-            for prop in ["pack", "path", "loc"]: #"server_url", "username", "password",
+            for prop in ['agent_libs_path',"pack", "path", "loc"]: #"server_url", "username", "password",
                 row = layout.row()
                 row.prop(props, prop)
 

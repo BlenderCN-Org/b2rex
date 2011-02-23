@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import uuid
@@ -273,7 +274,9 @@ class BaseApplication(Importer, Exporter):
 
     def onToggleRt(self, context=None):
         if context:
-            self.exportSettings = context.scene.b2rex_props
+            if context.scene:
+                # scene will not be defined when exiting the program
+                self.exportSettings = context.scene.b2rex_props
         if self.rt_on:
             self.simrt.quit()
             self.rt_on = False
@@ -297,6 +300,11 @@ class BaseApplication(Importer, Exporter):
             firstline = 'Blender '+ self.getBlenderVersion()
             username, password = self.credentials.get_credentials(server_url,
                                                                   pars.username)
+            if props.agent_libs_path:
+                os.environ['SIMRT_LIBS_PATH'] = props.agent_libs_path
+            elif 'SIMRT_LIBS_PATH' in os.environ:
+                del os.environ['SIMRT_LIBS_PATH']
+
             self.simrt = simrt.run_thread(self, server_url,
                                           pars.username,
                                           password,
@@ -502,7 +510,7 @@ class BaseApplication(Importer, Exporter):
                 if obj.opensim.uuid:
                     self.simrt.DeRezObject(obj.opensim.uuid)
 
-    def sendRzObjectClone(self, obj, materials):
+    def sendObjectClone(self, obj, materials):
         obj_name = obj.name
         mesh = obj.data
         if not obj.opensim.uuid:
@@ -625,6 +633,11 @@ class BaseApplication(Importer, Exporter):
             self.workpool.poll()
         except NoResultsPending:
             pass
+
+        props = self.exportSettings
+        if props.next_chat:
+            self.simrt.Msg(props.next_chat)
+            props.next_chat = ""
 
         # check consistency
         self.checkUuidConsistency(set(self.getSelected()))

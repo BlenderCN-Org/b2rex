@@ -138,8 +138,14 @@ class ProxyAgent(Thread):
         self.check_timer.start()
 
     def start_agent(self):
-        if 'PYTHONPATH' in os.environ:
-            prev_python_path = os.environ['PYTHONPATH'] + os.pathsep
+        environ = dict(os.environ)
+        if 'PYTHONPATH' in environ:
+            prev_python_path = environ['PYTHONPATH'] + os.pathsep
+        else:
+            prev_python_path = ""
+
+        if 'SIMRT_LIBS_PATH' in environ:
+            prev_python_path = environ['SIMRT_LIBS_PATH'] + os.pathsep
         else:
             prev_python_path = ""
 
@@ -147,8 +153,8 @@ class ProxyAgent(Thread):
         tools_path = os.path.join(script_path, 'tools')
         agent_path = os.path.join(script_path, 'simrt.py')
 
-        os.environ['PYTHONPATH'] = prev_python_path + script_path + os.pathsep + tools_path
-        agent = subprocess.Popen(['/usr/bin/python', agent_path])
+        environ['PYTHONPATH'] = prev_python_path + script_path + os.pathsep + tools_path
+        agent = subprocess.Popen(['/usr/bin/python', agent_path], env=environ)
         return agent
 
 

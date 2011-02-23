@@ -73,6 +73,9 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     server_url = StringProperty(name='server url',
                                 default='http://delirium:9000',
                                 description='')
+    agent_libs_path = StringProperty(name='agent libraries',
+                                     default='',
+                                     description='path to the agent python libraries')
     export_dir = StringProperty(name='export dir',
                                 default='',
                                 description='') 

@@ -14,6 +14,7 @@ class OgreExporter(object):
         """
         Export whole scene, including scene info and mesh info.
         """
-        bpy.ops.ogre.export(filepath=os.path.join(path, pack_name))
+        bpy.ops.ogre.export(filepath=os.path.join(path, pack_name),
+                           EX_SWAP_MODE='x z -y')
 
 

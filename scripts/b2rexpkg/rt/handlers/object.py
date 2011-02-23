@@ -143,6 +143,7 @@ class ObjectHandler(Handler):
                 args = {"RexMeshUUID": str(asset_id),
                         "RexIsVisible": True,
                         "materials": materials}
+                #self.processPos(obj_uuid_str, pos, rot)
                 self.rexdata.sendRexPrimData(real_uuid, args)
                 self.out_queue.put(["meshcreated", obj_uuid_str, mesh_uuid_str,
                                     str(real_uuid), str(asset_id)])
