@@ -6,9 +6,11 @@ try:
 except:
     from Queue import Queue
 
+import os
 import socket
 import traceback
 import time
+import subprocess
 
 import logging
 logger = logging.getLogger("b2rex.proxyagent")
@@ -16,6 +18,7 @@ logger = logging.getLogger("b2rex.proxyagent")
 class ClientThread(Thread):
     def __init__ (self, parent):
         Thread.__init__(self)
+        self.daemon = True
         self.parent = parent
     def run(self):
         while self.parent.alive:
@@ -134,7 +137,23 @@ class ProxyAgent(Thread):
         self.check_timer = Timer(1, self.check_connection)
         self.check_timer.start()
 
+    def start_agent(self):
+        if 'PYTHONPATH' in os.environ:
+            prev_python_path = os.environ['PYTHONPATH'] + os.pathsep
+        else:
+            prev_python_path = ""
+
+        script_path = os.path.dirname(__file__)
+        tools_path = os.path.join(script_path, 'tools')
+        agent_path = os.path.join(script_path, 'simrt.py')
+
+        os.environ['PYTHONPATH'] = prev_python_path + script_path + os.pathsep + tools_path
+        agent = subprocess.Popen(['/usr/bin/python', agent_path])
+        return agent
+
+
     def run(self):
+        self.agent = self.start_agent()
         self.running = False
         self.alive = True
         self.socket = JsonSocket()
@@ -164,6 +183,8 @@ class ProxyAgent(Thread):
                         self.disconnected()
             else:
                 time.sleep(0.4)
+        # dismiss the agent
+        self.agent.terminate()
         # clean up the thread
         if self.running:
             self.running = False
