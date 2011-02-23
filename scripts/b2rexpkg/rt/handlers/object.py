@@ -287,7 +287,7 @@ class ObjectHandler(Handler):
                         #0.0,0.0,0.0,
                         #0.0,0.0,0.0,
                         X*norm, Y*norm, Z*norm]
-                cmd_type = 11 # PrimGroupRotation
+                cmd_type = 3 # PrimGroupRotation
         else:
             data = [pos[0], pos[1], pos[2]]
         self._eatupdates[obj.LocalID] += 1
