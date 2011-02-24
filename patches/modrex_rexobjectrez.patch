@@ -1,0 +1,23 @@
+Index: ModularRex/RexParts/RexObjRez.cs
+===================================================================
+--- ModularRex/RexParts/RexObjRez.cs	(revisión: 394)
++++ ModularRex/RexParts/RexObjRez.cs	(copia de trabajo)
+@@ -308,10 +308,17 @@
+ 
+                             //Get the item id of the asset so the RexObjectProperties can be changed to that id
+                             CachedUserInfo userInfo = m_scene.CommsManager.UserProfileCacheService.GetUserDetails(x.remoteClient.AgentId);
++			    InventoryFolderImpl userRootFolder = null;
+                             if (userInfo != null && userInfo.RootFolder != null)
++				    userRootFolder = (InventoryFolderImpl)userInfo.RootFolder;
++			    else
++			        userRootFolder = (InventoryFolderImpl)m_scene.InventoryService.GetRootFolder(x.remoteClient.AgentId);
++
++                            if (userRootFolder != null)
+                             {
+-                                InventoryItemBase item = userInfo.RootFolder.FindAsset(assetId);
+ 
++                                InventoryItemBase item = userRootFolder.FindAsset(assetId);
++
+                                 //Clone the old properties 
+                                 if (m_rexObjects != null)
+                                 {
