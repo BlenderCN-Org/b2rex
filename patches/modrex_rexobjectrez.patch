@@ -2,22 +2,44 @@ Index: ModularRex/RexParts/RexObjRez.cs
 ===================================================================
 --- ModularRex/RexParts/RexObjRez.cs	(revisión: 394)
 +++ ModularRex/RexParts/RexObjRez.cs	(copia de trabajo)
-@@ -308,10 +308,17 @@
+@@ -308,10 +308,27 @@
  
                              //Get the item id of the asset so the RexObjectProperties can be changed to that id
                              CachedUserInfo userInfo = m_scene.CommsManager.UserProfileCacheService.GetUserDetails(x.remoteClient.AgentId);
-+			    InventoryFolderImpl userRootFolder = null;
-                             if (userInfo != null && userInfo.RootFolder != null)
-+				    userRootFolder = (InventoryFolderImpl)userInfo.RootFolder;
-+			    else
-+			        userRootFolder = (InventoryFolderImpl)m_scene.InventoryService.GetRootFolder(x.remoteClient.AgentId);
 +
-+                            if (userRootFolder != null)
++
++                            InventoryItemBase item = null;
+                             if (userInfo != null && userInfo.RootFolder != null)
++			    {
++				    item = userInfo.RootFolder.FindAsset(assetId);
++			    }
++			    else {
++				// Can't find a more efficient way to find the item without the cache service so doing this for now so we
++				// can work in standalone mode.
++				foreach(InventoryItemBase iitem in m_scene.InventoryService.GetUserInventory(x.remoteClient.AgentId).Items)
++				{
++					if (iitem.AssetID == assetId) {
++						item = iitem;
++						break;
++					}
++				}
++			    }
++
++                            if (item != null)
                              {
 -                                InventoryItemBase item = userInfo.RootFolder.FindAsset(assetId);
- 
-+                                InventoryItemBase item = userRootFolder.FindAsset(assetId);
-+
+-
                                  //Clone the old properties 
                                  if (m_rexObjects != null)
                                  {
+@@ -320,6 +337,10 @@
+ 
+                                     cloneprops.SetRexPrimDataFromObject(origprops);
+                                 }
++				else
++				{
++                                	m_log.Warn("[REXOBJECTS]: Could not find RexObjects. Did not clone rex object");
++				}
+                             }
+                             else
+                                 m_log.Warn("[REXOBJECTS]: Could not find users root folder from cache. Did not clone rex object");
