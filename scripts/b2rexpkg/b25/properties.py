@@ -2,9 +2,15 @@ import bpy
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
-from bpy.props import FloatVectorProperty
+from bpy.props import FloatVectorProperty, EnumProperty
 
 import logging
+
+states = (("UPLOADING", 'Uploading', 'standard level, show only errors'),
+              ("OK", 'Ok', 'show only critical errors (least info)'),
+              ("LOADING", 'Loading', 'show warnings or errors'),
+              ("OFFLINE", 'Offline', 'show warnings or errors'),
+              ("LOADED", 'Loaded', 'show info or errors'))
 
 class B2RexConnection(bpy.types.IDPropertyGroup):
     name = StringProperty(name='name', default='', description='')
@@ -38,6 +44,7 @@ class B2RexBaseProps(bpy.types.IDPropertyGroup):
 
 class B2RexObjectProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
+    state = EnumProperty(items=states, default='OFFLINE', description='')
     everyonemask_expand = BoolProperty(name='everyonemask_expand', default=False)
 
 

@@ -219,6 +219,13 @@ class B2Rex(BaseApplication):
         if obj_uuid:
             return obj_uuid
 
+    def set_loading_state(self, obj, value):
+        """
+        Set the loading state for the given blender object.
+        """
+        obj.opensim.state = value
+
+
     def set_uuid(self, obj, obj_uuid):
         """
         Set the uuid for the given blender object.

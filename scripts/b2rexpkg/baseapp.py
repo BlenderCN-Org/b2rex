@@ -24,7 +24,7 @@ from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
 import bpy
 
 ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
-priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props']
+priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props', 'scale']
 
 if sys.version_info[0] == 3:
         import urllib.request as urllib2
@@ -374,11 +374,12 @@ class BaseApplication(Importer, Exporter):
             foundobject = self.find_with_uuid(obj_uuid,
                                               bpy.data.objects, "objects")
         if foundobject:
-            foundobject.opensim.uuid = new_obj_uuid
+            self.set_uuid(foundobject, new_obj_uuid)
+            self.set_loading_state(foundobject, 'OK')
         else:
             logger.warning("Could not find object for meshcreated")
         if foundmesh:
-            foundmesh.opensim.uuid = asset_id
+            self.set_uuid(foundmesh, asset_id)
         else:
             logger.warning("Could not find mesh for meshcreated")
 
@@ -450,19 +451,21 @@ class BaseApplication(Importer, Exporter):
             parentId = pars["ParentID"]
             obj = self.findWithUUID(objId)
             if obj:
+                # we have the object
                 if parentId:
                     parent = self.findWithUUID(parentId)
                     if parent:
                         obj.parent = parent
+                        self.finishedLoadingObject(objId, obj)
                     else:
                         self.add_callback('object.precreate', parentId, self.processLink,
                               parentId, objId)
                         self.processObjectPropertiesCommand(objId, pars)
-
+                        return
                 else:
                     obj.parent = None
-                # apply final callbacks
-                self.trigger_callback('object.create', str(objId))
+                    # apply final callbacks
+                    self.finishedLoadingObject(objId, obj)
             elif parentId:
                 # need to wait for object and the parent to appear
                 self.add_callback('object.precreate', objId, self.processLink, parentId, objId)
@@ -474,12 +477,17 @@ class BaseApplication(Importer, Exporter):
                 #    self.trigger_callback('object.create', obj_id)
                 self.insert_callback('object.precreate',
                                      objId,
-                                     self.trigger_callback,
-                                     'object.create',
+                                     self.finishedLoadingObject,
                                      objId)
                 #print("parent for unexisting object!")
 
             self.processObjectPropertiesCommand(objId, pars)
+
+    def finishedLoadingObject(self, objId, obj=None):
+        if not obj:
+            obj = self.findWithUUID(objId)
+        self.trigger_callback('object.create', str(objId))
+        self.set_loading_state(obj, 'OK')
 
     def processLink(self, parentId, *childrenIds):
         print("link!",parentId,childrenIds)
@@ -489,14 +497,15 @@ class BaseApplication(Importer, Exporter):
                 child = self.findWithUUID(childId)
                 if child:
                     child.parent = parent
-                    print("linked!")
-                # apply final callbacks
-                self.trigger_callback('object.create', childId)
+                    # apply final callbacks
+                    self.finishedLoadingObject(childId, child)
+                else:
+                    # shouldnt happen :)
+                    print("b2rex.processLink: cant find child to link!")
         else:
             for childId in childrenIds:
                 self.add_callback('object.precreate', parentId, self.processLink,
                               parentId, childId)
-            print("No new mesh with processMeshArrived")
 
     def processObjectPropertiesCommand(self, objId, pars):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
@@ -612,6 +621,7 @@ class BaseApplication(Importer, Exporter):
     def doRtObjectUpload(self, context, obj):
         mesh = obj.data
         has_mesh_uuid = mesh.opensim.uuid
+        self.set_loading_state(obj, 'UPLOADING')
         if has_mesh_uuid:
             def finish_clone(materials):
                 self.sendObjectClone(obj, materials)
@@ -872,6 +882,7 @@ class BaseApplication(Importer, Exporter):
                             # clone
                             pass
                         obj.opensim.uuid = ""
+                        obj.opensim.state = "OFFLINE"
                 else:
                     newselected[obj_uuid] = ObjectState(obj)
                     newselected[mesh_uuid] = ObjectState(obj.data)
