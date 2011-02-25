@@ -3,6 +3,8 @@ try:
 except:
     from b2rexpkg.tools.simtypes import AssetType
 
+ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
+
 import uuid
 import math
 import struct
@@ -238,9 +240,11 @@ class ObjectHandler(Handler):
 
     def processScale(self, objId, scale):
         client = self.client
-        cmd_type = 12
+        cmd_type = 12 # OnUpdatePrimScale
         obj = client.region.objects.get_object_from_store(FullID=objId)
         if obj:
+            if obj.ParentID and not str(obj.ParentID) == ZERO_UUID_STR:
+                cmd_type = 4
             data = scale
             self._eatupdates[obj.LocalID] += 1
             client.region.objects.send_ObjectPositionUpdate(client, client.agent_id,
@@ -267,7 +271,11 @@ class ObjectHandler(Handler):
             self.sendPositionUpdate(obj, pos, rot)
 
     def sendPositionUpdate(self, obj, pos, rot):
+        has_parent = obj.ParentID and not str(obj.ParentID) == ZERO_UUID_STR
+
         cmd_type = 9 # 1-pos, 2-rot, 3-rotpos 4,20-scale, 5-pos,scale,
+        if has_parent:
+            cmd_type = 1
         client = self.client
         if rot:
             X = rot[0]
@@ -287,7 +295,9 @@ class ObjectHandler(Handler):
                         #0.0,0.0,0.0,
                         #0.0,0.0,0.0,
                         X*norm, Y*norm, Z*norm]
-                cmd_type = 3 # PrimGroupRotation
+                cmd_type = 11 # PrimSingleRotationPosition
+                if has_parent:
+                    cmd_type = 3
         else:
             data = [pos[0], pos[1], pos[2]]
         self._eatupdates[obj.LocalID] += 1

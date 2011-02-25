@@ -237,6 +237,25 @@ class Importer25(object):
         #sys.stderr.flush()
         return new_mesh
 
+    def _get_local_pos(self, pos, parent):
+        p_scale = parent.scale
+        return (pos[0]/p_scale[0], pos[1]/p_scale[1], pos[2]/p_scale[2])
+
+    def _get_global_pos(self, pos, parent):
+        p_scale = parent.scale
+        return (pos[0]*p_scale[0], pos[1]*p_scale[1], pos[2]*p_scale[2])
+
+    def _get_local_rot(self, rot, parent):
+        return rot
+
+    def _get_local_scale(self, scale, parent):
+        p_scale = parent.scale
+        return (scale[0]/p_scale[0], scale[1]/p_scale[1], scale[2]/p_scale[2])
+
+    def _get_global_scale(self, scale, parent):
+        p_scale = parent.scale
+        return (scale[0]*p_scale[0], scale[1]*p_scale[1], scale[2]*p_scale[2])
+
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0, raw=False):
 
@@ -244,28 +263,44 @@ class Importer25(object):
             obj.location = pos
         else:
             if obj.parent:
+                pos = self._get_local_pos(pos, obj.parent)
                 obj.location = self._apply_position(pos, 0, 0, 0)
             else:
                 obj.location = self._apply_position(pos, offset_x, offset_y,
                                                         offset_z)
 
     def apply_scale(self, obj, scale):
+        if obj.parent:
+            scale = self._get_local_scale(scale, obj.parent)
         obj.scale = (scale[0], scale[1], scale[2])
 
-    def unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
+    def unapply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0):
+        if obj.parent:
+            pos = self._get_global_pos(pos, obj.parent)
+        return self._unapply_position(obj, pos, offset_x, offset_y, offset_z)
+
+    def _unapply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
+                          offset_z=20.0):
         return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
+
+    def unapply_scale(self, obj, scale):
+        if obj.parent:
+            scale = self._get_global_scale(scale, obj.parent)
+        return [scale[0], scale[1], scale[2]]
 
 
     def unapply_rotation(self, euler):
         #r = 180.0/math.pi
         r = 1.0
-        euler = mathutils.Euler([-euler[0]*r, -euler[1]*r,
-                                        (euler[2]*r)+math.pi])
+        euler = mathutils.Euler([euler[0]*r, euler[1]*r,
+                                        (euler[2]*r)])
         q = euler.to_quat()
         return [q.x, q.y, q.z, q.w]
         
     def apply_rotation(self, obj, rot, raw=False):
+        if obj.parent:
+            rot = self._get_local_rot(rot, obj.parent)
         if raw:
             obj.rotation_euler = rot
         else:
@@ -952,7 +987,7 @@ class Importer(ImporterBase):
         r = 1.0
         b_q = mathutils.Quaternion((b_q.w, b_q.x, b_q.y, b_q.z))
         euler = b_q.to_euler()
-        return (-euler[0]*r, -euler[1]*r, (euler[2]-math.pi)*r)
+        return (euler[0]*r, euler[1]*r, (euler[2])*r)
 
 
 if __name__ == '__main__':

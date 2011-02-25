@@ -460,8 +460,6 @@ class BaseApplication(Importer, Exporter):
                     else:
                         self.add_callback('object.precreate', parentId, self.processLink,
                               parentId, objId)
-                        self.processObjectPropertiesCommand(objId, pars)
-                        return
                 else:
                     obj.parent = None
                     # apply final callbacks
@@ -480,14 +478,17 @@ class BaseApplication(Importer, Exporter):
                                      self.finishedLoadingObject,
                                      objId)
                 #print("parent for unexisting object!")
+        self.processObjectPropertiesCommand(objId, pars)
 
-            self.processObjectPropertiesCommand(objId, pars)
 
     def finishedLoadingObject(self, objId, obj=None):
         if not obj:
             obj = self.findWithUUID(objId)
-        self.trigger_callback('object.create', str(objId))
+        if obj.opensim.state == 'OK':
+            # already loaded so just updating
+            return
         self.set_loading_state(obj, 'OK')
+        self.trigger_callback('object.create', str(objId))
 
     def processLink(self, parentId, *childrenIds):
         print("link!",parentId,childrenIds)
@@ -511,6 +512,8 @@ class BaseApplication(Importer, Exporter):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:
             self.applyObjectProperties(obj, pars)
+        else:
+            self.add_callback('object.create', objId, self.processObjectPropertiesCommand, objId, pars)
 
     def applyObjectProperties(self, obj, pars):
         pass
@@ -602,8 +605,9 @@ class BaseApplication(Importer, Exporter):
         pos, rot, scale = self.getObjectProperties(obj)
         
         self.simrt.Clone(obj_name, obj_uuid, mesh_name, mesh_uuid,
-                           self.unapply_position(pos),
-                           self.unapply_rotation(rot), list(scale), materials)
+                           self.unapply_position(obj, pos),
+                           self.unapply_rotation(rot),
+                           self.unapply_scale(obj, scale), materials)
         
     def sendObjectUpload(self, obj, mesh, data, materials):
         b64data = base64.urlsafe_b64encode(data).decode('ascii')
@@ -614,9 +618,10 @@ class BaseApplication(Importer, Exporter):
         pos, rot, scale = self.getObjectProperties(obj)
         
         self.simrt.Create(obj_name, obj_uuid, mesh_name, mesh_uuid,
-                           self.unapply_position(pos),
-                           self.unapply_rotation(rot), list(scale), b64data,
-                          materials)
+                           self.unapply_position(obj, pos),
+                           self.unapply_rotation(rot),
+                           self.unapply_scale(obj, scale), b64data,
+                           materials)
 
     def doRtObjectUpload(self, context, obj):
         mesh = obj.data
@@ -646,12 +651,7 @@ class BaseApplication(Importer, Exporter):
 
     def processPosCommand(self, objId, pos, rot=None):
         obj = self.findWithUUID(objId)
-        if obj:
-            if objId == "df654a04-7b04-4fce-92c7-665760e492d5":
-                print("POS FOPR",objId, pos)
-            if objId == "112611b5-1870-41f8-b015-b7e0404c7880":
-                print("POS FOPR",objId, pos)
-
+        if obj and self.get_loading_state(obj) == 'OK':
             self._processPosCommand(obj, objId, pos)
             if rot:
                 self._processRotCommand(obj, objId, rot)
@@ -660,7 +660,7 @@ class BaseApplication(Importer, Exporter):
 
     def processScaleCommand(self, objId, scale):
         obj = self.findWithUUID(objId)
-        if obj:
+        if obj and self.get_loading_state(obj) == 'OK':
             self._processScaleCommand(obj, objId, scale)
         else:
             self.add_callback('object.create', objId, self.processScaleCommand,
@@ -668,7 +668,7 @@ class BaseApplication(Importer, Exporter):
 
     def processRotCommand(self, objId, rot):
         obj = self.findWithUUID(objId)
-        if obj:
+        if obj and self.get_loading_state(obj) == 'OK':
             self._processRotCommand(obj, objId, rot)
         else:
             self.add_callback('object.create', objId, self.processRotCommand,
@@ -706,23 +706,24 @@ class BaseApplication(Importer, Exporter):
                 print("sending object position", obj_uuid)
                 if obj.parent:
                     self.simrt.apply_position(obj_uuid,
-                                              self.unapply_position(pos,0,0,0), self.unapply_rotation(rot))
+                                              self.unapply_position(obj, pos,0,0,0), self.unapply_rotation(rot))
                 else:
                     self.simrt.apply_position(obj_uuid,
-                                              self.unapply_position(pos), self.unapply_rotation(rot))
+                                              self.unapply_position(obj, pos), self.unapply_rotation(rot))
                 self.positions[obj_uuid] = pos
                 self.rotations[obj_uuid] = rot
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
                 self.stats[1] += 1
                 print("sending object position", obj_uuid)
                 if obj.parent:
-                    self.simrt.apply_position(obj_uuid, self.unapply_position(pos,0,0,0))
+                    self.simrt.apply_position(obj_uuid,
+                                              self.unapply_position(obj, pos,0,0,0))
                 else:
-                    self.simrt.apply_position(obj_uuid, self.unapply_position(pos))
+                    self.simrt.apply_position(obj_uuid, self.unapply_position(obj, pos))
                 self.positions[obj_uuid] = pos
             if not obj_uuid in self.scales or not scale == self.scales[obj_uuid]:
                 self.stats[1] += 1
-                self.simrt.apply_scale(obj_uuid, scale)
+                self.simrt.apply_scale(obj_uuid, self.unapply_scale(obj, scale))
                 self.scales[obj_uuid] = scale
 
             return obj_uuid

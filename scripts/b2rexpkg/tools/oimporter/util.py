@@ -48,5 +48,5 @@ def get_vcoords(vbuffer, idx, pos_offset, stride=32):
         v1 = arr2float(v[pos_offset+0:pos_offset+4])
         v2 = arr2float(v[pos_offset+4:pos_offset+8])
         v3 = arr2float(v[pos_offset+8:pos_offset+12])
-        return (v1, -v3, v2)
+        return (-v1, v3, v2)
 

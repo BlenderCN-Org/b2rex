@@ -258,6 +258,12 @@ class Base24Application(Screen, BaseApplication):
             self.scales[str(objId)] = list(obj.getSize())
             self.queueRedraw()
 
+    def get_loading_state(self, obj):
+        if "opensim" in obj.properties and "state" in obj.properties["opensim"]:
+            return obj.properties["opensim"]["state"]
+        else:
+            return 'LOADING'
+
 
     def _processRotCommand(self, obj, objId, rot):
         self.apply_rotation(obj, rot)

@@ -85,9 +85,9 @@ class B2Rex(BaseApplication):
         location_to_rez_y = bpy.context.scene.cursor_location[1]
         location_to_rez_z = bpy.context.scene.cursor_location[2]
         location_to_rez = (location_to_rez_x, location_to_rez_y, location_to_rez_z)
-        location_to_rez = self.unapply_position(location_to_rez)
+        location_to_rez = self._unapply_position(location_to_rez)
 
-        print("onRezObject", item_id, self.unapply_position(location_to_rez))
+        print("onRezObject", item_id, location_to_rez)
         self.simrt.RezObject(item_id, location_to_rez, location_to_rez)
 
     def onRemoveInventoryItem(self, item_id):
@@ -228,6 +228,8 @@ class B2Rex(BaseApplication):
         """
         obj.opensim.state = value
 
+    def get_loading_state(self, obj):
+        return str(obj.opensim.state)
 
     def set_uuid(self, obj, obj_uuid):
         """
@@ -242,20 +244,22 @@ class B2Rex(BaseApplication):
         return (obj.location, obj.rotation_euler, obj.scale)
 
     def _processScaleCommand(self, obj, objId, scale):
-        prev_scale = list(obj.scale)
-        if not prev_scale == scale:
-            obj.scale = scale
-            self.scales[objId] = list(obj.scale)
+        self.apply_scale(obj, scale)
+        #prev_scale = list(obj.scale)
+        #if not prev_scale == scale:
+            #    obj.scale = scale
+        self.scales[objId] = list(obj.scale)
 
     def _processPosCommand(self, obj, objId, pos):
         self.apply_position(obj, pos)
         self.positions[objId] = list(obj.location)
 
     def _processRotCommand(self, obj, objId, rot):
-        self.apply_rotation(obj, rot)
         if objId in self._agents:
             rot = obj.rotation_euler
             obj.rotation_euler = (rot[0]+math.pi/2.0, rot[1], rot[2]+math.pi/2.0)
+        else:
+            self.apply_rotation(obj, rot)
         self.rotations[objId] = list(obj.rotation_euler)
 
     def processMsgCommand(self, username, message):
@@ -268,12 +272,19 @@ class B2Rex(BaseApplication):
     def applyObjectProperties(self, obj, pars):
         for key, value in pars.items():
             if hasattr(obj.opensim, key):
-                setattr(obj.opensim, key, value)
+                try:
+                    setattr(obj.opensim, key, value)
+                except:
+                    print("cant set %s to %s"%(key, value))
+                    pass # too bad :P
             else:
+                prop = None
                 if isinstance(value, str):
                     prop = StringProperty(name=key)
                 elif isinstance(value, bool):
                     prop = BoolProperty(name=key)
+                elif isinstance(value, dict):
+                    self.applyObjectProperties(obj, value)
                 elif isinstance(value, int):
                     prop = IntProperty(name=key)
                 elif isinstance(value, float):
