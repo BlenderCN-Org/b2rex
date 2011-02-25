@@ -68,7 +68,8 @@ class ProxyAgent(Thread):
         self.alive = False
     def dataArrived(self, data):
         self.queue.append(data)
-        self.redraw()
+        if not data[0] == 'SimStats':
+            self.redraw()
     def __getattr__(self, name):
         return ProxyFunction(name, self)
     def addCmd(self, cmd):

@@ -183,6 +183,9 @@ class Exporter(object):
         if mesh.materials:
             print("returning default material")
             return mesh.materials[0]
+        newmat = bpy.data.materials.new("opensim")
+        mesh.materials.append(newmat)
+        return newmat
 
     def uploadImage(self, image):
         imagepath = os.path.realpath(bpy.path.abspath(image.filepath))
@@ -194,12 +197,13 @@ class Exporter(object):
             return image.opensim.uuid
 
     def processAssetUploadFinished(self, newAssetID, assetID):
+        print("processAssetUploadFinished")
         if assetID in self._exporttasks:
             self._exporttasks[assetID](assetID, newAssetID)
             del self._exporttasks[assetID]
 
     def uploadMaterial(self, material, data):
-        encoded = base64.urlsafe_b64encode(data).decode('ascii')
+        encoded = base64.urlsafe_b64encode(data.encode('ascii')).decode('ascii')
         self.simrt.UploadAsset(material.opensim.uuid, AssetType.OgreMaterial, encoded)
         return material.opensim.uuid
 
@@ -211,6 +215,7 @@ class Exporter(object):
         materialsdone = []
         tokens = {}
         def material_finished(token, newAssetID):
+            print("material_finished go on", token)
             idx = materials.index(token)
             mat = tokens.pop(token)
             mat.opensim.uuid = newAssetID
@@ -240,6 +245,7 @@ class Exporter(object):
                 cb(materials)
 
         def image_finished(token, newAssetID):
+            print("image finished go on", token)
             face = tokens.pop(token)
             face.image.opensim.uuid = newAssetID
             if not len(tokens):

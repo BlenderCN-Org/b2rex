@@ -80,8 +80,8 @@ class XferUploadManager(Handler):
 
     def processUploadAsset(self, assetID, assetType, b64data):
         def finish(newAssetID):
-            self.out_queue.put("AssetUploadFinished", newAssetID, assetID)
-        data = base64.urlsafe_b64decode(data).decode('ascii')
+            self.out_queue.put(["AssetUploadFinished", str(newAssetID), assetID])
+        data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         self.uploadAsset(assetType, data, finish)
 
     def onRequestXfer(self, packet):

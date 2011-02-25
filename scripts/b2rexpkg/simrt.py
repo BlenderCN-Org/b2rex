@@ -328,7 +328,7 @@ class ClientHandler(object):
     def __init__(self):
         self.current = None
         self.deferred_cmds = []
-    def read_client(self, json_socket, pool):
+    def read_client(self, json_socket):
         global running
         while True:
             api.sleep(0)
@@ -343,7 +343,7 @@ class ClientHandler(object):
                     # initial connect command
                     running = GreenletsThread(*data[1:])
                     self.current = running
-                    pool.spawn_n(running.run)
+                    api.spawn(running.run)
                     for cmd in self.deferred_cmds:
                         running.addCmd(cmd)
                     self.deferred_cmds = []
@@ -359,11 +359,11 @@ class ClientHandler(object):
         print("exit read client")
         # exit
         self.connected = False
-    def handle_client(self, json_socket, pool):
+    def handle_client(self, json_socket):
         global running
         global run_main
         self.connected = True
-        pool.spawn_n(self.read_client, json_socket, pool)
+        api.spawn(self.read_client, json_socket)
         if running:
             json_socket.send(["state", "connected"])
         else:
@@ -396,11 +396,11 @@ def main():
     In stand alone mode we will open a port and accept commands.
     """
     server = eventlet.listen(('0.0.0.0', 11112))
-    pool = eventlet.GreenPool(1000)
+    #pool = eventlet.GreenPool(1000)
     while run_main:
          new_sock, address = server.accept()
          client_handler = ClientHandler()
-         pool.spawn_n(client_handler.handle_client, JsonSocket(new_sock), pool)
+         api.spawn(client_handler.handle_client, JsonSocket(new_sock))
          api.sleep(0)
 
 if __name__=="__main__":
