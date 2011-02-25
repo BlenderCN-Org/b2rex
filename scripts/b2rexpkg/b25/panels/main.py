@@ -230,7 +230,9 @@ class ConnectionPanel(bpy.types.Panel):
                             row.separator()
                         if item['InvType'] == 6:
                             row.label(text=item['Name'], icon='OBJECT_DATA')
-                            row.operator('b2rex.rezobject', text="", icon='PARTICLE_DATA', emboss=True).item_id=str(item['ItemID']) 
+                            row.operator('b2rex.localview', text="", icon='MUTE_IPO_OFF', emboss=False).item_id=str(item['ItemID']) 
+                            row.operator('b2rex.rezobject', text="", icon='PARTICLE_DATA', emboss=False).item_id=str(item['ItemID']) 
+                            row.operator('b2rex.removeinventoryitem', text="", icon='PANEL_CLOSE', emboss=False).item_id=str(item['ItemID']) 
                         else:
                             row.label(text=item['Name'] + str(item['InvType']))
       

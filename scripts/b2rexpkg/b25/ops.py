@@ -239,6 +239,7 @@ class DeRezObject(bpy.types.Operator):
 
     def execute(self, context):
         bpy.b2rex_session.onDeRezObject()
+        bpy.b2rex_session.update_firstlevel()
 
         print("Execute")
         return {'FINISHED'}
@@ -251,5 +252,30 @@ class RezObject(bpy.types.Operator):
 
     def execute(self, context):
         bpy.b2rex_session.onRezObject(self.item_id)
+        return {'FINISHED'}
+
+class RemoveInventoryItem(bpy.types.Operator):
+    bl_idname = "b2rex.removeinventoryitem"
+    bl_label = "Remove item from inventory"
+
+    item_id = StringProperty(name="item_id")
+
+    def execute(self, context):
+        bpy.b2rex_session.onRemoveInventoryItem(self.item_id)
+        return {'FINISHED'}
+
+class LocalView(bpy.types.Operator):
+    bl_idname = "b2rex.localview"
+    bl_label = "Item local view"
+
+    item_id = StringProperty(name="item_id")
+
+    def execute(self, context):
+        obj = bpy.b2rex_session.findWithUUID(self.item_id)
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.ops.object.select_name(name=obj.name, extend=False)
+        
+        #bpy.ops.view3d.localview()
+    
         return {'FINISHED'}
 

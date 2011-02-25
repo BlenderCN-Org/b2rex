@@ -80,7 +80,7 @@ class InventoryHandler(Handler):
         else:
             return
 
-        self.logger.debug('sendRezObject', self.manager.client, item, raystart, rayend)
+        self.logger.debug('sendRezObject')
         
         sendRezObject(self.manager.client, item, raystart, rayend)
 
@@ -88,16 +88,19 @@ class InventoryHandler(Handler):
         logger = self.logger
         logger.debug('onInventoryDescendents')
         folder_id = packet['AgentData'][0]['FolderID']
-        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID)} for member in self.inventory.folders if str(member.ParentID) == str(folder_id)]
-        folder = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID), 'Descendents' : packet['AgentData'][0]['Descendents']} for member in self.inventory.folders if str(member.FolderID) == str(folder_id)]
-        folder = folder[0]
-        folders.append(folder)
-        # return # needs update on pyogp
-        items =  [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items if str(member.FolderID) == str(folder_id)] 
-
-        logger.debug("Packet", packet)
-        logger.debug("Items", self.inventory.items, "Folders", self.inventory.folders)
+        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID), 'Descendents' : int(member.Descendents)} for member in self.inventory.folders]
+        items = [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items] 
 
         self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
 
+
+    def processRemoveInventoryItem(self, item_id):
+        logger = self.logger
+        logger.debug('processRemoveIntenvoryItem')
+        items =  [{'FolderID' : str(member.FolderID)} for member in self.inventory.items if str(member.ItemID) == str(item_id)] 
+        item = items[0]
+        
+        client = self.manager.client
+        self.inventory.send_RemoveInventoryItem(client.agent_id, client.session_id, UUID(str(item_id)))
+        self.inventory.sendFetchInventoryDescendentsRequest(item['FolderID'])
 

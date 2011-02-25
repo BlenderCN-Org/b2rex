@@ -90,6 +90,9 @@ class B2Rex(BaseApplication):
         print("onRezObject", item_id, self.unapply_position(location_to_rez))
         self.simrt.RezObject(item_id, location_to_rez, location_to_rez)
 
+    def onRemoveInventoryItem(self, item_id):
+        self.simrt.RemoveInventoryItem(item_id)
+ 
 
     def onExport(self, context):
         props = context.scene.b2rex_props
@@ -299,6 +302,7 @@ class B2Rex(BaseApplication):
     def update_folders(self, folders):
         props = bpy.context.scene.b2rex_props
         cached_folders = getattr(props, 'folders')
+        cached_folders.clear()
         
         for folder in folders:
             expand_prop = "e_" + str(folder['FolderID']).split('-')[0]
@@ -318,14 +322,25 @@ class B2Rex(BaseApplication):
                 setattr(props, expand_prop, False)
 
             folder['Descendents'] = descendents
-
             cached_folders[folder['FolderID']] = folder
+
 
     def update_items(self, items):
         props = bpy.context.scene.b2rex_props
         cached_items = getattr(props, '_items')
+        cached_items.clear()
         for item in items:
             cached_items[item['ItemID']] = item
+
+    def update_firstlevel(self):
+        props = bpy.context.scene.b2rex_props
+        cached_folders = getattr(props, 'folders')
+        root_id = getattr(props, "root_folder")
+        session = bpy.b2rex_session
+
+        for folder_id, folder in cached_folders.items():
+            if folder['ParentID'] == root_id:
+                session.simrt.FetchInventoryDescendents(folder_id)
 
     def processInventoryDescendents(self, folder_id, folders, items):
         logger.debug("processInventoryDescendents")
@@ -338,18 +353,19 @@ class B2Rex(BaseApplication):
         props = bpy.context.scene.b2rex_props
         session = bpy.b2rex_session
         B2RexProps = bpy.types.B2RexProps
+
         if not hasattr(B2RexProps, 'folders'):
             setattr(B2RexProps, 'folders',  dict())
         if not hasattr(B2RexProps, '_items'):
             setattr(B2RexProps, '_items', dict())
 
         for inv in inventory:
+            session.simrt.FetchInventoryDescendents(inv['folder_id'])
             if uuid.UUID(inv['parent_id']).int == 0:
                 if not hasattr(B2RexProps, "root_folder"):
                     setattr(B2RexProps, "root_folder", inv['folder_id'])
                 setattr(props, "root_folder", inv['folder_id'])
-                self.update_folders([{'FolderID' : inv['folder_id'], 'ParentID' : inv['parent_id'], 'Name' : inv['name']}])
-            session.simrt.FetchInventoryDescendents(inv['folder_id'])
+
 
         session.inventory = inventory
         
