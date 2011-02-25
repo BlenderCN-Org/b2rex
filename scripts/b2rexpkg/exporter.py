@@ -190,11 +190,13 @@ class Exporter(object):
     def uploadImage(self, image):
         imagepath = os.path.realpath(bpy.path.abspath(image.filepath))
         if os.path.exists(imagepath):
-            f = open(imagepath, 'rb')
-            encoded = base64.urlsafe_b64encode(f.read()).decode('ascii')
-            f.close()
-            self.simrt.UploadAsset(image.opensim.uuid, 0, encoded)
-            return image.opensim.uuid
+            converted_path = self.convert_image_format(imagepath, 'jpc')
+            if os.path.exists(converted_path):
+                f = open(converted_path, 'rb')
+                encoded = base64.urlsafe_b64encode(f.read()).decode('ascii')
+                f.close()
+                self.simrt.UploadAsset(image.opensim.uuid, 0, encoded)
+                return image.opensim.uuid
 
     def processAssetUploadFinished(self, newAssetID, assetID):
         print("processAssetUploadFinished")
@@ -213,6 +215,7 @@ class Exporter(object):
         faces = self._getFaceRepresentatives(mesh)
         materials = []
         materialsdone = []
+        changednames = []
         tokens = {}
         def material_finished(token, newAssetID):
             print("material_finished go on", token)
@@ -230,11 +233,14 @@ class Exporter(object):
                 bmat = self._getFaceMaterial(mesh, face)
                 if not bmat.opensim.uuid:
                     bmat.opensim.uuid = str(uuid.uuid4())
+                    bmat.name = bmat.opensim.uuid
                     matio = RexMaterialIO(self, mesh, face, bmat)
                     f = StringIO()
                     matio.write(f)
                     f.seek(0)
-                    id = self.uploadMaterial(bmat, f.read())
+                    data = f.read()
+                    print("MATERIAL", data)
+                    id = self.uploadMaterial(bmat, data)
                     if id:
                         tokens[id] = bmat
                         self._exporttasks[id] = material_finished

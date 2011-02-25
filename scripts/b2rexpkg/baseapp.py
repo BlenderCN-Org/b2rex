@@ -111,9 +111,9 @@ class BaseApplication(Importer, Exporter):
         del self._callbacks[str(section)][str(signal)]
 
     def registerTextureImage(self, image):
+        # register a texture with the sim
         if not image.opensim.uuid:
             image.opensim.uuid = str(uuid.uuid4())
-        pass # register a texture with the sim
         return image.opensim.uuid
 
     def registerCommand(self, cmd, callback):
@@ -610,6 +610,8 @@ class BaseApplication(Importer, Exporter):
                            self.unapply_scale(obj, scale), materials)
         
     def sendObjectUpload(self, obj, mesh, data, materials):
+        data = data.replace(b'MeshSerializer_v1.41', b'MeshSerializer_v1.40')
+
         b64data = base64.urlsafe_b64encode(data).decode('ascii')
         obj_name = obj.name
         obj_uuid = obj.opensim.uuid
@@ -875,13 +877,14 @@ class BaseApplication(Importer, Exporter):
                     else:
                         # check for copy or clone
                         # copy or clone
-                        if obj.data.opensim.uuid in oldselected and not oldselected[mesh_uuid].pointer == obj.data.as_pointer():
+                        if mesh_uuid in oldselected and not oldselected[mesh_uuid].pointer == obj.data.as_pointer():
                             # copy
                             ismeshcopy = True
                             obj.data.opensim.uuid = ""
                         else:
                             # clone
-                            pass
+                            if mesh_uuid in oldselected:
+                                newselected[mesh_uuid] = oldselected[mesh_uuid]
                         obj.opensim.uuid = ""
                         obj.opensim.state = "OFFLINE"
                 else:

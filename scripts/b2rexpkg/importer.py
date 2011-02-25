@@ -2,6 +2,7 @@
 Import sim data into Blender.
 """
 
+import os
 import sys
 import logging
 from collections import defaultdict
@@ -566,15 +567,24 @@ class Importer(ImporterBase):
         if len(split_name) > 2:
             textureName = split_name[2]
         dest = "/tmp/"+textureName
-        if not dest[-3:] in ["png"]:
-            dest = dest + ".png"
+        return self.convert_image_format(origin, 'png', dest)
+
+    def convert_image_format(self, origin, ext, dest=None):
+        if dest == None:
+            dest = origin
+        if not dest[-3:] in [ext]:
+            dest = dest + "." + ext
+        if os.path.exists(dest):
+            # its already there.. probably should update but for now we dont
+            # care
+            return dest
         try:
             subprocess.call(["convert",
                               origin,
                               dest])
             return dest
         except:
-            logger.error(("error opening:", dest))
+            logger.error("error opening:" + str(dest))
 
     def parse_texture(self, textureId, textureName, dest):
         btex = self.create_texture(textureName, dest)

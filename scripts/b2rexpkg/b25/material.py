@@ -406,6 +406,7 @@ class RexMaterialIO(object):
            <LI>/TWOSIDE></LI>
            </OL>
         """
+        return self.material.name # for now we need to trick the ogre exporter
         # must be called after _generateKey()
         materialName = self.material.name
         # two sided?
