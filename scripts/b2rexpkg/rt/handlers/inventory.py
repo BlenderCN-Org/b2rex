@@ -1,5 +1,6 @@
 from .base import Handler
 from pyogp.lib.client.inventory import UDP_Inventory
+from pyogp.lib.client.inventory import InventoryItem
 import uuid
 from pyogp.lib.base.datatypes import UUID
 from pyogp.lib.base.message.message import Message, Block
@@ -56,6 +57,8 @@ class InventoryHandler(Handler):
     def onRegionConnect(self, region):
         res = region.message_handler.register("InventoryDescendents")
         res.subscribe(self.onInventoryDescendents)
+        res = region.message_handler.register("UpdateCreateInventoryItem")
+        res.subscribe(self.onUpdateCreateInventoryItem)
         self.inventory.enable_callbacks()
 
     def onRegionConnected(self, region):
@@ -84,23 +87,87 @@ class InventoryHandler(Handler):
         
         sendRezObject(self.manager.client, item, raystart, rayend)
 
+    def serializableInventory(self):
+        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID), 'Descendents' : int(member.Descendents)} for member in self.inventory.folders]
+        items = [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items] 
+        return folders, items
+
     def onInventoryDescendents(self, packet):
         logger = self.logger
         logger.debug('onInventoryDescendents')
         folder_id = packet['AgentData'][0]['FolderID']
-        folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID), 'Descendents' : int(member.Descendents)} for member in self.inventory.folders]
-        items = [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items] 
+        folders, items = self.serializableInventory()
+        
 
         self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
 
 
+    def onUpdateCreateInventoryItem(self, packet):
+        logger = self.logger
+        logger.debug('onUpdateCreateInventoryItem')
+
+        inv_data = packet['InventoryData'][0] 
+        item = InventoryItem(inv_data['ItemID'],
+                             inv_data['FolderID'],
+                             inv_data['CreatorID'],
+                             inv_data['OwnerID'],
+                             inv_data['GroupID'],
+                             inv_data['BaseMask'],
+                             inv_data['OwnerMask'],
+                             inv_data['GroupMask'],
+                             inv_data['EveryoneMask'],
+                             inv_data['NextOwnerMask'],
+                             inv_data['GroupOwned'],
+                             inv_data['AssetID'],
+                             inv_data['Type'],
+                             inv_data['InvType'],
+                             inv_data['Flags'],
+                             inv_data['SaleType'],
+                             inv_data['SalePrice'],
+                             inv_data['Name'],
+                             inv_data['Description'],
+                             inv_data['CreationDate'],
+                             inv_data['CRC'])
+
+        self.addInventoryItem(item)
+
+
+    def addInventoryItem(self, item):
+        self.inventory._store_inventory_item(item)
+
+        for folder in self.inventory.folders: 
+            if str(folder.FolderID) == str(item.FolderID):
+                folder.Descendents += 1
+                break
+
+        folders, items = self.serializableInventory()
+ 
+        self.out_queue.put(['InventoryDescendents', str(item.FolderID), folders, items])
+
+
+    def removeInventoryItem(self, item_id):
+        items = self.inventory.items
+        folders = self.inventory.folders
+
+        folder_id = None
+        for _item in items: 
+            if str(_item.ItemID) == str(item_id):
+                folder_id = str(_item.FolderID)
+                items.remove(_item)
+                break
+
+        if folder_id:
+            for folder in folders: 
+                if str(folder.FolderID) == str(folder_id):
+                    folder.Descendents -= 1
+                    break
+
     def processRemoveInventoryItem(self, item_id):
         logger = self.logger
         logger.debug('processRemoveIntenvoryItem')
-        items =  [{'FolderID' : str(member.FolderID)} for member in self.inventory.items if str(member.ItemID) == str(item_id)] 
-        item = items[0]
         
+        self.removeInventoryItem(item_id)
+
         client = self.manager.client
         self.inventory.send_RemoveInventoryItem(client.agent_id, client.session_id, UUID(str(item_id)))
-        self.inventory.sendFetchInventoryDescendentsRequest(item['FolderID'])
 

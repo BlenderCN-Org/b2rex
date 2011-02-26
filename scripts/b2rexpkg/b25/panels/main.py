@@ -191,6 +191,9 @@ class ConnectionPanel(bpy.types.Panel):
         if hasattr(bpy.types.B2RexProps, '_items'):
             items = getattr(props, '_items')
 
+        if not folder_id in folders:
+            return
+
         folder = folders[folder_id]
 
         session = bpy.b2rex_session
@@ -232,7 +235,7 @@ class ConnectionPanel(bpy.types.Panel):
                             row.label(text=item['Name'], icon='OBJECT_DATA')
                             row.operator('b2rex.localview', text="", icon='MUTE_IPO_OFF', emboss=False).item_id=str(item['ItemID']) 
                             row.operator('b2rex.rezobject', text="", icon='PARTICLE_DATA', emboss=False).item_id=str(item['ItemID']) 
-                            row.operator('b2rex.removeinventoryitem', text="", icon='PANEL_CLOSE', emboss=False).item_id=str(item['ItemID']) 
+                            row.operator('b2rex.removeinventoryitem', text="", icon='ZOOMOUT', emboss=False).item_id=str(item['ItemID']) 
                         else:
                             row.label(text=item['Name'] + str(item['InvType']))
       

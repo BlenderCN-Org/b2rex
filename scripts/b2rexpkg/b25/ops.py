@@ -239,9 +239,6 @@ class DeRezObject(bpy.types.Operator):
 
     def execute(self, context):
         bpy.b2rex_session.onDeRezObject()
-        bpy.b2rex_session.update_firstlevel()
-
-        print("Execute")
         return {'FINISHED'}
 
 class RezObject(bpy.types.Operator):
@@ -261,6 +258,22 @@ class RemoveInventoryItem(bpy.types.Operator):
     item_id = StringProperty(name="item_id")
 
     def execute(self, context):
+        props = context.scene.b2rex_props
+
+        items = getattr(props, "_items")
+        folders = getattr(props, "folders")
+
+        item =  items[self.item_id] 
+        folder_id = item['FolderID']
+
+        if folder_id in folders:
+            folders[folder_id]['Descendents'] -= 1
+
+        if self.item_id in items:
+            del items[self.item_id]
+        else:
+            return {'FINISHED'}
+        
         bpy.b2rex_session.onRemoveInventoryItem(self.item_id)
         return {'FINISHED'}
 
