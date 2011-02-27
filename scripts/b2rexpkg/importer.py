@@ -279,9 +279,9 @@ class Importer25(object):
                        offset_z=20.0):
         if obj.parent:
             pos = self._get_global_pos(pos, obj.parent)
-        return self._unapply_position(obj, pos, offset_x, offset_y, offset_z)
+        return self._unapply_position(pos, offset_x, offset_y, offset_z)
 
-    def _unapply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
+    def _unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
                           offset_z=20.0):
         return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
 
