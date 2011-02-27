@@ -9,6 +9,7 @@ import logging
 states = (("UPLOADING", 'Uploading', 'standard level, show only errors'),
               ("OK", 'Ok', 'show only critical errors (least info)'),
               ("LOADING", 'Loading', 'show warnings or errors'),
+              ("TAKING", 'Taking', 'show warnings or errors'),
               ("OFFLINE", 'Offline', 'show warnings or errors'),
               ("LOADED", 'Loaded', 'show info or errors'))
 

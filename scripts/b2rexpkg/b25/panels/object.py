@@ -56,7 +56,6 @@ class ObjectPropertiesPanel(bpy.types.Panel):
                                                       len(terrain.checksums)))
 
     def draw_object(self, box, obj):
-        self.draw_permissions_box(obj)
         if obj.opensim.state == 'OK':
             box.label(text="obj: %s"%(obj.opensim.uuid))
             if obj.type == 'MESH':
@@ -64,6 +63,9 @@ class ObjectPropertiesPanel(bpy.types.Panel):
 
             box.operator('b2rex.delete', text='Delete from simulator')
             box.operator('b2rex.derezobject', text='Take to inventory')
+
+            self.draw_permissions_box(obj)
+
         elif obj.opensim.state == 'OFFLINE':
             box.operator('b2rex.exportupload', text='Upload to Sim')
         if not obj.opensim.state == 'OK':

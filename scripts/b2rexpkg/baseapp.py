@@ -592,6 +592,7 @@ class BaseApplication(Importer, Exporter):
         if selected:
             for obj in selected:
                 if obj.opensim.uuid:
+                    self.set_loading_state(obj, 'TAKING')
                     self.simrt.DeRezObject(obj.opensim.uuid)
 
     def sendObjectClone(self, obj, materials):
