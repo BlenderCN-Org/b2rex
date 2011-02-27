@@ -292,3 +292,34 @@ class LocalView(bpy.types.Operator):
     
         return {'FINISHED'}
 
+class ToggleImportTerrain(bpy.types.Operator):
+    bl_idname = "b2rex.toggleImportTerrain"
+    bl_label = "Toggle import terrain"
+
+    def execute(self, context):
+        
+        session = bpy.b2rex_session
+        context.scene.b2rex_props.importTerrain ^=  True
+        if context.scene.b2rex_props.importTerrain:
+            session.registerCommand('LayerData', session.processLayerData)
+            session.registerCommand('LayerDataDecoded', session.processLayerDataDecoded)
+        else:
+            session.unregisterCommand('LayerData')
+            session.unregisterCommand('LayerDataDecoded')
+    
+        return {'FINISHED'}
+
+class ToggleImportTextures(bpy.types.Operator):
+    bl_idname = "b2rex.toggleImportTextures"
+    bl_label = "Toggle import textures"
+
+    def execute(self, context):
+        
+        session = bpy.b2rex_session
+        context.scene.b2rex_props.importTextures ^=  True
+        if context.scene.b2rex_props.importTerrain:
+            session.registerCommand('texturearrived', session.processTextureArrived)
+        else:
+            session.unregisterCommand('texturearrived')
+    
+        return {'FINISHED'}

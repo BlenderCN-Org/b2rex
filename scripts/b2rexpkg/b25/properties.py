@@ -100,10 +100,15 @@ class B2RexProps(bpy.types.IDPropertyGroup):
                               max=1000, step=1, description="Number of  milliseconds allocated for command execution every second")
     pool_workers = IntProperty(name="Download Threads", default=5, min=1,
                                max=100, step=1, description="Number of threads dedicated to downloading and transcoding")
+    kbytesPerSecond = IntProperty(name="Kbyte/s", default=100,
+                                      description="kbytes per second to throttle the connection to")
+
     regenObjects = BoolProperty(name="Regen Objects", default=False)
     regenTextures = BoolProperty(name="Regen Textures", default=False)
-    kbytesPerSecond = IntProperty(name="Kbyte/s", default=100,
-                                  description="kbytes per second to throttle the connection to")
+    regenObjects = BoolProperty(name="Regen Objects", default=False)
+    importTerrain = BoolProperty(name="Import Terraion", default=True)
+    importTextures = BoolProperty(name="Import Textures", default=True)
+
     terrainLOD = IntProperty(name="Terrain LOD", default=1, min=0, max=4,
                                   description="terrain lod level, needs restart to take effect")
     regenMeshes = BoolProperty(name="Regen Meshes", default=False)

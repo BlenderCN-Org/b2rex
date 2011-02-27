@@ -119,6 +119,9 @@ class BaseApplication(Importer, Exporter):
     def registerCommand(self, cmd, callback):
         self._cmd_matrix[cmd] = callback
 
+    def unregisterCommand(self, cmd):
+        del self._cmd_matrix[cmd]
+
     def initializeCommands(self):
         self._cmd_matrix = {}
         self.registerCommand('pos', self.processPosCommand)

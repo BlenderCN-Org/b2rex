@@ -307,6 +307,11 @@ class ConnectionPanel(bpy.types.Panel):
                 row = layout.row()
                 row.prop(props, prop)
 
+            col = layout.row()
+            check_icon = ['CHECKBOX_DEHLT', 'CHECKBOX_HLT']
+            col.operator('b2rex.toggleImportTerrain', text="Import Terrain", icon=check_icon[props.importTerrain], emboss=False) 
+            col.operator('b2rex.toggleImportTextures', text="Import Textures", icon=check_icon[props.importTextures], emboss=False) 
+
             col = layout.column_flow()
             col.prop(props,"regenMaterials")
             col.prop(props,"regenObjects")
