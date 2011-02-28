@@ -233,12 +233,12 @@ class BaseApplication(Importer, Exporter):
         print("CONNECTED AS", agent_id)
 
     def default_error_db(self, request, error):
-        logger.warning("error downloading "+str(request)+": "+str(error))
-        print("error downloading "+str(request)+": "+str(error))
-        traceback.print_tb(error[2])
+        if not error[1].code in [404]:
+            logger.warning("error downloading "+str(request)+": "+str(error))
+            print("error downloading "+str(request)+": "+str(error[1].code))
+            traceback.print_tb(error[2])
 
     def processAssetArrived(self, assetId, b64data):
-        print("ASSET ARRIVED", assetId)
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         cb, cb_pars, main = self._requested_llassets['lludp:'+assetId]
         def _cb(request, result):
@@ -626,7 +626,6 @@ class BaseApplication(Importer, Exporter):
         self.command_queue.append(["mesharrived", mesh, objId, meshId, materials])
 
     def processMeshArrived(self, mesh, objId, meshId, materials):
-        print("MeshArrived", meshId)
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
