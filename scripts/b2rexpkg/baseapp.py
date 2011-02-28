@@ -515,8 +515,8 @@ class BaseApplication(Importer, Exporter):
                                                                          matId,
                                                                          asset_type,
                                                                          index))
-                    else:
-                        logger.warning("unhandled material of type " + str(asset_type))
+                        else:
+                            logger.warning("unhandled material of type " + str(asset_type))
             if meshId and not meshId == ZERO_UUID_STR:
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
