@@ -423,7 +423,10 @@ class BaseApplication(Importer, Exporter):
         self.stats[0] += 1
         cmdHandler = self._cmd_matrix.get(cmd, None)
         if cmdHandler:
-            cmdHandler(*args)
+            try:
+                cmdHandler(*args)
+            except Exception as e:
+                print("Error executing", cmd, e)
 
     def processCapabilities(self, caps):
         self.caps = caps
@@ -894,8 +897,8 @@ class BaseApplication(Importer, Exporter):
                 currbudget = time.time()-starttime
                 if currbudget < budget and self.second_budget+currbudget < second_budget:
                     if cmd[0] in priority_commands:
-                        self.processCommand(*cmd)
                         processed.append(idx)
+                        self.processCommand(*cmd)
                 else:
                     break
             # delete all processed elements. in reversed order
@@ -909,8 +912,8 @@ class BaseApplication(Importer, Exporter):
                 for idx, cmd in enumerate(cmds):
                     currbudget = time.time()-starttime
                     if currbudget < budget and self.second_budget+currbudget < second_budget:
-                        self.processCommand(*cmd)
                         processed.append(idx)
+                        self.processCommand(*cmd)
                     else:
                         break
                 for idx in reversed(processed):
