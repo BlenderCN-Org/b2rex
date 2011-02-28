@@ -202,7 +202,7 @@ class Importer25(object):
                     #new_mesh.materials.append(self._imported_assets[ogremat.uuid])
             if ogremat.btex and ogremat.btex.image:
                 image = ogremat.btex.image
-        else:
+        if not image and matIdx < len(new_mesh.materials):
             material = new_mesh.materials[matIdx]
             for slot in material.texture_slots:
                 if slot and slot.use_map_color_diffuse and slot.texture:
@@ -681,10 +681,10 @@ class Importer(ImporterBase):
     def add_texture_callback(self, textureId, cb, cb_pars):
         self._texture_callbacks[textureId].append([cb, cb_pars])
 
-    def processTextureArrived(self, data, textureId, bmat, layerName, mat_name,
+    def processTextureArrived(self, image_path, textureId, bmat, layerName, mat_name,
                            ogremat, idx, meshId, matIdx):
         textureName = 'opensim'+textureId
-        btex = self.parse_texture(textureId, textureName, data)
+        btex = self.parse_texture(textureId, textureName, image_path)
         self.layer_ready(btex, bmat, layerName, mat_name, ogremat, idx, meshId,
                         matIdx)
         if textureId in self._texture_callbacks:
