@@ -86,6 +86,7 @@ class Importer25(object):
         image = None
         uvco_offset = None
         stride = 0
+        #print(vertex_legend)
         for layer in vertex_legend.values():
             stride += type2size[layer[2]]
         if VES_TEXTURE_COORDINATES in vertex_legend:
@@ -188,12 +189,14 @@ class Importer25(object):
         image = None
         if materialName in self._imported_ogre_materials:
             ogremat = self._imported_ogre_materials[materialName]
-            if ogremat.uuid in self._imported_assets:
+            bmat = self.find_with_uuid(ogremat.uuid, bpy.data.materials,
+                                          'materials')
+            if bmat:
                 #if len(new_mesh.materials) > matIdx:
                     #new_mesh.materials.insert(matIdx, self._imported_assets[ogremat.uuid])
                     #else:
                 # XXX maybe wrong order
-                bmat = self._imported_assets[ogremat.uuid]
+                #bmat = self._imported_assets[ogremat.uuid]
                 if not bmat.name in new_mesh.materials:
                     new_mesh.materials.append(bmat)
                     #new_mesh.materials.append(self._imported_assets[ogremat.uuid])
@@ -546,12 +549,11 @@ class Importer(ImporterBase):
             self._material_cb.pop(slot)
 
     def doTextureDownloadTranscode(self, pars):
-        http_url, pars = pars
+        http_url, pars, data = pars
         assetName = pars[0] # we dont get the name here
         assetId = pars[0]
+        # XXX could be downloadded to disk
         origin = "/tmp/"+assetId+".1.jpg"
-        req = urllib2.urlopen(http_url)
-        data = req.read()
         return self.decode_texture(assetId, assetName, data)
         #return self.decode_texture_fromfile(assetId, assetName, origin)
 
@@ -663,9 +665,8 @@ class Importer(ImporterBase):
                     btex = self._imported_assets[textureId]
                     self.layer_ready(btex, *pars)
                 else:
-                   tex_url = self.caps["GetTexture"] + "?texture_id="+textureId
                    pars = (textureId,) + pars
-                   if not self.addDownload(tex_url,
+                   if not self.downloadAsset(textureId, 0,
                                     self.texture_downloaded, 
                                     pars,
                                        main=self.doTextureDownloadTranscode):
@@ -729,9 +730,8 @@ class Importer(ImporterBase):
         bmat = None
         gridinfo = self.gridinfo
         try:
-            if matId in self._imported_assets:
-                bmat = self._imported_assets[matId]
-            else:
+            bmat = self.find_with_uuid(matId, bpy.data.materials, 'materials')
+            if not bmat:
             # XXX should check on library and refresh if its there
                 mat = gridinfo.getAsset(matId)
                 meshId = None # XXX check
@@ -742,12 +742,28 @@ class Importer(ImporterBase):
                 return self.import_material(matId, retries-1)
         return bmat
 
+    def create_material_fromimage(self, matId, data, meshId, matIdx):
+        pars = (matId, [matId], data)
+        dest = self.doTextureDownloadTranscode(pars)
+        btex = self.parse_texture(matId, matId, dest)
+
+        ogremat = OgreMaterial()
+        ogremat.name = matId
+        ogremat.btex = btex
+        ogremat.uuid = matId
+
+        ogremat.layers['baseMap'] = matId
+        ogremat.textures.append(matId)
+        bmat = self.create_blender_material(ogremat, {"name":matId}, meshId, matIdx)
+        #self._imported_assets[matId] = bmat
+
+
     def parse_material(self, matId, mat, meshId, matIdx):
         ogremat = OgreMaterial(mat)
         ogremat.btex = None
         ogremat.uuid = matId
         bmat = self.create_blender_material(ogremat, mat, meshId, matIdx)
-        self._imported_assets[matId] = bmat
+        #self._imported_assets[matId] = bmat
 
     def import_mesh(self, scenegroup):
         """
@@ -764,11 +780,9 @@ class Importer(ImporterBase):
         return self.create_mesh_fromomesh(scenegroup["asset"], asset["name"], mesh)
 
     def doMeshDownloadTranscode(self, pars):
-        http_url, pars = pars
+        http_url, pars, data = pars
         assetName = pars[1] # we dont get the name here
         assetId = pars[1]
-        req = urllib2.urlopen(http_url)
-        data = req.read()
         return self.create_mesh_frombinary(assetId, assetName, data)
 
 

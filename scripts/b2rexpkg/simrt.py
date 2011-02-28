@@ -40,6 +40,7 @@ from rt.handlers.throttle import ThrottleHandler
 from rt.handlers.online import OnlineHandler
 from rt.handlers.bootstrap import BootstrapHandler
 from rt.handlers.simstats import SimStatsHandler
+from rt.handlers.assetrequest import AssetRequest
 from rt.handlers.xferupload import XferUploadManager
 from rt.handlers.agentmovement import AgentMovementHandler
 from rt.handlers.regionhandshake import RegionHandshakeHandler
@@ -49,7 +50,7 @@ from rt.tools import prepare_server_name
 
 
 class AgentManager(object):
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self._handlers = {}
         self._generichandlers = {}
@@ -71,10 +72,13 @@ class AgentManager(object):
         """
         methodname = packet["MethodData"][0]["Method"]
         if methodname in self._generichandlers:
-            self._generichandlers[methodname](packet["ParamList"])
+            try:
+                self._generichandlers[methodname](packet["ParamList"])
+            except:
+                print("error decoding "+methodname)
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
-            print(packet)
+            self.logger.debug(str(packet))
 
     def subscribe_region_callbacks(self, region):
         """
@@ -104,7 +108,7 @@ class AgentManager(object):
         service = handler.getName().lower()
         setattr(self, service, handler)
 
-    def login(self, server_url, username, password, regionname, firstline=""):
+    def login(self, server_url, login_params):
         """ login an to a login endpoint """ 
         in_queue = self.in_queue
         out_queue = self.out_queue
@@ -126,12 +130,16 @@ class AgentManager(object):
         self.add_handler(SelectHandler(self))
         self.add_handler(ObjectHandler(self))
         self.add_handler(MiscHandler(self))
+        self.add_handler(AssetRequest(self))
 
         # Now let's log it in
-        firstname, lastname = username.split(" ", 1)
+        #firstname, lastname = username.split(" ", 1)
         loginuri = prepare_server_name(server_url)
+        regionname = 'last'
 
-        api.spawn(client.login, loginuri, firstname, lastname, password,
+
+        print("LOGIN WITH", login_params)
+        api.spawn(client.login, loginuri, login_params = login_params,
                   start_location = regionname, connect_region = True)
 
         # wait for the agent to connect to it's region
@@ -153,8 +161,9 @@ class AgentManager(object):
         caps_sent = False
         caps = {}
 
+        print("CONNECTING.....", client.region)
         # wait until the client is connected
-        while client.region.connected == False:
+        while not client.region.connected:
             # look for GetTexture and send to client as soon as possible
             if not caps_sent and "GetTexture" in client.region.capabilities:
                 for cap in client.region.capabilities:
@@ -162,15 +171,21 @@ class AgentManager(object):
                 self.out_queue.put(["capabilities", caps])
                 caps_sent = True
             api.sleep(0)
+            
+        print("CONNECTED.....")
+        # wait until the client is connected
 
         # notify handlers of connection to region
         self.subscribe_region_callbacks(client.region)
+
+
 
         # send throttle
         self.throttle.sendThrottle()
 
         # speak up the first line
-        client.say(str(firstline))
+        if "firstline" in login_params:
+            client.say(login_params["firstline"])
 
         # main loop for the agent
         while client.running == True:
@@ -251,7 +266,7 @@ class GreenletsThread(Thread):
     Main thread for the program. If running stand alone this will be running
     as a greenlet instead.
     """
-    def __init__ (self, server_url, username, password, region, firstline="Hello"):
+    def __init__ (self, server_url, login_params):
         self.running = True
         self.agent = True
         self.cmd_out_queue = []
@@ -259,10 +274,7 @@ class GreenletsThread(Thread):
         self.out_queue = Queue()
         self.in_queue = Queue()
         self.server_url = server_url
-        self.regionname = region
-        self.username = username
-        self.password = password
-        self.firstline = firstline
+        self.login_params = login_params
         Thread.__init__(self)
 
     def apply_position(self, obj_uuid, pos, rot=None):
@@ -279,11 +291,7 @@ class GreenletsThread(Thread):
     def run(self):
         agent = AgentManager(self.in_queue,
                    self.out_queue)
-        agent.login(self.server_url,
-                    self.username,
-                    self.password,
-                    self.regionname,
-                    self.firstline)
+        agent.login(self.server_url, self.login_params)
         agent.logger.debug("Quitting")
         self.agent = agent
         self.running = False
@@ -300,12 +308,12 @@ class GreenletsThread(Thread):
 
 running = False
 
-def run_thread(context, server_url, username, password, region, firstline):
+def run_thread(context, server_url, login_params):
     """
     Call from outside the module to start up the agent thread.
     """
     global running
-    running = GreenletsThread(server_url, username, password, region, firstline)
+    running = GreenletsThread(server_url, login_params)
     running.start()
     return running
 

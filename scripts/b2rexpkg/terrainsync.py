@@ -4,6 +4,7 @@ arriving in blocks.
 """
 
 import bpy
+import random
 
 class TerrainSync(object):
     lodlevels = [1,2,4,8,16]
@@ -17,6 +18,7 @@ class TerrainSync(object):
             self.terrain = bpy.data.objects["terrain"]
         except:
             self.terrain = self.create_terrain()
+        #self.init_terrain()
         self.checksums = [0] * self.nblocks * self.nblocks
 
     def set_dirty(self):
@@ -108,6 +110,24 @@ class TerrainSync(object):
         newobj.lock_rotation_w = True
         mesh.calc_normals()
 
+    def init_terrain(self):
+        patchsize = int(16/self.lodlevels[self.lod])
+        layersize = patchsize*self.nblocks
+        layersize_f = layersize-1
+
+        mesh = bpy.data.objects["terrain"].data
+        if not mesh.vertex_colors:
+            mesh.vertex_colors.new("base color")
+            mesh.vertex_colors[0].active = True
+
+        vertex_colors = mesh.vertex_colors[0].data
+        for j in range(layersize_f):
+            for i in range(layersize_f):
+                vertex_colors[i + j*layersize_f].color1 = (0.0, 0.0, 0.0)
+                vertex_colors[i + j*layersize_f].color2 = (0.0, 0.0, 0.0)
+                vertex_colors[i + j*layersize_f].color3 = (0.0, 0.0, 0.0)
+                vertex_colors[i + j*layersize_f].color4 = (0.0, 0.0, 0.0)
+
     def patch_changed(self, x, y):
         """
         Checks to see if given patch changed by calculating
@@ -122,9 +142,9 @@ class TerrainSync(object):
         layersize = patchsize*self.nblocks
         checksum = 0.0
         for j in range(patchsize):
+            j2 = off_y+j
             for i in range(patchsize):
                 i2 = off_x+i
-                j2 = off_y+j
                 val = mesh.vertices[i2 + (j2*layersize)].co.z
                 checksum += val
         idx = x + int(self.nblocks * y)
@@ -153,12 +173,17 @@ class TerrainSync(object):
         layersize = patchsize*self.nblocks
         checksum = 0.0
         for j in range(patchsize):
+            j2 = off_y+j
+            js_ls = j2*layersize
             for i in range(patchsize):
                 i2 = off_x+i
-                j2 = off_y+j
-                zval = val = mesh.vertices[i2 + (j2*layersize)].co.z
-                mesh.vertices[i2 + (j2*layersize)].co = (i2*f-loff_x, j2*f-loff_y,
+                zval = mesh.vertices[i2 + j2_ls].co.z
+                mesh.vertices[i2 + j2_ls].co = (i2*f-loff_x, j2*f-loff_y,
                                                         zval)
+                checksum += zval
+
+        idx = x + int(self.nblocks * y)
+        self.checksums[idx] = checksum
 
     def patch_array(self, x, y):
         """
@@ -172,11 +197,14 @@ class TerrainSync(object):
         off_x = x*patchsize
         off_y = y*patchsize
         output = list(range(fullpatchsize*fullpatchsize))
+        vertices = mesh.vertices
         for j in range(fullpatchsize):
+            j_fp = j * fullpatchsize
+            j2 = off_y+j
+            j2_ls = j2 * layersize
             for i in range(fullpatchsize):
                 i2 = off_x+i
-                j2 = off_y+j
-                output[j * fullpatchsize + i] = mesh.vertices[i2 + j2*layersize].co.z
+                output[j_fp + i] = vertices[i2 + j2_ls].co.z
         return output
 
     def apply_patch(self, data, x, y):
@@ -191,14 +219,27 @@ class TerrainSync(object):
         off_x = x*patchsize
         off_y = y*patchsize
         layersize = patchsize*self.nblocks
+        layersize_f = layersize -1
         mesh = bpy.data.objects["terrain"].data
         checksum = 0.0
+        ls_f2 = layersize_f*layersize_f
+        vertices = mesh.vertices
+        #vertex_colors = mesh.vertex_colors[0].data
         for j in range(patchsize):
+            j2 = off_y+j
+            j_fp = j * fullpatchsize
+            j2_ls = j2 * layersize
             for i in range(patchsize):
-                val = data[(i*lod)+(j*fullpatchsize)]
+                val = data[i*lod + j_fp]
                 i2 = off_x+i
-                j2 = off_y+j
-                mesh.vertices[i2 + (j2*layersize)].co.z = val
+                vertices[i2 + j2_ls].co.z = val
+                col = min(1.0, max(0, val/80.0))
+                vert_col = (col, col, col)
+                #v_col = vertex_colors[min(ls_f2-1, i2 + j2*layersize_f)]
+                #v_col.color1 = vert_col
+                #v_col.color2 = vert_col
+                #v_col.color3 = vert_col
+                #v_col.color4 = vert_col
                 checksum += val
         self.checksums[x + self.nblocks * y] = checksum
         mesh.calc_normals()

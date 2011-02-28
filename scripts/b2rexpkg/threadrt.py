@@ -50,14 +50,10 @@ class ProxyFunction(object):
         self._parent.addCmd([self._name]+list(args))
 
 class ProxyAgent(Thread):
-    def __init__ (self, parent, server_url, username, password, region,
-                  firstline):
+    def __init__ (self, parent, server_url, login_params):
         Thread.__init__(self)
         self.server_url = server_url
-        self.username = username
-        self.password = password
-        self.firstline = firstline
-        self.regionname = region
+        self.login_params = login_params
         self.link = parent
         self.in_queue = Queue()
         self.out_queue = Queue()
@@ -119,8 +115,7 @@ class ProxyAgent(Thread):
                 self.receiver.start()
                 self.redraw()
                 #logger.debug("connected!! " + self.server_url + " " + self.username)
-                self.addCmd(["connect", self.server_url, self.username,
-                                self.password, self.regionname, self.firstline])
+                self.addCmd(["connect", self.server_url, self.login_params])
                 return
             except socket.error as e:
                 if e.errno == 111:
@@ -202,8 +197,8 @@ class ProxyAgent(Thread):
         print("exit thread")
 
 
-def run_thread(context, server_url, username, password, *args):
-    running = ProxyAgent(context, server_url, username, password, *args)
+def run_thread(context, server_url, login_params):
+    running = ProxyAgent(context, server_url, login_params)
     running.start()
     return running
 

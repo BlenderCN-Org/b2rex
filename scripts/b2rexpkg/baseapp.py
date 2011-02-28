@@ -6,6 +6,7 @@ import traceback
 import threading
 import math
 import base64
+from hashlib import md5
 from collections import defaultdict
 
 from .terrainsync import TerrainSync
@@ -17,6 +18,7 @@ from .tools.threadpool import ThreadPool, NoResultsPending
 
 from .importer import Importer
 from .exporter import Exporter
+from .simconnection import SimConnection
 from .tools.terraindecoder import TerrainDecoder, TerrainEncoder
 
 from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
@@ -71,9 +73,12 @@ class BaseApplication(Importer, Exporter):
         self._callbacks = defaultdict(DefaultMap)
         self.second_start = time.time()
         self.second_budget = 0
+        self._lastthrottle = 0
         self.pool = ThreadPool(1)
         self.workpool = ThreadPool(5)
+        self._requested_llassets = {}
         self.rawselected = set()
+        self.caps = {}
         self.simstats = None
         self.agent_id = ""
         self.loglevel = "standard"
@@ -132,6 +137,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('msg', self.processMsgCommand)
         self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
         self.registerCommand('LayerData', self.processLayerData)
+        self.registerCommand('AssetArrived', self.processAssetArrived)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
         self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
@@ -228,22 +234,51 @@ class BaseApplication(Importer, Exporter):
 
     def default_error_db(self, request, error):
         logger.warning("error downloading "+str(request)+": "+str(error))
-        #traceback.print_tb(error[2])
+        print("error downloading "+str(request)+": "+str(error))
+        traceback.print_tb(error[2])
 
-    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, main=None):
+    def processAssetArrived(self, assetId, b64data):
+        print("ASSET ARRIVED", assetId)
+        data = base64.urlsafe_b64decode(b64data.encode('ascii'))
+        cb, cb_pars, main = self._requested_llassets['lludp:'+assetId]
+        def _cb(request, result):
+            if 'lludp:'+assetId in self._requested_llassets:
+                cb(result, *cb_pars)
+            else:
+                print("asset arrived but no callback! "+assetId)
+        if main:
+            self.workpool.addRequest(main,
+                                 [[assetId, cb_pars, data]],
+                                 _cb,
+                                 self.default_error_db)
+        else:
+            cb(data, *cb_pars)
+
+    def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, extra_main=None):
         if http_url in self._requested_urls:
             return False
         self._requested_urls.append(http_url)
+
         if not error_cb:
             _error_cb = self.default_error_db
         else:
             def _error_cb(request, result):
                 error_cb(result)
+
         def _cb(request, result):
             cb(result, *cb_pars)
-        if not main:
-            main = self.doDownload
-        self.pool.addRequest(main, [[http_url, cb_pars]], _cb, _error_cb)
+
+        def _extra_cb(request, result):
+             self.workpool.addRequest(extra_main,
+                                     [[http_url, cb_pars, result]],
+                                      _cb,
+                                      _error_cb)
+
+        if extra_main:
+            _main_cb = _extra_cb
+        else:
+            _main_cb = _cb
+        self.pool.addRequest(self.doDownload, [[http_url, cb_pars]], _main_cb, _error_cb)
         return True
 
     def doDownload(self, pars):
@@ -336,17 +371,49 @@ class BaseApplication(Importer, Exporter):
             elif 'SIMRT_LIBS_PATH' in os.environ:
                 del os.environ['SIMRT_LIBS_PATH']
 
+            login_params = { 'region': region_name, 
+                            'firstline': firstline }
+           
+            if '@' in pars.username:
+                auth_uri = pars.username.split('@')[1]
+                con = SimConnection()
+                con.connect('http://'+auth_uri)
+                account = pars.username
+                passwd_hash = '$1$'+md5(password.encode('ascii')).hexdigest()
+
+                res = con._con.ClientAuthentication({'account':account,
+                                               'passwd':passwd_hash,
+                                               'loginuri':server_url})
+
+                avatarStorageUrl = res['avatarStorageUrl']
+                sessionHash = res['sessionHash']
+                gridUrl = res['gridUrl']
+                print("Authenticate OK", avatarStorageUrl, gridUrl)
+
+                login_params['first'] = 'NotReallyNeeded'
+                login_params['last'] = 'NotReallyNeeded'
+                login_params['AuthenticationAddress'] = auth_uri
+                login_params['account'] = pars.username
+                login_params['passwd'] = passwd_hash
+                login_params['sessionhash'] = sessionHash
+
+            else:
+                login_params['first'] = pars.username.split()[0]
+                login_params['last'] = pars.username.split()[1]
+                login_params['passwd'] = password
+
             self.simrt = simrt.run_thread(self, server_url,
-                                          pars.username,
-                                          password,
-                                          region_name, firstline)
+                                          login_params)
             self.connected = True
-            self.simrt.Throttle(self.exportSettings.kbytesPerSecond*1024)
+            self._lastthrottle = self.exportSettings.kbytesPerSecond*1024
+            self.simrt.Throttle(self._lastthrottle)
+
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
 
     def redraw(self):
+        return
         if not self.stats[5]:
             # we're using the commands left stats to keep our counter
             self.stats[5] += 1
@@ -400,6 +467,18 @@ class BaseApplication(Importer, Exporter):
             scene.objects.unlink(obj)
             self.queueRedraw()
 
+    def downloadAsset(self, assetId, assetType, cb, pars, main=None):
+        if "GetTexture" in self.caps:
+            asset_url = self.caps["GetTexture"] + "?texture_id=" + assetId
+            return self.addDownload(asset_url, cb, pars, extra_main=main)
+        else:
+
+            if 'lludp:'+assetId in self._requested_llassets:
+                return False
+            self._requested_llassets['lludp:'+assetId] = (cb, pars, main)
+            self.simrt.AssetRequest(assetId, assetType)
+            return True
+
     def processRexPrimDataCommand(self, objId, pars):
         self.stats[3] += 1
         meshId = pars["RexMeshUUID"]
@@ -418,9 +497,17 @@ class BaseApplication(Importer, Exporter):
             if "Materials" in pars:
                 materials = pars["Materials"]
                 for index, matId, asset_type in materials:
-                    if not matId == ZERO_UUID_STR and asset_type == AssetType.OgreMaterial:
-                        mat_url = self.caps["GetTexture"] + "?texture_id=" + matId
-                        self.addDownload(mat_url, self.materialArrived, (objId,
+                    if not matId == ZERO_UUID_STR:
+                        if asset_type == AssetType.OgreMaterial:
+                            self.downloadAsset(matId, asset_type,
+                                               self.materialArrived, (objId,
+                                                                         meshId,
+                                                                         matId,
+                                                                         asset_type,
+                                                                         index))
+                        elif asset_type == 0:
+                            self.downloadAsset(matId, asset_type,
+                                               self.materialTextureArrived, (objId,
                                                                          meshId,
                                                                          matId,
                                                                          asset_type,
@@ -430,9 +517,8 @@ class BaseApplication(Importer, Exporter):
             if meshId and not meshId == ZERO_UUID_STR:
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
-                    mesh_url = self.caps["GetTexture"] + "?texture_id=" + meshId
-                    if not self.addDownload(mesh_url,
-                                     self.meshArrived, 
+                    if not self.downloadAsset(meshId, AssetType.OgreMesh,
+                                    self.meshArrived, 
                                      (objId, meshId, materials),
                                             main=self.doMeshDownloadTranscode):
                         self.add_mesh_callback(meshId,
@@ -525,6 +611,9 @@ class BaseApplication(Importer, Exporter):
         self.command_queue.append(["materialarrived", data, objId, meshId,
                                       matId, assetType, matIdx])
 
+    def materialTextureArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        self.create_material_fromimage(matId, data, meshId, matIdx)
+
     def processMaterialArrived(self, data, objId, meshId, matId, assetType, matIdx):
         if assetType == AssetType.OgreMaterial:
             self.parse_material(matId, {"name":matId, "data":data}, meshId,
@@ -534,6 +623,7 @@ class BaseApplication(Importer, Exporter):
         self.command_queue.append(["mesharrived", mesh, objId, meshId, materials])
 
     def processMeshArrived(self, mesh, objId, meshId, materials):
+        print("MeshArrived", meshId)
         self.stats[4] += 1
         obj = self.findWithUUID(objId)
         if obj:
@@ -762,6 +852,9 @@ class BaseApplication(Importer, Exporter):
         if props.next_chat:
             self.simrt.Msg(props.next_chat)
             props.next_chat = ""
+
+        if props.kbytesPerSecond*1024 != self._lastthrottle:
+            self.simrt.Throttle(props.kbytesPerSecond*1024)
 
         # check consistency
         self.checkUuidConsistency(set(self.getSelected()))
