@@ -583,7 +583,6 @@ class BaseApplication(Importer, Exporter):
         self.trigger_callback('object.create', str(objId))
 
     def processLink(self, parentId, *childrenIds):
-        print("link!",parentId,childrenIds)
         parent = self.findWithUUID(parentId)
         if parent:
             for childId in childrenIds:
