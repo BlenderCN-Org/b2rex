@@ -248,11 +248,12 @@ class B2Rex(BaseApplication):
         #prev_scale = list(obj.scale)
         #if not prev_scale == scale:
             #    obj.scale = scale
-        self.scales[objId] = list(obj.scale)
+        self.scales[objId] = obj.scale
+        self.positions[objId] = obj.location
 
     def _processPosCommand(self, obj, objId, pos):
         self.apply_position(obj, pos)
-        self.positions[objId] = list(obj.location)
+        self.positions[objId] = obj.location
 
     def _processRotCommand(self, obj, objId, rot):
         if objId in self._agents:
