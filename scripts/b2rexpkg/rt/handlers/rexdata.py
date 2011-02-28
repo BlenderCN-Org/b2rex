@@ -14,7 +14,7 @@ class RexDataHandler(Handler):
 
     def onRexPrimData(self, packet):
         rexdata = packet[1]["Parameter"]
-        if len(rexdata) < 102:
+        if len(rexdata) < 122:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
         obj_uuid = UUID(packet[0]["Parameter"])
         obj_uuid_str = str(obj_uuid)
@@ -59,12 +59,14 @@ class RexDataHandler(Handler):
         pars["Materials"] = materials
         self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
         if not len(rexdata) > pos:
-            #self.logger.debug("RexPrimData: no more data")
+            self.logger.debug("RexPrimData: no more data")
             return
         idx = pos
-        while rexdata[idx] != '\0':
+        while rexdata[idx] != '\0' and len(rexdata) > idx+1:
               idx += 1
         RexClassName = rexdata[pos:idx+1]
+        #if RexClassName:
+            #print("RexClassName", RexClassName)
         #self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
 
 
