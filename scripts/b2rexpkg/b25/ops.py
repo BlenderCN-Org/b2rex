@@ -285,8 +285,9 @@ class LocalView(bpy.types.Operator):
 
     def execute(self, context):
         obj = bpy.b2rex_session.findWithUUID(self.item_id)
-        bpy.ops.object.select_all(action="DESELECT")
-        bpy.ops.object.select_name(name=obj.name, extend=False)
+        if obj:
+            bpy.ops.object.select_all(action="DESELECT")
+            bpy.ops.object.select_name(name=obj.name, extend=False)
         
         #bpy.ops.view3d.localview()
     
