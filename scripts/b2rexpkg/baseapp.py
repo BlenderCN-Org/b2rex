@@ -70,7 +70,6 @@ class BaseApplication(Importer, Exporter):
     def __init__(self, title="RealXtend"):
         self.command_queue = []
         self.wanted_workers = 1
-        self.terrain = None
         self._callbacks = defaultdict(DefaultMap)
         self.second_start = time.time()
         self.second_budget = 0
@@ -877,7 +876,6 @@ class BaseApplication(Importer, Exporter):
             self.second_budget = 0
             self.second_start = time.time()
 
-        # we really dont want to miss some terrain editing.
         for module in self._modules.values():
             module.check(starttime, framebudget)
         self.checkObjects()
