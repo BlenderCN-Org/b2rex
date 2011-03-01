@@ -108,6 +108,11 @@ class EditorObject(ProxyObject):
         self._obj.setLocation(*value)
     def get_location(self):
         return self._obj.getLocation()
+    def set_scale(self, value):
+        self._obj.setSize(*value)
+    def get_scale(self):
+        return self._obj.getSize()
+
     def set_parent(self, value):
         if not value:
             self._obj.clrParent()
@@ -122,6 +127,7 @@ class EditorObject(ProxyObject):
     opensim = property(get_opensim_properties)
     parent = property(get_parent, set_parent)
     location = property(get_location, set_location)
+    scale = property(get_scale, set_scale)
     lock_location = property(get_unimplemented, set_unimplemented)
     lock_scale = property(get_unimplemented, set_unimplemented)
     lock_rotation = property(get_unimplemented, set_unimplemented)

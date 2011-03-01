@@ -15,7 +15,7 @@ from b2rexpkg.tools.passmanager import PasswordManager
 class ExportSettings:
     """Global export settings.
     """
-    properties = ['path', 'pack', 'server_url', 'export_dir']
+    properties = ['path', 'pack', 'server_url', 'username', 'export_dir']
     def __init__(self):
         self.credentials = PasswordManager("b2rex")
         self.path = os.path.dirname(Blender.Get('filename'))
@@ -65,8 +65,8 @@ class ExportSettings:
             for prop in self.properties:
                 if settingsDict.has_key(prop):
                     setattr(self, prop, settingsDict[prop])
-            if self.server_url:
-                self.username, self.password = self.credentials.get_credentials(self.server_url)
+            if self.server_url and self.username:
+                self.username, self.password = self.credentials.get_credentials(self.server_url, self.username)
             if settingsDict.has_key('locX'):
                 try:
                     self.locX.setValue(float(settingsDict['locX']))

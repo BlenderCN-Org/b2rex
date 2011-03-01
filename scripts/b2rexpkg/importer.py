@@ -11,6 +11,7 @@ logger = logging.getLogger("b2rex.importer")
 
 from .siminfo import GridInfo
 from .simconnection import SimConnection
+from .tools.simtypes import AssetType
 
 import xml.parsers.expat
 
@@ -286,10 +287,6 @@ class Importer25(object):
             pos = self._get_global_pos(pos, obj.parent)
         return self._unapply_position(pos, offset_x, offset_y, offset_z)
 
-    def _unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
-                          offset_z=20.0):
-        return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
-
     def unapply_scale(self, obj, scale):
         if obj.parent:
             scale = self._get_global_scale(scale, obj.parent)
@@ -297,10 +294,8 @@ class Importer25(object):
 
 
     def unapply_rotation(self, euler):
-        #r = 180.0/math.pi
-        r = 1.0
-        euler = mathutils.Euler([euler[0]*r, euler[1]*r,
-                                        (euler[2]*r)])
+        euler = mathutils.Euler([euler[0], euler[1],
+                                        euler[2]])
         q = euler.to_quat()
         return [q.x, q.y, q.z, q.w]
         
@@ -440,24 +435,59 @@ class Importer24(object):
         btex.image = bim
         return btex
 
+    def _get_local_pos(self, pos, parent):
+        p_scale = parent.getSize('localspace')
+        return (pos[0]/p_scale[0], pos[1]/p_scale[1], pos[2]/p_scale[2])
+
+    def _get_global_pos(self, pos, parent):
+        p_scale = parent.getSize('localspace')
+        return (pos[0]*p_scale[0], pos[1]*p_scale[1], pos[2]*p_scale[2])
+
+    def _get_local_rot(self, rot, parent):
+        return rot
+
+    def _get_local_scale(self, scale, parent):
+        p_scale = parent.getSize('localspace')
+        return (scale[0]/p_scale[0], scale[1]/p_scale[1], scale[2]/p_scale[2])
+
+    def _get_global_scale(self, scale, parent):
+        p_scale = parent.getSize('localspace')
+        return (scale[0]*p_scale[0], scale[1]*p_scale[1], scale[2]*p_scale[2])
+
+
     def apply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0, raw=False):
         if raw:
             obj.setLocation(*pos)
         else:
-            obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
+            if obj.getParent():
+                pos = self._get_local_pos(pos, obj.getParent())
+                obj.setLocation(pos[0], pos[1], pos[2])
+            else:
+                obj.setLocation(pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
 
     def apply_scale(self, obj, scale):
+        if obj.getParent():
+            scale = self._get_local_scale(scale, obj.getParent())
         obj.setSize(scale[0], scale[1], scale[2])
-    def unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
+
+    def unapply_scale(self, obj, scale):
+        if obj.getParent():
+            scale = self._get_global_scale(scale, obj.getParent())
+        return [scale[0], scale[1], scale[2]]
+
+    def unapply_position(self, obj, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0):
-        return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
+        if obj.getParent():
+            pos = self._get_local_pos(pos, obj.getParent())
+        return self._unapply_position(pos, offset_x, offset_y, offset_z)
+
 
 
     def unapply_rotation(self, euler):
         r = 180.0/math.pi
-        euler = mathutils.Euler([-euler[0]*r, -euler[1]*r,
-                                        (euler[2]*r)+180.0])
+        euler = mathutils.Euler([euler[0]*r, euler[1]*r,
+                                        (euler[2]*r)])
         q = euler.toQuat()
         return [q.x, q.y, q.z, q.w]
         
@@ -477,7 +507,7 @@ class Importer24(object):
         if b_q:
             b_q = mathutils.Quaternion(b_q.w, b_q.x, b_q.y, b_q.z)
             euler = b_q.toEuler()
-            return (euler[0]*r, -euler[1]*r, (euler[2]-180.0)*r)
+            return (euler[0]*r, euler[1]*r, (euler[2])*r)
 
     def getcreate_object(self, obj_uuid, name, mesh_data):
         obj = self.find_with_uuid(obj_uuid, bpy.data.objects,
@@ -718,7 +748,7 @@ class Importer(ImporterBase):
                 if textureId in self._imported_assets:
                     btex = self._imported_assets[textureId]
                     self.layer_ready(btex, *pars)
-                else:
+                elif self.simrt:
                    pars = (textureId,) + pars
                    if not self.downloadAsset(textureId, 0,
                                     self.texture_downloaded, 
@@ -775,7 +805,7 @@ class Importer(ImporterBase):
 
 
 
-    def import_material(self, matId, retries):
+    def import_material(self, matId, matIdx, retries):
         """
         Import a material from opensim.
         """
@@ -789,11 +819,10 @@ class Importer(ImporterBase):
             # XXX should check on library and refresh if its there
                 mat = gridinfo.getAsset(matId)
                 meshId = None # XXX check
-                matIdx = None
                 self.parse_material(matId, mat, meshId, matIdx)
         except CONNECTION_ERRORS:
             if retries > 0:
-                return self.import_material(matId, retries-1)
+                return self.import_material(matId, matIdx, retries-1)
         return bmat
 
     def create_material_fromimage(self, matId, data, meshId, matIdx):
@@ -882,11 +911,23 @@ class Importer(ImporterBase):
         pos = parse_vector(scenegroup["position"])
         scale = parse_vector(scenegroup["scale"])
 
+
+
         obj = self.getcreate_object(scenegroup["id"], scenegroup["asset"], new_mesh)
+
+        if not scenegroup['groupid'] == '00000000-0000-0000-0000-000000000000':
+            parent = self.findWithUUID(scenegroup['groupid'])
+            if not parent:
+                # XXX should register
+                pass
+            else:
+                obj.parent = parent
+
         self.apply_position(obj, pos)
         self.apply_rotation(obj, parse_vector(scenegroup["rotation"]))
         self.apply_scale(obj, scale)
         self.set_uuid(obj, str(scenegroup["id"]))
+
 
         # new_mesh properties have to be set here otherwise blender
         # can crash!!
@@ -899,7 +940,10 @@ class Importer(ImporterBase):
                 new_mesh.materials = materials
         scene = self.get_current_scene()
         try:
-            scene.objects.link(obj)
+            if hasattr(obj, '_obj'):
+                scene.objects.link(obj._obj)
+            else:
+                scene.objects.link(obj)
         except RuntimeError:
             pass # object already in scene
         self.set_loading_state(obj, 'OK')
@@ -916,10 +960,10 @@ class Importer(ImporterBase):
         Import the given group into blender.
         """
         materials = []
-        if load_materials:
-           for material in scenegroup["materials"].keys():
+        if load_materials and "materials" in scenegroup:
+           for idx, material in enumerate(scenegroup["materials"].keys()):
                 if not material == "00000000-0000-0000-0000-000000000000":
-                    bmat = self.import_material(material, 10)
+                    bmat = self.import_material(material, idx, 10)
                     materials.append(bmat)
 
         try:
@@ -1038,6 +1082,10 @@ class Importer(ImporterBase):
         for groupid, scenegroup in scenedata['res'].items():
             getattr(self, action+"_group")(groupid, scenegroup, 10)
             self.queueRedraw('VIEW3D')
+
+    def _unapply_position(self, pos, offset_x=128.0, offset_y=128.0,
+                       offset_z=20.0):
+        return [pos[0]+offset_x, pos[1]+offset_y, pos[2]+offset_z]
 
     def _apply_position(self, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0):
