@@ -5,6 +5,7 @@ arriving in blocks.
 
 import bpy
 import random
+from b2rexpkg import editor
 
 class TerrainSync(object):
     lodlevels = [1,2,4,8,16]
@@ -15,7 +16,7 @@ class TerrainSync(object):
         self.nextcheck = 0
         self.terraindirty = False
         try:
-            self.terrain = bpy.data.objects["terrain"]
+            self.terrain = editor.data.objects["terrain"]
         except:
             self.terrain = self.create_terrain()
         #self.init_terrain()
@@ -75,8 +76,8 @@ class TerrainSync(object):
         """
         Creates the terrain mesh.
         """
-        mesh = bpy.data.meshes.new("terrain")
-        newobj = bpy.data.objects.new("terrain", mesh)
+        mesh = editor.data.meshes.new("terrain")
+        newobj = editor.data.objects.new("terrain", mesh)
         newobj.location = (0,0,-20)
 
 

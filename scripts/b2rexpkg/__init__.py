@@ -49,6 +49,7 @@ IMMEDIATE = 2
 if sys.version_info[0] == 2:
     import Blender
     from .b24 import hacks
+    from .b24 import editor
 else:
     from bpy.props import PointerProperty
     from .b25.ops import Connect, Export, Import, Settings, SetLogLevel, Redraw
@@ -63,6 +64,7 @@ else:
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.properties import B2RexImageProps, B2RexChatLine
     from .b25.app import B2Rex
+    from .b25 import editor
 
 import bpy
 
