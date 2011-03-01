@@ -109,6 +109,11 @@ class BaseApplication(Importer, Exporter):
 
     def registerModule(self, module):
         self._modules[module.getName()] = module
+        #module.setProperties(self.exportSettings)
+
+    def drawModules(self, layout, props):
+        for mod in self._modules.values():
+            mod.draw(layout, self, props)
 
     def add_callback(self, section, signal, callback, *parameters):
         self._callbacks[str(section)][str(signal)].append((callback, parameters))
@@ -860,10 +865,6 @@ class BaseApplication(Importer, Exporter):
             pass
 
         props = self.exportSettings
-        if props.next_chat:
-            self.simrt.Msg(props.next_chat)
-            props.next_chat = ""
-
         if props.kbytesPerSecond*1024 != self._lastthrottle:
             self.simrt.Throttle(props.kbytesPerSecond*1024)
 

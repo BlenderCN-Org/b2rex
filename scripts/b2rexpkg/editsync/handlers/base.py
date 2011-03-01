@@ -1,4 +1,4 @@
-
+import bpy
 
 class SyncModule(object):
     def __init__(self, parent):
@@ -17,4 +17,6 @@ class SyncModule(object):
     def register(self, parent):
         pass
     def unregister(self, parent):
+        pass
+    def draw(self, layout, session, props):
         pass

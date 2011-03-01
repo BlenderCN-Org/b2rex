@@ -6,8 +6,12 @@ from io import StringIO
 from ..siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
+
+# modules for b25
+from ..editsync.handlers.chat import ChatModule
 #from .properties import B2RexObjectProps
 #from .properties import B2RexProps
+
 from .material import RexMaterialIO
 
 from bpy.props import StringProperty, PointerProperty, IntProperty
@@ -25,6 +29,7 @@ class B2Rex(BaseApplication):
         self.region_report = ''
         self.cb_pixel = []
         BaseApplication.__init__(self)
+        self.registerModule(ChatModule(self))
 
     def onConnect(self, context):
         props = context.scene.b2rex_props
@@ -254,13 +259,6 @@ class B2Rex(BaseApplication):
         else:
             self.apply_rotation(obj, rot)
         self.rotations[objId] = list(obj.rotation_euler)
-
-    def processMsgCommand(self, username, message):
-        props = bpy.context.scene.b2rex_props
-        props.chat.add()
-        regionss = props.chat[-1]
-        regionss.name = username+" "+message
-        props.selected_chat = len(props.chat)-1
 
     def applyObjectProperties(self, obj, pars):
         for key, value in pars.items():

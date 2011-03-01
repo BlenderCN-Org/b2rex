@@ -62,24 +62,6 @@ class ConnectionPanel(bpy.types.Panel):
 
         box.label(text="Status: "+session.status)
 
-    def draw_chat(self, layout, session, props):
-        if not len(props.chat):
-            return
-        row = layout.column()
-        if props.chat_expand:
-            row.prop(props, 'chat_expand', icon="TRIA_DOWN", text="Chat")
-        else:
-            row.prop(props, 'chat_expand', icon="TRIA_RIGHT", text="Chat")
-            return
-
-        row = layout.row() 
-        row.label(text="Chat")
-        row = layout.row() 
-        row.template_list(props, 'chat', props, 'selected_chat',
-                          rows=5)
-        row = layout.row()
-        row.prop(props, 'next_chat')
-
     def draw_connections(self, layout, session, props):
         box = layout.box()
         row = box.row()
@@ -175,7 +157,7 @@ class ConnectionPanel(bpy.types.Panel):
         #self.draw_connection_panel(layout, session, props)
         self.draw_connections(layout, session, props)
 
-        self.draw_chat(layout, session, props)
+        session.drawModules(layout, props)
         self.draw_inventory(layout, session, props)
         self.draw_regions(layout, session, props)
 
