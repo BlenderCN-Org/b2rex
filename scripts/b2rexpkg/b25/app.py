@@ -19,9 +19,6 @@ from b2rexpkg import IMMEDIATE, ERROR
 
 import bpy
 
-class MyFancyObject(bpy.types.ID):
-    pass
-
 class B2Rex(BaseApplication):
     def __init__(self, context):
         self.credentials = PasswordManager('b2rex')
