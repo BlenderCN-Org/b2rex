@@ -91,11 +91,9 @@ class TerrainSync(object):
         for j in range(layersize):
             for i in range(layersize):
                 mesh.vertices[i + j*layersize].co = (i*f-off_x, j*f-off_y, 0)
-        print("create faces")
         faces = mesh.faces
         faces.add(layersize_f*layersize_f)
         for j in range(layersize_f):
-            print("face row", j)
             for i in range(layersize_f):
                 v1 = i + (j*layersize)
                 v2 = i + ((j+1)*layersize)
@@ -105,7 +103,6 @@ class TerrainSync(object):
                 f = faces[i + (j*layersize_f)]
                 f.use_smooth = True
                 f.vertices_raw = face
-        print("faces created")
 
         scene = self.app.get_current_scene()
         try:
