@@ -158,107 +158,10 @@ class ConnectionPanel(bpy.types.Panel):
         self.draw_connections(layout, session, props)
 
         session.drawModules(layout, props)
-        self.draw_inventory(layout, session, props)
         self.draw_regions(layout, session, props)
 
         self.draw_stats(layout, session, props)
         self.draw_settings(layout, session, props)
-
-    def draw_folder(self, folder_id, indent):
- 
-        props = bpy.context.scene.b2rex_props
-    
-        folders = dict()
-        items = dict()
-        if hasattr(bpy.types.B2RexProps, 'folders'):
-            folders = getattr(props, 'folders')
-
-        if hasattr(bpy.types.B2RexProps, '_items'):
-            items = getattr(props, '_items')
-
-        if not folder_id in folders:
-            return
-
-        folder = folders[folder_id]
-
-        session = bpy.b2rex_session
-        row = self.layout.row()
-
-        for i in range(indent):
-            row.separator()
-
-        if folder['Descendents'] > -1:
-            name = folder['Name'] + " (" + str(folder['Descendents']) + " children)"
-        elif folder['Descendents'] == 0:
-            name = folder['Name'] + " (empty)"
-        elif folder['Descendents'] == -1:
-            name = folder['Name'] + " (? children)"
-
-        folder_expand = "e_" +  str(folder_id).split('-')[0]
-        if hasattr(bpy.types.B2RexProps, folder_expand):
-            if folder['Descendents'] == 0: 
-                oper = row.operator('b2rex.folder', text=name, icon='RIGHTARROW_THIN', emboss=False)
-                oper.expand = False
-                return
-            if not getattr(props, folder_expand):
-                oper = row.operator('b2rex.folder', text=name, icon='TRIA_RIGHT', emboss=False)
-                oper.expand = True
-            else:
-                oper = row.operator('b2rex.folder', text=name, icon='TRIA_DOWN', emboss=False)
-                count = 0
-                for _id,_folder in folders.items():
-                    if _folder['ParentID'] == folder_id:
-                        count += 1
-                        self.draw_folder(_id, indent + 1) 
-                for i_if,item in items.items():
-                    if item['FolderID'] == folder_id:
-                        count += 1
-                        row = self.layout.row()
-                        for i in range(indent + 1):
-                            row.separator()
-                        if item['InvType'] == 6:
-                            row.label(text=item['Name'], icon='OBJECT_DATA')
-                            row.operator('b2rex.localview', text="", icon='MUTE_IPO_OFF', emboss=False).item_id=str(item['ItemID']) 
-                            row.operator('b2rex.rezobject', text="", icon='PARTICLE_DATA', emboss=False).item_id=str(item['ItemID']) 
-                            row.operator('b2rex.removeinventoryitem', text="", icon='ZOOMOUT', emboss=False).item_id=str(item['ItemID']) 
-                        else:
-                            row.label(text=item['Name'] + str(item['InvType']))
-      
-                
-                if count < folder['Descendents'] or folder['Descendents'] == -1:
-                    row = self.layout.row()
-                    for i in range(indent + 1):
-                        row.separator()
-                    row.label(text="Loading...")
-  
-                oper.expand = False
-
-            oper.folder_id = folder_id
-        else:
-            row.label(text="Loading.......")
-        
-    def draw_inventory(self, layout, session, props):
-        row = layout.column()
-        row.alignment = 'CENTER'
-        if not hasattr(session, 'inventory'):
-            return
-        if props.inventory_expand:
-            row.prop(props, 'inventory_expand', icon="TRIA_DOWN", text="Inventory")
-        else:
-            row.prop(props, 'inventory_expand', icon="TRIA_RIGHT", text="Inventory")
-            return
-            
-        try:
-            inventory = session.inventory
-        except:
-            row = layout.column()
-            row.label(text='Inventory not loaded')
-            return
-
-        
-        if hasattr(bpy.types.B2RexProps, "root_folder"): 
-            root_folder = getattr(props, "root_folder")
-            self.draw_folder(root_folder, 0)
 
     def draw_stats(self, layout, session, props):
         row = layout.row() 

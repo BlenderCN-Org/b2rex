@@ -102,13 +102,14 @@ class BaseApplication(Importer, Exporter):
         self._requested_urls = []
         self._agents = {}
         self._modules = {}
-        self.initializeModules()
         self.initializeCommands()
+        self.initializeModules()
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
     def registerModule(self, module):
         self._modules[module.getName()] = module
+        module.register(self)
         #module.setProperties(self.exportSettings)
 
     def drawModules(self, layout, props):
@@ -171,8 +172,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
-        for module in self._modules.values():
-            module.register(self)
 
     def processSimStats(self, X, Y, Flags, ObjectCapacity, *args):
         self.simstats = [X, Y, Flags, ObjectCapacity] + list(args)
