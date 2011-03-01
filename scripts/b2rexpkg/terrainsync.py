@@ -78,6 +78,7 @@ class TerrainSync(object):
         """
         mesh = editor.data.meshes.new("terrain")
         newobj = editor.data.objects.new("terrain", mesh)
+        newobj.draw_type = 'SOLID'
         newobj.location = (0,0,-20)
 
 
