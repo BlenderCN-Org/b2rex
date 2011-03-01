@@ -78,7 +78,7 @@ class Importer25(object):
         self._mesh_mat_idx_empty = []
         self._material_names = {}
     def import_submesh(self, meshId, new_mesh, vertex, vbuffer, indices, materialName,
-                       matIdx):
+                       matIdx, materials):
         """
         Import submesh info and fill blender face and vertex information.
         """
@@ -89,7 +89,6 @@ class Importer25(object):
         image = None
         uvco_offset = None
         stride = 0
-        #print(vertex_legend)
         for layer in vertex_legend.values():
             stride += type2size[layer[2]]
         if VES_TEXTURE_COORDINATES in vertex_legend:
@@ -117,6 +116,7 @@ class Importer25(object):
         if not len(new_mesh.vertices):
             logger.debug("mesh with no vertex!!")
             return
+
         start_face = len(new_mesh.faces)
         # faces
         new_mesh.faces.add(int(len(indices)/3))
@@ -160,63 +160,92 @@ class Importer25(object):
         """
         # UV
         materialPresent = False
-        if matIdx < len(new_mesh.materials):
-            material = new_mesh.materials[matIdx]
-            for slot in material.texture_slots:
-                if slot and slot.use_map_color_diffuse and slot.texture:
-                    tex = slot.texture
-                    if tex.type == 'IMAGE' and tex.image:
-                        materialPresent = True
 
         ogrematPresent = False
-        if materialName in self._imported_ogre_materials:
-            ogremat = self._imported_ogre_materials[materialName]
-            if ogremat.btex and ogremat.btex.image:
-                ogrematPresent = True
+        matId = ""
+        if matIdx < len(materials):
+            # look by id 
+            matId = str(materials[matIdx][1])
+            if matId in self._key_materials:
+                materialPresent = True
+            else:
+                materialPresent = False
+
+        if not matId:
+            # no matId, so try to find the material by name
+            if not materialPresent and matIdx < len(new_mesh.materials):
+                material = new_mesh.materials[matIdx]
+                for slot in material.texture_slots:
+                    if slot and slot.use_map_color_diffuse and slot.texture:
+                        tex = slot.texture
+                        if tex.type == 'IMAGE' and tex.image:
+                            materialPresent = True
+
+            if materialName in self._imported_ogre_materials:
+                 ogremat = self._imported_ogre_materials[materialName]
+                 if ogremat.btex and ogremat.btex.image:
+                       ogrematPresent = True
+
+            matId = 'unknown'
 
         if ogrematPresent or materialPresent:
             self.assign_submesh_images(materialName,
                                      vertex_legend, new_mesh, indices,
-                                     vbuffer, uvco_offset, start_face, matIdx)
+                                     vbuffer, uvco_offset, start_face, matIdx,
+                                       matId)
         elif not uvco_offset:
             return
-        else:
-            self.add_material_callback((meshId, matIdx), materialName, self.assign_submesh_images,
+        elif matId:
+            self.add_material_callback(matId, materialName, self.assign_submesh_images,
                                      vertex_legend, new_mesh, indices,
-                                     vbuffer, uvco_offset, start_face, matIdx)
+                                     vbuffer, uvco_offset, start_face, matIdx,
+                                       matId)
 
     
+
+    def find_diffuse_image(self, material):
+        if not material:
+            return
+        for slot in material.texture_slots:
+            if slot and slot.use_map_color_diffuse and slot.texture:
+                tex = slot.texture
+                if tex.type == 'IMAGE' and tex.image:
+                    image = tex.image
+                    return image
+
     def assign_submesh_images(self, materialName, vertex_legend, new_mesh,
-                              indices, vbuffer, uvco_offset, start_face, matIdx):
+                              indices, vbuffer, uvco_offset, start_face, matIdx,
+                             matId):
         #bmat = self._imported_materials[materialName]
         image = None
-        if materialName in self._imported_ogre_materials:
-            ogremat = self._imported_ogre_materials[materialName]
-            bmat = self.find_with_uuid(ogremat.uuid, bpy.data.materials,
-                                          'materials')
-            if bmat:
-                #if len(new_mesh.materials) > matIdx:
-                    #new_mesh.materials.insert(matIdx, self._imported_assets[ogremat.uuid])
-                    #else:
-                # XXX maybe wrong order
-                #bmat = self._imported_assets[ogremat.uuid]
-                if not bmat.name in new_mesh.materials:
-                    new_mesh.materials.append(bmat)
-                    #new_mesh.materials.append(self._imported_assets[ogremat.uuid])
-            if ogremat.btex and ogremat.btex.image:
-                image = ogremat.btex.image
+        material = None
+        if matId == 'unknown':
+            matId = None
+
+        if matId:
+            material = self.find_with_uuid(matId, bpy.data.materials, 'materials')
+            image = self.find_diffuse_image(material)
+        if not image:
+            # we didnt find the material by uuid so lets look by name
+            if materialName in self._imported_ogre_materials:
+                ogremat = self._imported_ogre_materials[materialName]
+                if ogremat.btex and ogremat.btex.image:
+                    image = ogremat.btex.image
+                else:
+                    material = self.find_with_uuid(ogremat.uuid, bpy.data.materials,
+                                              'materials')
+                    image = self.find_diffuse_image(material)
         if not image and matIdx < len(new_mesh.materials):
+            # still didn't find it, try by material idx in the mesh
             material = new_mesh.materials[matIdx]
-            for slot in material.texture_slots:
-                if slot and slot.use_map_color_diffuse and slot.texture:
-                    tex = slot.texture
-                    if tex.type == 'IMAGE' and tex.image:
-                        image = tex.image
-                        break
-                        
+            image = self.find_diffuse_image(material)
+        if not image:
+            # shoudln't happen
+            logger.warning("ASSIGN IMAGES BUT NO IMAGE!!!!! "+matId+" "+materialName)
+        if material and not material.name in new_mesh.materials:
+            # should be set ordered or be there since before
+            new_mesh.materials.append(material)
         if VES_TEXTURE_COORDINATES in vertex_legend:
-            if image:
-                logger.debug("setting image on material")
             if not len(new_mesh.uv_textures):
                 uvtex = new_mesh.uv_textures.new()
                 new_mesh.uv_textures.active = uvtex
@@ -229,7 +258,7 @@ class Importer25(object):
                 uv3 = get_uv(indices[fidx+2], vbuffer, uvco_offset)
 
                 if start_face+idx > len(uvtex.data):
-                    print("insufficient faces in uvtex????")
+                    logger.warning("insufficient faces in uvtex????")
                 blender_tface = uvtex.data[start_face+idx]
                 blender_tface.uv1 = uv1
                 blender_tface.uv2 = uv2
@@ -561,7 +590,6 @@ class Importer(ImporterBase):
         self._material_cb = defaultdict(list)
         self._mesh_cb = defaultdict(list)
         self._key_materials = {}
-        self._name_materials = {}
         self._texture_callbacks = defaultdict(list)
         ImporterBase.__init__(self)
         self.gridinfo = gridinfo
@@ -596,9 +624,11 @@ class Importer(ImporterBase):
             self._mesh_cb.pop(meshId)
 
     def add_material_callback(self, key, materialName, cb, *args):
-        if materialName in self._name_materials:
-            cb(materialName, *args)
-            return
+        if materialName in self._imported_ogre_materials:
+            ogremat = self._imported_ogre_materials[materialName]
+            if ogremat.btex and ogremat.btex.image:
+                cb(materialName, *args)
+                return
         if key in self._key_materials:
             ogremat = self._key_materials[key]
             ogremat.name = materialName
@@ -608,29 +638,31 @@ class Importer(ImporterBase):
         self._material_cb[key].append([cb, materialName, args])
 
     def trigger_material_callbacks(self, slot, ogremat, matIdx):
-        materialName = ""
-        for cb, materialName, args in self._material_cb[slot]:
-            ogremat.name = materialName # hack
+        materialNames = set()
+        for cb, _materialName, args in self._material_cb[slot]:
+            ogremat.name = _materialName # hack
             self._imported_ogre_materials[ogremat.name] = ogremat # XXX hack
-            cb(materialName, *args)
+            cb(_materialName, *args)
+            materialNames.add(_materialName)
         if slot in self._material_cb:
             self._material_cb.pop(slot)
         # add to slot - mat dict
         self._key_materials[slot] = ogremat
-        if not materialName:
-            # we dont have a slot yet because the mesh didnt load
-            return
-        self._name_materials[materialName] = ogremat.uuid
+        materialNames.add(ogremat.name)
+        for materialName in materialNames:
+             self._imported_ogre_materials[materialName] = ogremat # XXX hack
         # now look for all cbs having materialName and trigger them too
-        found_slots = []
         for slot, pars in self._material_cb.items():
             found = False
+            idx = 0
+            found_slots = []
             for cb, _materialName, args in pars:
-                if _materialName == materialName:
-                    cb(materialName, *args)
-                    found_slots.append(slot)
-        for slot in found_slots:
-            self._material_cb.pop(slot)
+                if _materialName in materialNames:
+                    cb(_materialName, *args)
+                    found_slots.append((slot, idx))
+                idx += 1
+            for slot, idx in reversed(found_slots):
+                self._material_cb[slot].pop(idx)
 
     def doTextureDownloadTranscode(self, pars):
         http_url, pars, data = pars
@@ -800,8 +832,8 @@ class Importer(ImporterBase):
                 new_slot.texture = btex
                 new_slot.texture_coords = 'ORCO'
             if mapto in ['use_map_color_diffuse', 'COL']:
-                self.trigger_material_callbacks((meshId,matIdx), ogremat,
-                                                mat_name)
+                self.trigger_material_callbacks(self.get_uuid(bmat), ogremat,
+                                                matIdx)
 
 
 
@@ -845,6 +877,7 @@ class Importer(ImporterBase):
         ogremat = OgreMaterial(mat)
         ogremat.btex = None
         ogremat.uuid = matId
+        self._imported_ogre_materials[ogremat.name] = ogremat
         bmat = self.create_blender_material(ogremat, mat, meshId, matIdx)
         #self._imported_assets[matId] = bmat
 
@@ -859,8 +892,12 @@ class Importer(ImporterBase):
         if not asset["type"] == str(AssetType.OgreMesh):
             logger.debug("("+asset["type"]+")")
             return
+        materials = []
+        if "materials" in scenegroup:
+            materials = scenegroup["materials"]
         mesh = self.create_mesh_frombinary(scenegroup["asset"], asset["name"], asset["data"])
-        return self.create_mesh_fromomesh(scenegroup["asset"], asset["name"], mesh)
+        return self.create_mesh_fromomesh(scenegroup["asset"], asset["name"],
+                                          mesh, materials)
 
     def doMeshDownloadTranscode(self, pars):
         http_url, pars, data = pars
@@ -898,7 +935,8 @@ class Importer(ImporterBase):
         self._imported_assets[meshId] = new_mesh
         idx = 0
         for vertex, vbuffer, indices, materialName in mesh:
-            self.import_submesh(meshId, new_mesh, vertex, vbuffer, indices, materialName, idx)
+            self.import_submesh(meshId, new_mesh, vertex, vbuffer, indices,
+                                materialName, idx, materials)
             idx += 1
         return new_mesh
 
