@@ -159,8 +159,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
-        self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
-        self.registerCommand('InventoryDescendents', self.processInventoryDescendents)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
@@ -208,13 +206,6 @@ class BaseApplication(Importer, Exporter):
 
     def processRegionHandshake(self, regionID, pars):
         print("REGION HANDSHAKE", pars)
-
-    def processInventoryDescendents(self, folder_id, folders, items):
-        pass
-        
-
-    def processInventorySkeleton(self, inventory):
-        pass
 
     def processCoarseLocationUpdate(self, agent_id, pos):
         #print("COARSE LOCATION UPDATE", agent_id, pos)
