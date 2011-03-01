@@ -91,19 +91,27 @@ class TerrainSync(object):
         for j in range(layersize):
             for i in range(layersize):
                 mesh.vertices[i + j*layersize].co = (i*f-off_x, j*f-off_y, 0)
-        mesh.faces.add(layersize_f*layersize_f)
+        print("create faces")
+        faces = mesh.faces
+        faces.add(layersize_f*layersize_f)
         for j in range(layersize_f):
+            print("face row", j)
             for i in range(layersize_f):
                 v1 = i + (j*layersize)
                 v2 = i + ((j+1)*layersize)
                 v3 = i+1 + ((j+1)*layersize)
                 v4 = i+1 + (j*layersize)
                 face = [v1, v4, v3, v2]
-                mesh.faces[i + (j*layersize_f)].use_smooth = True
-                mesh.faces[i + (j*layersize_f)].vertices_raw = face
+                f = faces[i + (j*layersize_f)]
+                f.use_smooth = True
+                f.vertices_raw = face
+        print("faces created")
 
         scene = self.app.get_current_scene()
-        scene.objects.link(newobj)
+        try:
+            scene.objects.link(newobj)
+        except:
+            scene.objects.link(newobj._obj)
         newobj.lock_location = (True, True, True)
         newobj.lock_scale = (True, True, True)
         newobj.lock_rotation = (True, True, True)
@@ -134,7 +142,7 @@ class TerrainSync(object):
         Checks to see if given patch changed by calculating
         a checksum.
         """
-        mesh = bpy.data.objects["terrain"].data
+        mesh = editor.data.objects["terrain"].data
         lod = self.lodlevels[self.lod]
         fullpatchsize = 16
         patchsize = int(fullpatchsize/lod)
@@ -221,7 +229,7 @@ class TerrainSync(object):
         off_y = y*patchsize
         layersize = patchsize*self.nblocks
         layersize_f = layersize -1
-        mesh = bpy.data.objects["terrain"].data
+        mesh = editor.data.objects["terrain"].data
         checksum = 0.0
         ls_f2 = layersize_f*layersize_f
         vertices = mesh.vertices

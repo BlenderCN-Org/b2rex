@@ -31,6 +31,7 @@ priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props', 'scale']
 if sys.version_info[0] == 3:
         import urllib.request as urllib2
 else:
+        import Blender
         import urllib2
 
 
@@ -364,7 +365,7 @@ class BaseApplication(Importer, Exporter):
             #region_name = self.regions[region_uuid]['name']
             region_name = 'last'
             firstline = 'Blender '+ self.getBlenderVersion()
-            username, password = self.credentials.get_credentials(server_url,
+            username, password = credentials.get_credentials(server_url,
                                                                   pars.username)
             if props.agent_libs_path:
                 os.environ['SIMRT_LIBS_PATH'] = props.agent_libs_path
@@ -427,6 +428,7 @@ class BaseApplication(Importer, Exporter):
                 cmdHandler(*args)
             except Exception as e:
                 print("Error executing", cmd, e)
+                traceback.print_exc()
 
     def processCapabilities(self, caps):
         self.caps = caps
@@ -660,7 +662,13 @@ class BaseApplication(Importer, Exporter):
         self.set_uuid(new_mesh, meshId)
         scene = self.get_current_scene()
         if not obj.name in scene.objects:
-            scene.objects.link(obj)
+            if hasattr(obj, '_obj'):
+                try:
+                    scene.objects.link(obj._obj)
+                except:
+                    pass # XXX :-P
+            else:
+                scene.objects.link(obj)
             new_mesh.update()
         self.trigger_callback('object.precreate', str(objId))
 
@@ -922,6 +930,8 @@ class BaseApplication(Importer, Exporter):
         self.stats[7] = threading.activeCount()-1
 
     def checkTerrain(self, starttime, timebudget):
+        if not sys.version_info[0] == 3:
+            return
         updated_blocks = []
 
         if bpy.context.mode == 'EDIT_MESH' or bpy.context.mode == 'SCULPT':

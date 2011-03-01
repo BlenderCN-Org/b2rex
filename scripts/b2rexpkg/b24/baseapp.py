@@ -1,6 +1,7 @@
 import traceback
 
 from .settings import ExportSettings
+from .editor import EditorObject
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 
@@ -127,7 +128,7 @@ class Base24Application(Screen, BaseApplication):
         return str(Blender.Get('version'))
 
     def getSelected(self):
-        return Blender.Object.GetSelected()
+        return map(lambda s: EditorObject(s), Blender.Object.GetSelected())
 
     def queueRedraw(self, pars=None):
         if pars:

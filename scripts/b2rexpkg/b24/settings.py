@@ -32,10 +32,12 @@ class ExportSettings:
         self.regenTextures = False
         self.regenMeshes = False
         self.kbytesPerSecond = 100
+        self.agent_libs_path = ""
         self.pool_workers = 5
         self.rt_budget = 20
+        self.next_chat = ""
         self.rt_sec_budget = 500
-        self.terrainLOD = 0
+        self.terrainLOD = 1
         self.load()
         return
 

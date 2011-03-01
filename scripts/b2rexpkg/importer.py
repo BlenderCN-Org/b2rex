@@ -21,6 +21,7 @@ if sys.version_info[0] == 2:
     from urllib2 import HTTPError, URLError
     from urllib import urlretrieve
     from Blender import Mathutils as mathutils
+    from .b24.editor import EditorObject, EditorMesh
     bversion = 2
     def bytes(text):
         return text
@@ -73,7 +74,6 @@ class Importer25(object):
     def __init__(self):
         self._mesh_mat_idx_empty = []
         self._material_names = {}
-        self._texture_callbacks = defaultdict(list)
     def import_submesh(self, meshId, new_mesh, vertex, vbuffer, indices, materialName,
                        matIdx):
         """
@@ -335,6 +335,32 @@ class Importer25(object):
         obj.lock_rotations_4d = val
         obj.lock_rotation_w = val
 
+    def _apply_rotation(self, rot):
+        b_q = mathutils.Quaternion((rot[3], rot[0], rot[1],
+                                           rot[2]))
+        r = 1.0
+        b_q = mathutils.Quaternion((b_q.w, b_q.x, b_q.y, b_q.z))
+        euler = b_q.to_euler()
+        return (euler[0]*r, euler[1]*r, (euler[2])*r)
+
+    def find_with_uuid(self, groupid, objects, section):
+        """
+        Find the object with the given uuid.
+        """
+        if groupid in self._total[section]:
+            # we get the objects by name to avoid memory corruption issues,
+            # but we're not checking if the names change!
+            return objects[self._total[section][groupid]]
+        else:
+            for obj in objects:
+                obj_uuid = self.get_uuid(obj)
+                if obj_uuid:
+                    self._total[section][obj_uuid] = obj.name
+                    if obj_uuid == groupid:
+                        return obj
+
+
+
 class Importer24(object):
     def import_submesh(self, meshId, new_mesh, vertex, vbuffer, indices, materialName,
                        matIdx):
@@ -455,7 +481,7 @@ class Importer24(object):
         obj = self.find_with_uuid(obj_uuid, bpy.data.objects,
                              "objects")
         if not obj:
-            obj = Blender.Object.New("Mesh", name)
+            obj = self.wrap_object(Blender.Object.New("Mesh", name), 'objects')
         obj.link(mesh_data)
         return obj
 
@@ -465,6 +491,31 @@ class Importer24(object):
 
     def set_immutable(self, obj, val):
         pass
+
+    def wrap_object(self, obj, section):
+        if section == 'objects':
+           return EditorObject(obj)
+        elif section == 'meshes':
+            return EditorMesh(obj)
+        else:
+            return obj
+
+    def find_with_uuid(self, groupid, objects, section):
+        """
+        Find the object with the given uuid.
+        """
+        if groupid in self._total[section]:
+            # we get the objects by name to avoid memory corruption issues,
+            # but we're not checking if the names change!
+            return self.wrap_object(objects[self._total[section][groupid]],
+                                    section)
+        else:
+            for obj in objects:
+                obj_uuid = self.get_uuid(obj)
+                if obj_uuid:
+                    self._total[section][obj_uuid] = obj.name
+                    if obj_uuid == groupid:
+                        return self.wrap_object(obj, section)
 
 
 # Common
@@ -479,6 +530,7 @@ class Importer(ImporterBase):
         self._mesh_cb = defaultdict(list)
         self._key_materials = {}
         self._name_materials = {}
+        self._texture_callbacks = defaultdict(list)
         ImporterBase.__init__(self)
         self.gridinfo = gridinfo
         self.init_structures()
@@ -911,7 +963,7 @@ class Importer(ImporterBase):
         """
         if not "opensim" in obj.properties:
             obj.properties["opensim"] = {}
-        obj.properties["opensim"]["uuid"] = obj_uuid
+        obj.properties["opensim"]["uuid"] = str(obj_uuid)
 
     def set_loading_state(self, obj, value):
         """
@@ -920,22 +972,6 @@ class Importer(ImporterBase):
         if not "opensim" in obj.properties:
             obj.properties["opensim"] = {}
         obj.properties["opensim"]["state"] = value
-
-    def find_with_uuid(self, groupid, objects, section):
-        """
-        Find the object with the given uuid.
-        """
-        if groupid in self._total[section]:
-            # we get the objects by name to avoid memory corruption issues,
-            # but we're not checking if the names change!
-            return objects[self._total[section][groupid]]
-        else:
-            for obj in objects:
-                obj_uuid = self.get_uuid(obj)
-                if obj_uuid:
-                    self._total[section][obj_uuid] = obj.name
-                    if obj_uuid == groupid:
-                        return obj
 
     def check_group(self, groupid, scenegroup):
         """
@@ -1004,15 +1040,6 @@ class Importer(ImporterBase):
     def _apply_position(self, pos, offset_x=128.0, offset_y=128.0,
                        offset_z=20.0):
         return (pos[0]-offset_x, pos[1]-offset_y, pos[2]-offset_z)
-
-    def _apply_rotation(self, rot):
-        b_q = mathutils.Quaternion((rot[3], rot[0], rot[1],
-                                           rot[2]))
-        r = 1.0
-        b_q = mathutils.Quaternion((b_q.w, b_q.x, b_q.y, b_q.z))
-        euler = b_q.to_euler()
-        return (euler[0]*r, euler[1]*r, (euler[2])*r)
-
 
 if __name__ == '__main__':
     base_url = "http://127.0.0.1:9000"
