@@ -9,14 +9,6 @@ import b2rexpkg
 from b2rexpkg.b25.ops import getLogLabel
 #from ..properties import B2RexProps
 
-simstats_labels = ["X", "Y", "Flags", "ObjectCapacity", "TimeDilation",
-                   "SimFPS", "PhysicsFPS", "AgentUpdates", "Agents",
-                   "ChildAgents", "TotalPrim", "ActivePrim", "FrameMS", "NetMS",
-                  "PhysicsMS", "ImageMS", "OtherMS", "InPacketsPerSecond",
-                   "OutPacketsPerSecond", "UnAckedBytes", "AgentMS",
-                   "PendingDownloads", "PendingUploads", "ActiveScripts",
-                   "ScriptLinesPerSecond"]
-
 class ConnectionPanel(bpy.types.Panel):
     bl_label = "b2rex" #baseapp.title
     #bl_space_type = "VIEW_3D"
@@ -160,31 +152,7 @@ class ConnectionPanel(bpy.types.Panel):
         session.drawModules(layout, props)
         self.draw_regions(layout, session, props)
 
-        self.draw_stats(layout, session, props)
         self.draw_settings(layout, session, props)
-
-    def draw_stats(self, layout, session, props):
-        row = layout.row() 
-        if props.show_stats:
-            row.prop(props,"show_stats", icon="TRIA_DOWN", text="Stats",
-                     emboss=True)
-            box = layout.box()
-            if session.simrt:
-                if session.agent_id:
-                    box.label(text="agent: "+session.agent_id+" "+session.agent_access)
-
-            box.label(text="cmds in: %d out: %d updates: %d"%tuple(session.stats[:3]))
-            box.label(text="http requests: %d ok: %d"%tuple(session.stats[3:5]))
-            box.label(text="queue pending: %d last time: %d"%tuple(session.stats[5:7])+" last sec: "+str(session.second_budget))
-            box.label(text="threads workers: "+str(session.stats[7]))
-            box.label(text="updates cmd: %d view: %d"%tuple(session.stats[8:10]))
-            if session.simstats:
-                for idx, a in enumerate(session.simstats):
-                    box.label(text=simstats_labels[idx]+": "+str(a))
-        else:
-            row.prop(props,"show_stats", icon="TRIA_RIGHT", text="Stats",
-                     emboss=True)
-
 
     def draw_settings(self, layout, session, props):
         row = layout.row()

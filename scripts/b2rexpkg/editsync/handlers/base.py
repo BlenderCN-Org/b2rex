@@ -11,7 +11,11 @@ class SyncModule(object):
     def setProperties(self, props):
         self._props = props
     def onToggleRt(self, enabled):
-        pass
+        self._props = self._parent.exportSettings
+        if enabled:
+            self.simrt = self._parent.simrt
+        else:
+            self.simrt = None
     def check(self, starttime, budget):
         pass
     def register(self, parent):

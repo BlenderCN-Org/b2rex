@@ -14,6 +14,7 @@ from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 from b2rexpkg import editor
 from .editsync.handlers.terrain import TerrainModule
+from .editsync.handlers.stats import StatsModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
@@ -80,7 +81,6 @@ class BaseApplication(Importer, Exporter):
         self._requested_llassets = {}
         self.rawselected = set()
         self.caps = {}
-        self.simstats = None
         self.agent_id = ""
         self.loglevel = "standard"
         self.agent_access = ""
@@ -141,6 +141,7 @@ class BaseApplication(Importer, Exporter):
 
     def initializeModules(self):
         self.registerModule(TerrainModule(self))
+        self.registerModule(StatsModule(self))
 
     def initializeCommands(self):
         self._cmd_matrix = {}
@@ -160,7 +161,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         self.registerCommand('InventoryDescendents', self.processInventoryDescendents)
-        self.registerCommand('SimStats', self.processSimStats)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
@@ -172,9 +172,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
-
-    def processSimStats(self, X, Y, Flags, ObjectCapacity, *args):
-        self.simstats = [X, Y, Flags, ObjectCapacity] + list(args)
 
     def processOnlineNotification(self, agentID):
         self._agents[agentID] = agentID
