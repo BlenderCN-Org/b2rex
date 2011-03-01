@@ -9,19 +9,17 @@ import base64
 from hashlib import md5
 from collections import defaultdict
 
-from .terrainsync import TerrainSync
-
 import b2rexpkg
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 from b2rexpkg import editor
+from .editsync.handlers.terrain import TerrainModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
 from .importer import Importer
 from .exporter import Exporter
 from .simconnection import SimConnection
-from .tools.terraindecoder import TerrainDecoder, TerrainEncoder
 
 from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
 
@@ -104,9 +102,14 @@ class BaseApplication(Importer, Exporter):
         self.settings_visible = False
         self._requested_urls = []
         self._agents = {}
+        self._modules = {}
+        self.initializeModules()
         self.initializeCommands()
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
+
+    def registerModule(self, module):
+        self._modules[module.getName()] = module
 
     def add_callback(self, section, signal, callback, *parameters):
         self._callbacks[str(section)][str(signal)].append((callback, parameters))
@@ -131,6 +134,9 @@ class BaseApplication(Importer, Exporter):
     def unregisterCommand(self, cmd):
         del self._cmd_matrix[cmd]
 
+    def initializeModules(self):
+        self.registerModule(TerrainModule(self))
+
     def initializeCommands(self):
         self._cmd_matrix = {}
         self.registerCommand('pos', self.processPosCommand)
@@ -140,7 +146,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('delete', self.processDeleteCommand)
         self.registerCommand('msg', self.processMsgCommand)
         self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
-        self.registerCommand('LayerData', self.processLayerData)
         self.registerCommand('AssetArrived', self.processAssetArrived)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
@@ -151,7 +156,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         self.registerCommand('InventoryDescendents', self.processInventoryDescendents)
         self.registerCommand('SimStats', self.processSimStats)
-        self.registerCommand('LayerDataDecoded', self.processLayerDataDecoded)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
@@ -163,6 +167,8 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
+        for module in self._modules.values():
+            module.register(self)
 
     def processSimStats(self, X, Y, Flags, ObjectCapacity, *args):
         self.simstats = [X, Y, Flags, ObjectCapacity] + list(args)
@@ -202,23 +208,6 @@ class BaseApplication(Importer, Exporter):
 
     def processRegionHandshake(self, regionID, pars):
         print("REGION HANDSHAKE", pars)
-
-    def processLayerData(self, layerType, b64data):
-        self.workpool.addRequest(self.decodeTerrainBlock, [b64data],
-                             self.terrainDecoded, self.default_error_db)
-
-
-    def decodeTerrainBlock(self, b64data):
-        data = base64.urlsafe_b64decode(b64data.encode('ascii'))
-        terrpackets = TerrainDecoder.decode(data)
-        return terrpackets
- 
-    def terrainDecoded(self, request, terrpackets):
-        for header, layer in terrpackets:
-            self.command_queue.append(['LayerDataDecoded', header, layer])
-
-    def processLayerDataDecoded(self, header, layer):
-        self.terrain.apply_patch(layer, header.x, header.y)
 
     def processInventoryDescendents(self, folder_id, folders, items):
         pass
@@ -355,8 +344,6 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = False
             self.simrt = None
         else:
-            if not self.terrain:
-                self.terrain = TerrainSync(self, self.exportSettings.terrainLOD)
             if sys.version_info[0] == 3:
                 pars = self.exportSettings.getCurrentConnection()
                 server_url = pars.url
@@ -418,6 +405,9 @@ class BaseApplication(Importer, Exporter):
             if not context:
                 Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
             self.rt_on = True
+
+        for mod in self._modules.values():
+            mod.onToggleRt(self.rt_on)
 
     def redraw(self):
         if b2rexpkg.safe_mode:
@@ -888,7 +878,8 @@ class BaseApplication(Importer, Exporter):
             self.second_start = time.time()
 
         # we really dont want to miss some terrain editing.
-        self.checkTerrain(starttime, framebudget)
+        for module in self._modules.values():
+            module.check(starttime, framebudget)
         self.checkObjects()
 
         # process command queue
@@ -957,42 +948,7 @@ class BaseApplication(Importer, Exporter):
         self.stats[6] = (currbudget)*1000 # processed
         self.stats[7] = threading.activeCount()-1
 
-    def checkTerrain(self, starttime, timebudget):
-        if not sys.version_info[0] == 3:
-            return
-        updated_blocks = []
-
-        if bpy.context.mode == 'EDIT_MESH' or bpy.context.mode == 'SCULPT':
-            if bpy.context.scene.objects.active:
-                if bpy.context.scene.objects.active.name == 'terrain':
-                    self.terrain.set_dirty()
-        elif self.terrain.is_dirty():
-            while self.terrain.is_dirty() and time.time() - starttime < timebudget:
-                updated_blocks.extend(self.terrain.check())
-
-        if updated_blocks:
-            self.sendTerrainBlocks(updated_blocks)
-
-        if self.terrain.is_dirty() or updated_blocks:
-            self.queueRedraw()
-
-    def sendTerrainBlocks(self, updated_blocks):
-        self.workpool.addRequest(self.encodeTerrainBlock, updated_blocks,
-                             self.terrainEncoded, self.default_error_db)
-
-
-    def encodeTerrainBlock(self, args):
-        datablock, x, y = args
-        bindata = TerrainEncoder.encode([[datablock, x, y]])
-        b64data = base64.urlsafe_b64encode(bindata).decode('ascii')
-        # send directly from the thread
-        self.simrt.LayerData(x, y, b64data)
-        return True
-
-    def terrainEncoded(self, request, result):
-        if result:
-            pass
-
+    # Checks
     def checkUuidConsistency(self, selected):
         # look for duplicates
         if self.rawselected == selected:
