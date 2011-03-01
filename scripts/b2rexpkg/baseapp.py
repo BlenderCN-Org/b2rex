@@ -13,9 +13,11 @@ import b2rexpkg
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 from b2rexpkg import editor
-from .editsync.handlers.terrain import TerrainModule
+
 from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
+from .editsync.handlers.online import OnlineModule
+from .editsync.handlers.terrain import TerrainModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
@@ -102,6 +104,7 @@ class BaseApplication(Importer, Exporter):
         self._requested_urls = []
         self._agents = {}
         self._modules = {}
+        self._module_checks = []
         self.initializeCommands()
         self.initializeModules()
         Importer.__init__(self, self.gridinfo)
@@ -144,6 +147,7 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(TerrainModule(self))
         self.registerModule(StatsModule(self))
         self.registerModule(AssetModule(self))
+        self.registerModule(OnlineModule(self))
 
     def initializeCommands(self):
         self._cmd_matrix = {}
