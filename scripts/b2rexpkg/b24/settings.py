@@ -11,6 +11,7 @@ from ogredotscene import BoundedValueModel
 from b2rexpkg.tools.passmanager import PasswordManager
 
 #from ogredotscene import BoundedValueModel
+
 class ExportSettings:
     """Global export settings.
     """
@@ -30,8 +31,14 @@ class ExportSettings:
         self.regenObjects = False
         self.regenTextures = False
         self.regenMeshes = False
+        self.kbytesPerSecond = 100
+        self.pool_workers = 5
+        self.rt_budget = 20
+        self.rt_sec_budget = 500
+        self.terrainLOD = 0
         self.load()
         return
+
     def getLocX(self):
         """Get x offset
         """

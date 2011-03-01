@@ -45,8 +45,6 @@ class B2Rex(BaseApplication):
 #            regionss.description = region['id']
 
     def onCheck(self, context):
-        self.onTest(context)
-        return
         props = context.scene.b2rex_props
         self.exportSettings = props
         self.region_uuid = list(self.regions.keys())[props.selected_region]
@@ -57,7 +55,7 @@ class B2Rex(BaseApplication):
         props = context.scene.b2rex_props
         current = context.active_object
         if current:
-            session = bpy.b2rex_session.doExportMaterials(current)
+            session = bpy.b2rex_session.doExportMaterials(current, cb=print)
             return
             for mat in current.data.materials:
                 face = None

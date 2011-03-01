@@ -17,8 +17,12 @@ from pyogp.lib.base.datatypes import UUID, Vector3, Quaternion
 from pyogp.lib.base.message.message import Message, Block
 from pyogp.lib.client.namevalue import NameValueList
 
-from ..tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
-from ..tools import unpack_v3, unpack_q, b_to_s, prepare_server_name
+try:
+    from ..tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
+    from ..tools import unpack_v3, unpack_q, b_to_s, prepare_server_name
+except:
+    from b2rexpkg.rt.tools import v3_to_list, q_to_list, uuid_combine, uuid_to_s
+    from b2rexpkg.rt.tools import unpack_v3, unpack_q, b_to_s, prepare_server_name
 
 from .base import Handler
 

@@ -12,14 +12,15 @@ import eventlet
 from eventlet import api
 from eventlet import Queue
 
+simrt_path = os.path.dirname(os.path.realpath(__file__))
 if __name__ == '__main__':
-    simrt_path = os.path.dirname(os.path.realpath(__file__))
     sys.path.append(os.path.join(simrt_path))
-    sys.path.append(os.path.join(simrt_path, 'tools'))
+sys.path.append(os.path.join(simrt_path, 'tools'))
 try:
     from jsonsocket import JsonSocket
 except:
     from b2rexpkg.tools.jsonsocket import JsonSocket
+    from b2rexpkg import rt
 
 # pyogp
 from pyogp.lib.base.exc import LoginError

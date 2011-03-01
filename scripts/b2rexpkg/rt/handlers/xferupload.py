@@ -5,7 +5,10 @@ from pyogp.lib.base.datatypes import UUID
 from pyogp.lib.base.message.message import Message, Block
 
 from .base import Handler
-from ..tools import uuid_combine
+try:
+    from ..tools import uuid_combine
+except:
+    from b2rexpkg.rt.tools import uuid_combine
 
 class XferUploader(object):
     def __init__(self, data, cb):

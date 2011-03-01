@@ -351,7 +351,7 @@ class BaseApplication(Importer, Exporter):
             if not self.terrain:
                 self.terrain = TerrainSync(self, self.exportSettings.terrainLOD)
             if sys.version_info[0] == 3:
-                pars = self.exportSettings.connection.list[self.exportSettings.connection.search]
+                pars = self.exportSettings.getCurrentConnection()
                 server_url = pars.url
                 credentials = self.credentials
             else:

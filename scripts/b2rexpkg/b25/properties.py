@@ -120,6 +120,8 @@ class B2RexProps(bpy.types.IDPropertyGroup):
                                  name='Chat',
                                  description='Chat with the server')
     connection = PointerProperty(type=B2RexConnections, name="Connections")
+    def getCurrentConnection(self):
+        return self.connection.list[self.connection.search]
     selected_chat = IntProperty(default=-1, description="Expand, to display")
     next_chat = StringProperty(name='next_chat',
                               default='',

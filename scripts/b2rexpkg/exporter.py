@@ -210,7 +210,7 @@ class Exporter(object):
         return material.opensim.uuid
 
 
-    def doExportMaterials(self, obj, cb=print):
+    def doExportMaterials(self, obj, cb):
         mesh = obj.data
         faces = self._getFaceRepresentatives(mesh)
         materials = []
