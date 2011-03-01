@@ -52,6 +52,7 @@ if sys.version_info[0] == 2:
     from .b24 import editor
 else:
     from bpy.props import PointerProperty
+    from .b25 import editor
     from .b25.ops import Connect, Export, Import, Settings, SetLogLevel, Redraw
     from .b25.ops import Upload, ExportUpload, Sync, Check, ProcessQueue
     from .b25.panels.main import ConnectionPanel
@@ -64,7 +65,6 @@ else:
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.properties import B2RexImageProps, B2RexChatLine
     from .b25.app import B2Rex
-    from .b25 import editor
 
 import bpy
 
