@@ -127,11 +127,15 @@ class Base24Application(Screen, BaseApplication):
     def getBlenderVersion(self):
         return str(Blender.Get('version'))
 
-    def queueRedraw(self, pars=None):
+    def queueRedraw(self, pars=None, immediate=False):
         if pars:
             Blender.Window.Redraw(Blender.Window.Types[pars])
-        else:
+        elif immediate:
             Blender.Window.QRedrawAll()
+        else:
+            info = Blender.Window.GetScreenInfo()
+            for win in info:
+                Blender.Window.QAdd(win['id'], Blender.Draw.REDRAW,0,1)
 
     def addCallbackButton(self, button_name, layout, tooltip=""):
         """

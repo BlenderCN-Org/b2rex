@@ -235,9 +235,12 @@ class BaseApplication(Importer, Exporter):
         print("CONNECTED AS", agent_id)
 
     def default_error_db(self, request, error):
-        if not error[1].code in [404]:
+        if hasattr(error[1], "code") and error[1].code in [404]:
+            pass
+        else:
             logger.warning("error downloading "+str(request)+": "+str(error))
-            print("error downloading "+str(request)+": "+str(error[1].code))
+            if hasattr(error[1], "code"):
+                print("error downloading "+str(request)+": "+str(error[1].code))
             traceback.print_tb(error[2])
 
     def processAssetArrived(self, assetId, b64data):

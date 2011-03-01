@@ -977,6 +977,7 @@ class Importer(ImporterBase):
                 sys.stderr.flush()
                 obj = self.import_object(scenegroup, new_mesh, materials, offset_x, offset_y,
                                          offset_z)
+                self.queueRedraw(immediate=True)
                 return obj
         except CONNECTION_ERRORS:
             if retries > 0:

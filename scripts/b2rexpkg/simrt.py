@@ -214,10 +214,8 @@ class AgentManager(object):
         """
         Receive Quit command from client, and ignore it for now.
         """
-        return # ignore
-        out_queue.put(["quit"])
-        client.logout()
-        return
+        self.out_queue.put(["quit"])
+        self.client.logout()
 
     def initialize_logger(self):
         """
@@ -315,6 +313,7 @@ def run_thread(context, server_url, login_params):
     """
     global running
     running = GreenletsThread(server_url, login_params)
+    running.daemon = True
     running.start()
     return running
 
