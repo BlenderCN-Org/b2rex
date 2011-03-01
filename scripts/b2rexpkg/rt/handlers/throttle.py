@@ -6,6 +6,7 @@ from .base import Handler
 
 class ThrottleHandler(Handler):
     bps = 100 * 1024  # bytes per second
+    _counter = 0
     def processThrottle(self, bps):
         if not bps == self.bps:
             self.bps = bps
@@ -26,14 +27,14 @@ class ThrottleHandler(Handler):
         data += struct.pack('<f', bps*0.25) # task
         data += struct.pack('<f', bps*0.26) # texture
         data += struct.pack('<f', bps*0.25) # asset
-        counter = 0
+        self._counter += 1
         packet = Message('AgentThrottle',
                         Block('AgentData',
                                 AgentID = client.agent_id,
                                 SessionID = client.session_id,
-                             CircuitCode = client.circuit_code),
+                             CircuitCode = client.region.circuit_code),
                         Block('Throttle',
-                              GenCounter=counter,
+                              GenCounter=self._counter,
                               Throttles=data))
         client.region.enqueue_message(packet)
 

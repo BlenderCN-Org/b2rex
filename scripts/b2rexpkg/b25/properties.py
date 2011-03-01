@@ -44,6 +44,7 @@ class B2RexBaseProps(bpy.types.IDPropertyGroup):
     uuid = StringProperty(name='uuid', default='', description='')
 
 class B2RexObjectProps(B2RexBaseProps):
+    name = StringProperty(name='name', default='Primitive', description='')
     uuid = StringProperty(name='uuid', default='', description='')
     state = EnumProperty(items=states, default='OFFLINE', description='')
     everyonemask_expand = BoolProperty(name='everyonemask_expand', default=False)

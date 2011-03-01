@@ -13,9 +13,14 @@ class RexDataHandler(Handler):
         self.manager.register_generic_handler('RexPrimData', self.onRexPrimData)
 
     def onRexPrimData(self, packet):
-        rexdata = packet[1]["Parameter"]
-        if len(rexdata) < 122:
+        #rexdata = packet[1]["Parameter"]
+        rexdata = b''
+        for parblock in packet[1:]:
+            rexdata += parblock["Parameter"]
+        print("REXDATA", len(rexdata), len(packet))
+        if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
+
         obj_uuid = UUID(packet[0]["Parameter"])
         obj_uuid_str = str(obj_uuid)
 
@@ -49,11 +54,18 @@ class RexDataHandler(Handler):
         materialsCount = struct.unpack("<b", rexdata[pos+4])[0]
         pos = pos+5
         materials = []
+        seenmats = []
         for i in range(materialsCount):
+            if len(rexdata) < pos+18:
+                rexdata += b'\x00'*(pos+18-len(rexdata))
+                print("FILLING IN REXDATA")
             assettype = struct.unpack("<b", rexdata[pos])[0]
             matuuid_b = rexdata[pos+1:pos+1+16]
             matuuid = UUID(bytes=matuuid_b)
             matindex = struct.unpack("<b", rexdata[pos+17])[0]
+            if matindex in seenmats:
+                matindex = i
+            seenmats.append(matindex)
             materials.append([matindex, str(matuuid), assettype])
             pos = pos + 18
         pars["Materials"] = materials
@@ -65,8 +77,29 @@ class RexDataHandler(Handler):
         while rexdata[idx] != '\0' and len(rexdata) > idx+1:
               idx += 1
         RexClassName = rexdata[pos:idx+1]
-        #if RexClassName:
-            #print("RexClassName", RexClassName)
+        if RexClassName:
+                print("RexClassName", RexClassName)
+
+        pos = idx+1
+        if not len(rexdata) > pos+16:
+            return
+        RexSound = str(UUID(bytes=rexdata[pos:pos+16]))
+        if RexSound:
+                print("RexSound", RexSound)
+        pos += 16
+        if not len(rexdata) > pos+4:
+            return
+        RexSoundVolume = struct.unpack("<f", rexdata[pos:pos+4])[0]
+        pos += 4
+        if not len(rexdata) > pos+4:
+            return
+        RexSoundRadius = struct.unpack("<f", rexdata[pos:pos+4])[0]
+        pos += 4
+        if not len(rexdata) > pos+4:
+            return
+        RexSelectPriority= struct.unpack("<I", rexdata[pos:pos+4])[0]
+        pos += 4
+        print("DATA LEFT",rexdata[pos:])
         #self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
 
 

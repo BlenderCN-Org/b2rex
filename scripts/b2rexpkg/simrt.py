@@ -4,6 +4,7 @@ import sys
 import logging
 import time
 import popen2
+import traceback
 from collections import defaultdict
 from threading import Thread
 
@@ -51,7 +52,7 @@ from rt.tools import prepare_server_name
 
 
 class AgentManager(object):
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self._handlers = {}
         self._generichandlers = {}
@@ -77,6 +78,7 @@ class AgentManager(object):
                 self._generichandlers[methodname](packet["ParamList"])
             except:
                 print("error decoding "+methodname)
+                traceback.print_exc()
         else:
             self.logger.debug("unrecognized generic message"+packet["MethodData"][0]["Method"])
             self.logger.debug(str(packet))
@@ -393,6 +395,7 @@ class ClientHandler(object):
         if running:
             running.addCmd(["quit"])
             running = None
+        sys.exit()
             # run_main = False
         # live..
         #raise eventlet.StopServe

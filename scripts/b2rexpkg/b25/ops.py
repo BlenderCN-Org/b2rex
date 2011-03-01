@@ -5,6 +5,8 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty, EnumProperty
 
+import b2rexpkg
+
 import logging
 
 log_levels = ((str(logging.ERROR), 'Standard', 'standard level, show only errors'),
@@ -323,4 +325,12 @@ class ToggleImportTextures(bpy.types.Operator):
         else:
             session.unregisterCommand('texturearrived')
     
+        return {'FINISHED'}
+
+class ToggleSafeMode(bpy.types.Operator):
+    bl_idname = "b2rex.toggle_safe_mode"
+    bl_label = "Toggle safe mode"
+
+    def execute(self, context):
+        b2rexpkg.safe_mode ^= True
         return {'FINISHED'}

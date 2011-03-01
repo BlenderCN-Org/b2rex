@@ -381,7 +381,7 @@ class Importer25(object):
             for obj in objects:
                 obj_uuid = self.get_uuid(obj)
                 if obj_uuid:
-                    self._total[section][obj_uuid] = obj.name
+                    #self._total[section][obj_uuid] = obj.name
                     if obj_uuid == groupid:
                         return obj
 

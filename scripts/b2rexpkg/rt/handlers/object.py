@@ -140,6 +140,12 @@ class ObjectHandler(Handler):
             else:
                 print("cant find object")
 
+    def processSetName(self, obj_uuid_str, obj_name):
+        client = self.manager.client
+        obj = client.region.objects.get_object_from_store(FullID = obj_uuid_str)
+        if obj:
+            obj.set_object_name(client, obj_name)
+
     def processCreate(self, obj_name, obj_uuid_str, mesh_name, mesh_uuid_str, pos, rot,
                      scale, b64data, materials):
         # create asset
@@ -373,7 +379,7 @@ class ObjectHandler(Handler):
            self._eatupdates[obj.LocalID]-= 1
            return
        pars = { "OwnerID": str(ObjectData_block["OwnerID"]),
-                "PCode":ObjectData_block["PCode"] }
+                "PCode":ObjectData_block["PCode"]}
        namevalue = NameValueList(ObjectData_block['NameValue'])
        if namevalue._dict:
            pars['NameValues'] = namevalue._dict

@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from .terrainsync import TerrainSync
 
+import b2rexpkg
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 from b2rexpkg import editor
@@ -76,6 +77,7 @@ class BaseApplication(Importer, Exporter):
         self.second_start = time.time()
         self.second_budget = 0
         self._lastthrottle = 0
+        self._last_time = time.time()
         self.pool = ThreadPool(1)
         self.workpool = ThreadPool(5)
         self._requested_llassets = {}
@@ -418,10 +420,12 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = True
 
     def redraw(self):
-        return
-        if not self.stats[5]:
+        if b2rexpkg.safe_mode:
+            return
+        if not self.stats[5] and self._last_time + 1 < time.time():
             # we're using the commands left stats to keep our counter
             self.stats[5] += 1
+            self._last_time = time.time()
             self.queueRedraw(True)
 
     def processCommand(self, cmd, *args):
@@ -608,6 +612,10 @@ class BaseApplication(Importer, Exporter):
     def processObjectPropertiesCommand(self, objId, pars):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:
+            if "Name" in pars:
+                obj.name = pars["Name"]
+                obj.opensim.name = pars["Name"]
+
             self.applyObjectProperties(obj, pars)
         else:
             self.add_callback('object.create', objId, self.processObjectPropertiesCommand, objId, pars)
@@ -851,6 +859,7 @@ class BaseApplication(Importer, Exporter):
 
     def processUpdates(self):
         starttime = time.time()
+        self._last_time = time.time()
         framebudget = float(self.exportSettings.rt_budget)/1000.0
         try:
             self.pool.poll()
@@ -880,6 +889,7 @@ class BaseApplication(Importer, Exporter):
 
         # we really dont want to miss some terrain editing.
         self.checkTerrain(starttime, framebudget)
+        self.checkObjects()
 
         # process command queue
         if time.time() - starttime < framebudget:
@@ -888,6 +898,20 @@ class BaseApplication(Importer, Exporter):
         # redraw if we have commands left
         if len(self.command_queue):
             self.queueRedraw()
+
+    def checkObjects(self):
+        selected = set(editor.getSelected())
+        all_selected = set()
+        # look for changes in objects
+        for obj in selected:
+            obj_id = self.get_uuid(obj)
+            if obj_id in self.selected and obj.as_pointer() == self.selected[obj_id].pointer:
+                if obj.name != obj.opensim.name:
+                    if not obj.name.startswith('opensim') and not obj.name.startswith(obj.opensim.name):
+                        print("Sending New Name", obj.name, obj.opensim.name)
+                        self.simrt.SetName(obj_id, obj.name)
+                        obj.opensim.name = obj.name
+                        print(obj.opensim.name)
 
     def processCommandQueue(self, starttime, budget):
         # the command queue can change while we execute here, but it should

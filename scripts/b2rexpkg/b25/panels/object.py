@@ -57,8 +57,9 @@ class ObjectPropertiesPanel(bpy.types.Panel):
 
     def draw_object(self, box, obj):
         if obj.opensim.state == 'OK':
-            box.label(text="obj: %s"%(obj.opensim.uuid))
+            box.label(text="%s"%(obj.opensim.name))
             if obj.type == 'MESH':
+                box.label(text="  obj: %s"%(obj.opensim.uuid))
                 box.label(text="  mesh: %s"%(obj.data.opensim.uuid))
 
             box.operator('b2rex.delete', text='Delete from simulator')

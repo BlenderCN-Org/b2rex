@@ -45,6 +45,7 @@ ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
+safe_mode = True
 
 if sys.version_info[0] == 2:
     import Blender

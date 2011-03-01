@@ -5,6 +5,7 @@
 import bpy
 import uuid
 
+import b2rexpkg
 from b2rexpkg.b25.ops import getLogLabel
 #from ..properties import B2RexProps
 
@@ -144,6 +145,8 @@ class ConnectionPanel(bpy.types.Panel):
 
         row = layout.row() 
         row.template_list(props, 'regions', props, 'selected_region')
+        # XXX only real time operations for the moment.
+        return
         if props.selected_region > -1:
             col = layout.column_flow(0)
             col.operator("b2rex.exportupload", text="Export/Upload")
@@ -303,21 +306,22 @@ class ConnectionPanel(bpy.types.Panel):
         if props.expand:
             row.prop(props,"expand", icon="TRIA_DOWN", text="Settings",
                      emboss=True)
-            for prop in ['agent_libs_path',"pack", "path", "loc"]: #"server_url", "username", "password",
+            for prop in ['agent_libs_path']: # "loc", "path", "pack", "server_url", "username", "password",
                 row = layout.row()
                 row.prop(props, prop)
 
-            col = layout.row()
             check_icon = ['CHECKBOX_DEHLT', 'CHECKBOX_HLT']
+            col = layout.column_flow()
             col.operator('b2rex.toggleImportTerrain', text="Import Terrain", icon=check_icon[props.importTerrain], emboss=False) 
             col.operator('b2rex.toggleImportTextures', text="Import Textures", icon=check_icon[props.importTextures], emboss=False) 
+            col.operator('b2rex.toggle_safe_mode', text="Safe Mode",
+                         icon=check_icon[b2rexpkg.safe_mode], emboss=False) 
 
-            col = layout.column_flow()
-            col.prop(props,"regenMaterials")
-            col.prop(props,"regenObjects")
+            #col.prop(props,"regenMaterials")
+            #col.prop(props,"regenObjects")
 
-            col.prop(props,"regenTextures")
-            col.prop(props,"regenMeshes")
+            #col.prop(props,"regenTextures")
+            #col.prop(props,"regenMeshes")
 
             box = layout.row()
             box.operator_menu_enum("b2rex.loglevel", 'level', icon='INFO',
