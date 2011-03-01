@@ -163,3 +163,8 @@ class EditorData(object):
 
 
 data = EditorData()
+
+def getSelected():
+    return map(lambda s: EditorObject(s), Blender.Object.GetSelected())
+
+

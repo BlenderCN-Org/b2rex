@@ -127,9 +127,6 @@ class Base24Application(Screen, BaseApplication):
     def getBlenderVersion(self):
         return str(Blender.Get('version'))
 
-    def getSelected(self):
-        return map(lambda s: EditorObject(s), Blender.Object.GetSelected())
-
     def queueRedraw(self, pars=None):
         if pars:
             Blender.Window.Redraw(Blender.Window.Types[pars])

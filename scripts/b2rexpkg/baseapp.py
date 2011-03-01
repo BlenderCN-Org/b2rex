@@ -13,6 +13,7 @@ from .terrainsync import TerrainSync
 
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
+from b2rexpkg import editor
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
@@ -436,7 +437,7 @@ class BaseApplication(Importer, Exporter):
     def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
         foundobject = False
         foundmesh = False
-        for obj in self.getSelected():
+        for obj in editor.getSelected():
             if obj.type == 'MESH' and obj.opensim.uuid == obj_uuid:
                 foundobject = obj
             if obj.type == 'MESH' and obj.data.opensim.uuid == mesh_uuid:
@@ -683,14 +684,14 @@ class BaseApplication(Importer, Exporter):
                 return
 
     def doDelete(self):
-        selected = self.getSelected()
+        selected = editor.getSelected()
         if selected:
             for obj in selected:
                 if obj.opensim.uuid:
                     self.simrt.Delete(obj.opensim.uuid)
 
     def doDeRezObject(self):
-        selected = self.getSelected()
+        selected = editor.getSelected()
         if selected:
             for obj in selected:
                 if obj.opensim.uuid:
@@ -866,7 +867,7 @@ class BaseApplication(Importer, Exporter):
             self.simrt.Throttle(props.kbytesPerSecond*1024)
 
         # check consistency
-        self.checkUuidConsistency(set(self.getSelected()))
+        self.checkUuidConsistency(set(editor.getSelected()))
 
         # per second checks
         if time.time() - self.second_start > 1:
@@ -1004,7 +1005,7 @@ class BaseApplication(Importer, Exporter):
     def processView(self):
         self.stats[9] += 1
 
-        selected = set(self.getSelected())
+        selected = set(editor.getSelected())
         all_selected = set()
         # changes in our own avatar
         agent = self.findWithUUID(self.agent_id)

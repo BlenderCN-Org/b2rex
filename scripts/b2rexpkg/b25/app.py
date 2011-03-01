@@ -209,9 +209,6 @@ class B2Rex(BaseApplication):
     def addStatus(self, status, level=0):
         self.status = status
 
-    def getSelected(self):
-        return bpy.context.selected_objects
-
     def get_uuid(self, obj):
         """
         Get the uuid from the given object.

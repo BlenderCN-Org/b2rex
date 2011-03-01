@@ -21,6 +21,7 @@ if sys.version_info[0] == 2:
     from urllib2 import HTTPError, URLError
     from urllib import urlretrieve
     from Blender import Mathutils as mathutils
+    from .b24 import editor
     from .b24.editor import EditorObject, EditorMesh
     bversion = 2
     def bytes(text):
@@ -31,6 +32,7 @@ else:
     from urllib.request import urlretrieve
     from urllib.error import HTTPError, URLError
     import mathutils
+    from .b25 import editor
     bversion = 3
 if bversion == 2:
    layerMappings = {'normalMap':'NOR',
@@ -1016,7 +1018,7 @@ class Importer(ImporterBase):
         con = SimConnection()
         con.connect(self.gridinfo._url)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})["res"]
-        objects = self.getSelected()
+        objects = editor.getSelected()
         if not objects:
             objects = bpy.data.objects
         for obj in objects:
