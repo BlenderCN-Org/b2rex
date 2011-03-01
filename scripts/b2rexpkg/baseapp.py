@@ -161,23 +161,13 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
-        self.registerCommand('OnlineNotification',
-                             self.processOnlineNotification)
-        self.registerCommand('OfflineNotification',
-                             self.processOfflineNotification)
-        self.registerCommand('AgentMovementComplete',
+        parent.registerCommand('AgentMovementComplete',
                              self.processAgentMovementComplete)
+
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
-
-    def processOnlineNotification(self, agentID):
-        self._agents[agentID] = agentID
-
-    def processOfflineNotification(self, agentID):
-        pass # should get a kill..
-        # self._agents[agentID] = agentID
 
     def processAgentMovementComplete(self, agentID, pos, lookat):
         agent = self.getAgent(agentID)
@@ -245,7 +235,6 @@ class BaseApplication(Importer, Exporter):
                                      [[http_url, cb_pars, result]],
                                       _cb,
                                       _error_cb)
-
         if extra_main:
             _main_cb = _extra_cb
         else:
