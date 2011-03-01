@@ -17,7 +17,7 @@ class RexDataHandler(Handler):
         rexdata = b''
         for parblock in packet[1:]:
             rexdata += parblock["Parameter"]
-        print("REXDATA", len(rexdata), len(packet))
+        #print("REXDATA", len(rexdata), len(packet))
         if len(rexdata) < 102:
             rexdata = rexdata + ('\0'*(102-len(rexdata)))
 
@@ -77,14 +77,14 @@ class RexDataHandler(Handler):
         while rexdata[idx] != '\0' and len(rexdata) > idx+1:
               idx += 1
         RexClassName = rexdata[pos:idx+1]
-        if RexClassName:
+        if RexClassName and False:
                 print("RexClassName", RexClassName)
 
         pos = idx+1
         if not len(rexdata) > pos+16:
             return
         RexSound = str(UUID(bytes=rexdata[pos:pos+16]))
-        if RexSound:
+        if RexSound and False:
                 print("RexSound", RexSound)
         pos += 16
         if not len(rexdata) > pos+4:
