@@ -782,7 +782,7 @@ class Importer(ImporterBase):
                     self.layer_ready(btex, *pars)
                 elif self.simrt:
                    pars = (textureId,) + pars
-                   if not self.downloadAsset(textureId, 0,
+                   if not self.Asset.downloadAsset(textureId, 0,
                                     self.texture_downloaded, 
                                     pars,
                                        main=self.doTextureDownloadTranscode):

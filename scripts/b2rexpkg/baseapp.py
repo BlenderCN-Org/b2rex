@@ -15,6 +15,7 @@ from b2rexpkg import IMMEDIATE, ERROR
 from b2rexpkg import editor
 from .editsync.handlers.terrain import TerrainModule
 from .editsync.handlers.stats import StatsModule
+from .editsync.handlers.asset import AssetModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
@@ -78,7 +79,6 @@ class BaseApplication(Importer, Exporter):
         self._last_time = time.time()
         self.pool = ThreadPool(1)
         self.workpool = ThreadPool(5)
-        self._requested_llassets = {}
         self.rawselected = set()
         self.caps = {}
         self.agent_id = ""
@@ -110,6 +110,7 @@ class BaseApplication(Importer, Exporter):
     def registerModule(self, module):
         self._modules[module.getName()] = module
         module.register(self)
+        setattr(self, module.getName(), module)
         #module.setProperties(self.exportSettings)
 
     def drawModules(self, layout, props):
@@ -142,6 +143,7 @@ class BaseApplication(Importer, Exporter):
     def initializeModules(self):
         self.registerModule(TerrainModule(self))
         self.registerModule(StatsModule(self))
+        self.registerModule(AssetModule(self))
 
     def initializeCommands(self):
         self._cmd_matrix = {}
@@ -152,14 +154,13 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('delete', self.processDeleteCommand)
         self.registerCommand('msg', self.processMsgCommand)
         self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
-        self.registerCommand('AssetArrived', self.processAssetArrived)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
-        self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
         self.registerCommand('connected', self.processConnectedCommand)
         self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
+        self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
         self.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
         self.registerCommand('OfflineNotification',
@@ -224,22 +225,6 @@ class BaseApplication(Importer, Exporter):
             if hasattr(error[1], "code"):
                 print("error downloading "+str(request)+": "+str(error[1].code))
             traceback.print_tb(error[2])
-
-    def processAssetArrived(self, assetId, b64data):
-        data = base64.urlsafe_b64decode(b64data.encode('ascii'))
-        cb, cb_pars, main = self._requested_llassets['lludp:'+assetId]
-        def _cb(request, result):
-            if 'lludp:'+assetId in self._requested_llassets:
-                cb(result, *cb_pars)
-            else:
-                print("asset arrived but no callback! "+assetId)
-        if main:
-            self.workpool.addRequest(main,
-                                 [[assetId, cb_pars, data]],
-                                 _cb,
-                                 self.default_error_db)
-        else:
-            cb(data, *cb_pars)
 
     def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, extra_main=None):
         if http_url in self._requested_urls:
@@ -461,18 +446,6 @@ class BaseApplication(Importer, Exporter):
             scene.objects.unlink(obj)
             self.queueRedraw()
 
-    def downloadAsset(self, assetId, assetType, cb, pars, main=None):
-        if "GetTexture" in self.caps:
-            asset_url = self.caps["GetTexture"] + "?texture_id=" + assetId
-            return self.addDownload(asset_url, cb, pars, extra_main=main)
-        else:
-
-            if 'lludp:'+assetId in self._requested_llassets:
-                return False
-            self._requested_llassets['lludp:'+assetId] = (cb, pars, main)
-            self.simrt.AssetRequest(assetId, assetType)
-            return True
-
     def processRexPrimDataCommand(self, objId, pars):
         self.stats[3] += 1
         meshId = pars["RexMeshUUID"]
@@ -493,14 +466,14 @@ class BaseApplication(Importer, Exporter):
                 for index, matId, asset_type in materials:
                     if not matId == ZERO_UUID_STR:
                         if asset_type == AssetType.OgreMaterial:
-                            self.downloadAsset(matId, asset_type,
+                            self.Asset.downloadAsset(matId, asset_type,
                                                self.materialArrived, (objId,
                                                                          meshId,
                                                                          matId,
                                                                          asset_type,
                                                                          index))
                         elif asset_type == 0:
-                            self.downloadAsset(matId, asset_type,
+                            self.Asset.downloadAsset(matId, asset_type,
                                                self.materialTextureArrived, (objId,
                                                                          meshId,
                                                                          matId,
@@ -511,7 +484,7 @@ class BaseApplication(Importer, Exporter):
             if meshId and not meshId == ZERO_UUID_STR:
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
-                    if not self.downloadAsset(meshId, AssetType.OgreMesh,
+                    if not self.Asset.downloadAsset(meshId, AssetType.OgreMesh,
                                     self.meshArrived, 
                                      (objId, meshId, materials),
                                             main=self.doMeshDownloadTranscode):

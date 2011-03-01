@@ -14,8 +14,10 @@ class SyncModule(object):
         self._props = self._parent.exportSettings
         if enabled:
             self.simrt = self._parent.simrt
+            self.workpool = self._parent.workpool
         else:
             self.simrt = None
+            self.workpool = None
     def check(self, starttime, budget):
         pass
     def register(self, parent):
