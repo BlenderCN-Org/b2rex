@@ -21,7 +21,7 @@
 bl_addon_info = {
     'name': 'b2rex',
     'author': 'Invi, Caedes',
-    'version': (0, 7, 8),
+    'version': (0, 8, 0),
     'blender': (2, 5, 6),
     'api': 33928,
     'location': 'Text window > Properties panel (ctrl+F) or '\

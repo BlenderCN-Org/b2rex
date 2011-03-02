@@ -142,11 +142,21 @@ class AgentManager(object):
 
 
         print("LOGIN WITH", login_params)
-        api.spawn(client.login, loginuri, login_params = login_params,
+        error = []
+        def trylogin(*args, **kwargs):
+            try:
+                client.login(*args, **kwargs)
+            except Exception as e:
+                print("error connecting")
+                error.append(e)
+
+        api.spawn(trylogin, loginuri, login_params = login_params,
                   start_location = regionname, connect_region = True)
 
         # wait for the agent to connect to it's region
         while client.connected == False:
+            if error:
+                return error[0]
             api.sleep(0)
 
         # notify handlers of agent connection
@@ -292,7 +302,12 @@ class GreenletsThread(Thread):
     def run(self):
         agent = AgentManager(self.in_queue,
                    self.out_queue)
-        agent.login(self.server_url, self.login_params)
+        error = agent.login(self.server_url, self.login_params)
+        if error:
+            self.out_queue.put(["error", str(error)])
+            self.out_queue.put(["agentquit", str(error)])
+            while self.out_queue.qsize():
+                api.sleep(0.1)
         agent.logger.debug("Quitting")
         self.agent = agent
         self.running = False

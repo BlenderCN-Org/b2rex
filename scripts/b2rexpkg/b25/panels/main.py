@@ -78,7 +78,10 @@ class ConnectionPanel(bpy.types.Panel):
             if len(props.connection.list):
                 box_c.operator("b2rex.addconnection", text="Cancel",
                                icon='CANCEL').action = "cancel"
-        box.label(text="Status: "+session.status)
+        if session.status_level == 0:
+            box.label(text=session.status, icon='ERROR')
+        else:
+            box.label(text="Status: "+session.status)
 
             #row.prop_enum(props.connection, 'list')
             #           row.template_list(props.connection, 'list', props.connection,

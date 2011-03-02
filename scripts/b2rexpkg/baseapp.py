@@ -4,14 +4,12 @@ import time
 import uuid
 import traceback
 import threading
-import math
-import base64
 from hashlib import md5
 from collections import defaultdict
 
 import b2rexpkg
 from b2rexpkg.siminfo import GridInfo
-from b2rexpkg import IMMEDIATE, ERROR
+from b2rexpkg import IMMEDIATE, ERROR, OK
 from b2rexpkg import editor
 
 from .editsync.handlers.map import MapModule
@@ -95,6 +93,7 @@ class BaseApplication(Importer, Exporter):
         self.rt_support = eventlet_present
         self.stats = [0,0,0,0,0,0,0,0,0,0,0,0,0]
         self.status = "b2rex started"
+        self.status_level = OK
         self.selected = {}
         self.sim_selection = set()
         self.connected = False
@@ -197,6 +196,8 @@ class BaseApplication(Importer, Exporter):
 
         # internal
         self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
+        self.registerCommand('error', self.processError)
+        self.registerCommand('agentquit', self.processAgentQuit)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
 
@@ -518,6 +519,14 @@ class BaseApplication(Importer, Exporter):
         if not image.opensim.uuid:
             image.opensim.uuid = str(uuid.uuid4())
         return image.opensim.uuid
+
+    def processError(self, error):
+        self.addStatus(error, ERROR)
+
+    def processAgentQuit(self, msg):
+        if self.rt_on:
+            self.onToggleRt()
+            self.queueRedraw()
 
     def processMsgCommand(self, username, message):
         """

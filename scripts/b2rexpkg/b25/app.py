@@ -212,6 +212,7 @@ class B2Rex(BaseApplication):
 
     def addStatus(self, status, level=0):
         self.status = status
+        self.status_level = level
 
     def get_uuid(self, obj):
         """
