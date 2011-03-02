@@ -50,7 +50,7 @@ class ObjectPropertiesPanel(bpy.types.Panel):
                 self.draw_object(box, obj)
 
     def draw_terrain(self, box, obj):
-        terrain = bpy.b2rex_session.terrain
+        terrain = bpy.b2rex_session.Terrain.terrain
         box.label(text="This is the region terrain.")
         box.label(text="Using lod %s with %s blocks"%(terrain.lod,
                                                       len(terrain.checksums)))
