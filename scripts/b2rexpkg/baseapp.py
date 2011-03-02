@@ -117,6 +117,18 @@ class BaseApplication(Importer, Exporter):
 
     # Modules
     def registerModule(self, module):
+        """
+        Register a module with the editor.
+
+        The module will be registrered as an attribute in the
+        editor, generally taking the name and removing "Module", so
+        for example AssetModule becomes self.Asset.
+
+        Also, some special callbacks will be looked for and registered
+        for calling, at the moment we have the following:
+            * check: check during the command processing stage
+            * draw: gets drawn into the scene panel
+        """
         self._modules[module.getName()] = module
         module.register(self)
         setattr(self, module.getName(), module)
@@ -125,23 +137,41 @@ class BaseApplication(Importer, Exporter):
                 self._module_cb[section].append(getattr(module, section))
 
     def drawModules(self, layout, props):
+        """
+        Calls to draw all modules registered in the system.
+        """
         for draw_cb in self._module_cb["draw"]:
             draw_cb(layout, self, props)
 
     # Generic callback functionality
     def add_callback(self, section, signal, callback, *parameters):
+        """
+        Add a callback into a given section, waiting for a specific signal.
+        The callback will be called with the specified parameters in expanded
+        form.
+        """
         self._callbacks[str(section)][str(signal)].append((callback, parameters))
 
     def insert_callback(self, section, signal, callback, *parameters):
+        """
+        Like ass_callback but inserts the callback at the beginning of the
+        queue.
+        """
         self._callbacks[str(section)][str(signal)].insert(0, (callback, parameters))
 
     def trigger_callback(self, section, signal):
+        """
+        Trigger the callback for the given section and signal.
+        """
         for callback, parameters in self._callbacks[str(section)][str(signal)]:
             callback(*parameters)
         del self._callbacks[str(section)][str(signal)]
 
     # Initialization
     def initializeModules(self):
+        """
+        Initialize editor modules.
+        """
         self.registerModule(MapModule(self))
         self.registerModule(CapsModule(self))
         self.registerModule(ObjectModule(self))
@@ -155,6 +185,9 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(AgentsModule(self))
 
     def initializeCommands(self):
+        """
+        Initialize internal editor commands.
+        """
         self._cmd_matrix = {}
         self.registerCommand('pos', self.processPosCommand)
         self.registerCommand('rot', self.processRotCommand)
@@ -169,6 +202,16 @@ class BaseApplication(Importer, Exporter):
 
     # Threaded Downloader
     def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, extra_main=None):
+        """
+        Add a download into the internal threaded downloader. If the url is
+        already downloaded False will be returned, otherwise the url will be
+        downloaded, then the callback cb will be called with cb_pars.
+
+        If extra_main is supplied it will be run in a thread before returning
+        the final callback.
+
+        If error_cb is supplied it will be called on errors.
+        """
         if http_url in self._requested_urls:
             return False
         self._requested_urls.append(http_url)
@@ -195,6 +238,9 @@ class BaseApplication(Importer, Exporter):
         return True
 
     def default_error_db(self, request, error):
+        """
+        Default error function for thread pool jobs.
+        """
         if hasattr(error[1], "code") and error[1].code in [404]:
             pass
         else:
@@ -204,12 +250,18 @@ class BaseApplication(Importer, Exporter):
             traceback.print_tb(error[2])
 
     def doDownload(self, pars):
+        """
+        Internal downloading function to be run in a thread.
+        """
         http_url, pars = pars
         req = urllib2.urlopen(http_url)
         return req.read()
 
     # Connection
     def processConnectedCommand(self, agent_id, agent_access):
+        """
+        Connected messaage received from agent.
+        """
         self.agent_id = agent_id
         self.agent_access = agent_access
 
@@ -258,6 +310,9 @@ class BaseApplication(Importer, Exporter):
 
     # Rt enable/disable
     def onToggleRt(self, context=None):
+        """
+        Toggle the real time agent.
+        """
         if context:
             if context.scene:
                 # scene will not be defined when exiting the program
@@ -274,6 +329,9 @@ class BaseApplication(Importer, Exporter):
             mod.onToggleRt(self.rt_on)
 
     def enableRt(self, context):
+        """
+        Enable the real time agent.
+        """
         if sys.version_info[0] == 3:
             pars = self.exportSettings.getCurrentConnection()
             server_url = pars.url
@@ -337,6 +395,11 @@ class BaseApplication(Importer, Exporter):
 
     # Redraw from thread
     def redraw(self):
+        """
+        Queue a redraw of the application. This function is designed to be run
+        from a thread, and for the moment is dangerous so can be controlled with
+        a global toggle at b2rexpkg.safe_mode.
+        """
         if b2rexpkg.safe_mode:
             return
         if not self.stats[5] and self._last_time + 1 < time.time():
@@ -347,12 +410,21 @@ class BaseApplication(Importer, Exporter):
 
     # Commands
     def registerCommand(self, cmd, callback):
+        """
+        Register a command with the command processing subsystem.
+        """
         self._cmd_matrix[cmd] = callback
 
     def unregisterCommand(self, cmd):
+        """
+        Unregister a command from the command processing subsystem.
+        """
         del self._cmd_matrix[cmd]
 
     def processCommand(self, cmd, *args):
+        """
+        Process the given command with the given arguments.
+        """
         self.stats[0] += 1
         cmdHandler = self._cmd_matrix.get(cmd, None)
         if cmdHandler:
@@ -364,13 +436,24 @@ class BaseApplication(Importer, Exporter):
 
     # Material related callbacks
     def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        """
+        A material has arrived from downloading.
+        """
         self.command_queue.append(["materialarrived", data, objId, meshId,
                                       matId, assetType, matIdx])
 
     def materialTextureArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        """
+        A material texture has arrived (a material with AssetType 0 which means
+        there is no formal material declaration and we will use the texture
+        directly).
+        """
         self.create_material_fromimage(matId, data, meshId, matIdx)
 
     def processMaterialArrived(self, data, objId, meshId, matId, assetType, matIdx):
+        """
+        A material has arrived and has to be processed in the queue.
+        """
         if assetType == AssetType.OgreMaterial:
             self.parse_material(matId, {"name":matId, "data":data}, meshId,
                                 matIdx)
@@ -379,6 +462,9 @@ class BaseApplication(Importer, Exporter):
 
     # Object actions
     def doRtUpload(self, context):
+        """
+        Upload the active object using the real time connection.
+        """
         selected = bpy.context.selected_objects
         if selected:
             # just the first for now
@@ -388,6 +474,9 @@ class BaseApplication(Importer, Exporter):
                 return
 
     def doDelete(self):
+        """
+        Delete all selected objects from the simulator.
+        """
         selected = editor.getSelected()
         if selected:
             for obj in selected:
@@ -395,6 +484,9 @@ class BaseApplication(Importer, Exporter):
                     self.simrt.Delete(obj.opensim.uuid)
 
     def doDeRezObject(self):
+        """
+        DeRez all active objects into inventory.
+        """
         selected = editor.getSelected()
         if selected:
             for obj in selected:
@@ -404,19 +496,31 @@ class BaseApplication(Importer, Exporter):
 
     # Misc common functionality
     def registerTextureImage(self, image):
+        """
+        Register an image with the system.
+        """
         # register a texture with the sim
         if not image.opensim.uuid:
             image.opensim.uuid = str(uuid.uuid4())
         return image.opensim.uuid
 
     def processMsgCommand(self, username, message):
+        """
+        Process a chat message, can be overloaded by additional modules ;)
+        """
         self.addStatus("message from "+username+": "+message)
 
     def findWithUUID(self, objId):
+        """
+        Find the editor object with the given uuid.
+        """
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         return obj
 
     def setMeshMaterials(self, mesh, materials):
+        """
+        Set the materials for a mesh from an idx, matId, asset_type list.
+        """
         presentIds = list(map(lambda s: s.opensim.uuid, mesh.materials))
         for idx, matId, asset_type in materials:
             mat = self.find_with_uuid(matId, bpy.data.materials, 'materials')
@@ -425,6 +529,9 @@ class BaseApplication(Importer, Exporter):
 
     # Position commands
     def processPosCommand(self, objId, pos, rot=None):
+        """
+        Position for an object arrived from the agent.
+        """
         obj = self.findWithUUID(objId)
         if obj and self.get_loading_state(obj) == 'OK':
             self._processPosCommand(obj, objId, pos)
@@ -434,6 +541,9 @@ class BaseApplication(Importer, Exporter):
             self.add_callback('object.create', objId, self.processPosCommand, objId, pos, rot)
 
     def processScaleCommand(self, objId, scale):
+        """
+        Scale for an object arrived from the agent.
+        """
         obj = self.findWithUUID(objId)
         if obj and self.get_loading_state(obj) == 'OK':
             self._processScaleCommand(obj, objId, scale)
@@ -442,6 +552,9 @@ class BaseApplication(Importer, Exporter):
                               objId, scale)
 
     def processRotCommand(self, objId, rot):
+        """
+        Rotation for an object arrived from the agent.
+        """
         obj = self.findWithUUID(objId)
         if obj and self.get_loading_state(obj) == 'OK':
             self._processRotCommand(obj, objId, rot)
@@ -451,6 +564,10 @@ class BaseApplication(Importer, Exporter):
             
     # Checks
     def processUpdate(self, obj):
+        """
+        Process all object updates not requiring modification of the object
+        (executed from the view).
+        """
         obj_uuid = self.get_uuid(obj)
         if obj_uuid:
             pos, rot, scale = self.getObjectProperties(obj)
@@ -506,6 +623,9 @@ class BaseApplication(Importer, Exporter):
 
 
     def checkPool(self):
+        """
+        Check the pool size and apply any needed adjustments.
+        """
         # check thread pool size
         if self.wanted_workers != self.exportSettings.pool_workers:
             current_workers = self.wanted_workers
@@ -517,6 +637,9 @@ class BaseApplication(Importer, Exporter):
             self.wanted_workers = self.exportSettings.pool_workers
 
     def processUpdates(self):
+        """
+        Process all pending updates up to the configured time budget.
+        """
         starttime = time.time()
         self._last_time = time.time()
         framebudget = float(self.exportSettings.rt_budget)/1000.0
@@ -555,6 +678,11 @@ class BaseApplication(Importer, Exporter):
             self.queueRedraw()
 
     def checkObjects(self):
+        """
+        Check objects during operator process. This is the main place to perform
+        checks on objects to see if we have to send any updates. Note at the
+        moment also processUpdate performs some checks.
+        """
         selected = set(editor.getSelected())
         all_selected = set()
         # look for changes in objects
@@ -569,6 +697,10 @@ class BaseApplication(Importer, Exporter):
                         print(obj.opensim.name)
 
     def processCommandQueue(self, starttime, budget):
+        """
+        Process the command queue up to the given budget, considering start
+        of budget consumption at starttime.
+        """
         # the command queue can change while we execute here, but it should
         # be ok as long as things are just added at the end.
         # note if they are added at the beginning we would have problems
@@ -613,6 +745,10 @@ class BaseApplication(Importer, Exporter):
         self.stats[7] = threading.activeCount()-1
 
     def checkUuidConsistency(self, selected):
+        """
+        Check the selection for uuid inconsistencies derived from object cloning
+        or copying.
+        """
         # look for duplicates
         if self.rawselected == selected:
             return
@@ -649,6 +785,9 @@ class BaseApplication(Importer, Exporter):
         self.rawselected = selected
 
     def processView(self):
+        """
+        Process any needed updates from the view.
+        """
         self.stats[9] += 1
 
         selected = set(editor.getSelected())
@@ -669,13 +808,22 @@ class BaseApplication(Importer, Exporter):
             self.sim_selection = all_selected
 
     def getSelected(self):
+        """
+        Get the selected objects, possibly proxyed into editor objects.
+        """
         return editor.getSelected()
 
     # Callbacks to override in specific applications
     def addStatus(self, text, priority=0):
+        """
+        Add a status line to the editor.
+        """
         pass
 
     def initGui(self, title):
+        """
+        Init the gui.
+        """
         pass
 
     def go(self):
@@ -685,15 +833,27 @@ class BaseApplication(Importer, Exporter):
         self.screen.activate()
 
     def addRegionsPanel(self, regions, griddata):
+        """
+        Add the regions panel after getting the region list from /admin/regions
+        """
         pass
 
     def queueRedraw(self, pars=None):
+        """
+        queue a redraw for the application.
+        """
         pass
 
     def applyObjectProperties(self, obj, pars):
+        """
+        Apply object properties into the editor backend.
+        """
         pass
 
     def addRtCheckBox(self):
+        """
+        Add a checkbox to enable or disable the real time agent.
+        """
         pass
 
 
