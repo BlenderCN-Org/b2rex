@@ -9,21 +9,6 @@ class Menu(bpy.types.Header):
         self.default_menu(context, session, props)
         self.draw_connections(self.layout, session, props)
 
-    def draw_connection_panel(self, layout, session, props):
-        layout.separator()
-        if session.connected and session.rt_support:
-            if session.simrt and session.simrt.connected:
-                layout.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
-            else:
-                layout.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
-            if session.simrt:
-                session.processView()
-                bpy.ops.b2rex.processqueue()
-        else:
-            layout.operator("b2rex.connect", text="Connect")
-        #layout.label(text="Status: "+session.status)
-        layout.label(text="q: "+str(session.stats[5]))
-
     def draw_connections(self, layout, session, props):
         if len(props.connection.list):
             if props.connection.search and props.connection.search in props.connection.list:
