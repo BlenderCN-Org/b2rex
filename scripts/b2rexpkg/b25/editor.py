@@ -14,4 +14,7 @@ def set_loading_state(obj, value):
 def get_loading_state(obj):
     return str(obj.opensim.state)
 
+def getVersion():
+    return "Blender "+str(bpy.app.version_string)
+
 

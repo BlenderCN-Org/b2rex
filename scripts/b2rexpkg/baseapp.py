@@ -351,7 +351,7 @@ class BaseApplication(Importer, Exporter):
         region_name = 'last'
 
         # we will send the editor version as our entrance punchline.
-        firstline = 'Blender '+ self.getBlenderVersion()
+        firstline = editor.getVersion()
 
         # get the password from the credential manager since we dont store
         # it with other blender data.

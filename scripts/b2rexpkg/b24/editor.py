@@ -188,4 +188,7 @@ def set_loading_state(obj, value):
         obj.properties["opensim"] = {}
     obj.properties["opensim"]["state"] = value
 
+def getVersion():
+    return "Blender "+str(Blender.Get('version'))
+
 

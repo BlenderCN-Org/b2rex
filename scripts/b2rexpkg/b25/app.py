@@ -233,9 +233,6 @@ class B2Rex(BaseApplication):
         """
         obj.opensim.uuid = obj_uuid
 
-    def getBlenderVersion(self):
-        return str(bpy.app.version_string)
-
     def getObjectProperties(self, obj):
         return (obj.location, obj.rotation_euler, obj.scale)
 

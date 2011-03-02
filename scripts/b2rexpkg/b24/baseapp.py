@@ -124,9 +124,6 @@ class Base24Application(Screen, BaseApplication):
 				  tooltip='Toggle real time connection')
         self.buttonLayout.addWidget(rtButton, 'RtButton')
 
-    def getBlenderVersion(self):
-        return str(Blender.Get('version'))
-
     def queueRedraw(self, pars=None, immediate=False):
         if pars:
             Blender.Window.Redraw(Blender.Window.Types[pars])
