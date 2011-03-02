@@ -18,6 +18,7 @@ from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
 from .editsync.handlers.online import OnlineModule
 from .editsync.handlers.agents import AgentsModule
+from .editsync.handlers.object import ObjectModule
 from .editsync.handlers.terrain import TerrainModule
 from .editsync.handlers.rexdata import RexDataModule
 
@@ -146,6 +147,7 @@ class BaseApplication(Importer, Exporter):
         del self._cmd_matrix[cmd]
 
     def initializeModules(self):
+        self.registerModule(ObjectModule(self))
         self.registerModule(RexDataModule(self))
         self.registerModule(TerrainModule(self))
         self.registerModule(StatsModule(self))
@@ -158,13 +160,11 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('pos', self.processPosCommand)
         self.registerCommand('rot', self.processRotCommand)
         self.registerCommand('scale', self.processScaleCommand)
-        self.registerCommand('props', self.processPropsCommand)
-        self.registerCommand('delete', self.processDeleteCommand)
         self.registerCommand('msg', self.processMsgCommand)
+        self.registerCommand('props', self.processPropsCommand)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
         self.registerCommand('connected', self.processConnectedCommand)
-        self.registerCommand('meshcreated', self.processMeshCreated)
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
@@ -374,45 +374,6 @@ class BaseApplication(Importer, Exporter):
     def processCapabilities(self, caps):
         self.caps = caps
 
-    def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
-        foundobject = False
-        foundmesh = False
-        for obj in editor.getSelected():
-            if obj.type == 'MESH' and obj.opensim.uuid == obj_uuid:
-                foundobject = obj
-            if obj.type == 'MESH' and obj.data.opensim.uuid == mesh_uuid:
-                foundmesh = obj.data
-
-        if not foundmesh:
-            foundmesh = self.find_with_uuid(mesh_uuid,
-                                              bpy.data.meshes, "meshes")
-        if not foundobject:
-            foundobject = self.find_with_uuid(obj_uuid,
-                                              bpy.data.objects, "objects")
-        if foundobject:
-            self.set_uuid(foundobject, new_obj_uuid)
-            self.set_loading_state(foundobject, 'OK')
-        else:
-            logger.warning("Could not find object for meshcreated")
-        if foundmesh:
-            self.set_uuid(foundmesh, asset_id)
-        else:
-            logger.warning("Could not find mesh for meshcreated")
-
-    def processDeleteCommand(self, objId):
-        obj = self.findWithUUID(objId)
-        if obj:
-            print("DELETE FOR",objId)
-            # delete from object cache
-            if objId in self._total['objects']:
-                del self._total['objects'][objId]
-            # clear uuid
-            obj.opensim.uuid = ""
-            scene = self.get_current_scene()
-            # unlink
-            scene.objects.unlink(obj)
-            self.queueRedraw()
-
     def processPropsCommand(self, objId, pars):
         if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
             agent = self.Agents[objId] # creates the agent
@@ -432,7 +393,8 @@ class BaseApplication(Importer, Exporter):
                         obj.parent = parent
                         self.finishedLoadingObject(objId, obj)
                     else:
-                        self.add_callback('object.precreate', parentId, self.processLink,
+                        self.add_callback('object.precreate', parentId,
+                                          self.Object.processLink,
                               parentId, objId)
                 else:
                     obj.parent = None
@@ -440,7 +402,7 @@ class BaseApplication(Importer, Exporter):
                     self.finishedLoadingObject(objId, obj)
             elif parentId:
                 # need to wait for object and the parent to appear
-                self.add_callback('object.precreate', objId, self.processLink, parentId, objId)
+                self.add_callback('object.precreate', objId, self.Object.processLink, parentId, objId)
             else:
                 # need to wait for the object and afterwards
                 # trigger the object create
@@ -463,23 +425,6 @@ class BaseApplication(Importer, Exporter):
             return
         self.set_loading_state(obj, 'OK')
         self.trigger_callback('object.create', str(objId))
-
-    def processLink(self, parentId, *childrenIds):
-        parent = self.findWithUUID(parentId)
-        if parent:
-            for childId in childrenIds:
-                child = self.findWithUUID(childId)
-                if child:
-                    child.parent = parent
-                    # apply final callbacks
-                    self.finishedLoadingObject(childId, child)
-                else:
-                    # shouldnt happen :)
-                    print("b2rex.processLink: cant find child to link!")
-        else:
-            for childId in childrenIds:
-                self.add_callback('object.precreate', parentId, self.processLink,
-                              parentId, childId)
 
     def processObjectPropertiesCommand(self, objId, pars):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
@@ -515,32 +460,6 @@ class BaseApplication(Importer, Exporter):
             if mat and not matId in presentIds:
                 mesh.materials.append(mat)
 
-    def createObjectWithMesh(self, new_mesh, objId, meshId, materials=[]):
-        obj = self.getcreate_object(objId, "opensim", new_mesh)
-        self.setMeshMaterials(new_mesh, materials)
-        if objId in self.positions:
-            pos = self.positions[objId]
-            self.apply_position(obj, pos, raw=True)
-        if objId in self.rotations:
-            rot = self.rotations[objId]
-            self.apply_rotation(obj, rot, raw=True)
-        if objId in self.scales:
-            scale = self.scales[objId]
-            self.apply_scale(obj, scale)
-        self.set_uuid(obj, objId)
-        self.set_uuid(new_mesh, meshId)
-        scene = self.get_current_scene()
-        if not obj.name in scene.objects:
-            if hasattr(obj, '_obj'):
-                try:
-                    scene.objects.link(obj._obj)
-                except:
-                    pass # XXX :-P
-            else:
-                scene.objects.link(obj)
-            new_mesh.update()
-        self.trigger_callback('object.precreate', str(objId))
-
 
     def doRtUpload(self, context):
         selected = bpy.context.selected_objects
@@ -548,7 +467,7 @@ class BaseApplication(Importer, Exporter):
             # just the first for now
             selected = selected[0]
             if not selected.opensim.uuid:
-                self.doRtObjectUpload(context, selected)
+                self.Object.doRtObjectUpload(context, selected)
                 return
 
     def doDelete(self):
@@ -565,56 +484,6 @@ class BaseApplication(Importer, Exporter):
                 if obj.opensim.uuid:
                     self.set_loading_state(obj, 'TAKING')
                     self.simrt.DeRezObject(obj.opensim.uuid)
-
-    def sendObjectClone(self, obj, materials):
-        obj_name = obj.name
-        mesh = obj.data
-        if not obj.opensim.uuid:
-            obj.opensim.uuid = str(uuid.uuid4())
-        obj_uuid = obj.opensim.uuid
-        mesh_name = mesh.name
-        mesh_uuid = mesh.opensim.uuid
-        pos, rot, scale = self.getObjectProperties(obj)
-        
-        self.simrt.Clone(obj_name, obj_uuid, mesh_name, mesh_uuid,
-                           self.unapply_position(obj, pos),
-                           self.unapply_rotation(rot),
-                           self.unapply_scale(obj, scale), materials)
-        
-    def sendObjectUpload(self, obj, mesh, data, materials):
-        data = data.replace(b'MeshSerializer_v1.41', b'MeshSerializer_v1.40')
-
-        b64data = base64.urlsafe_b64encode(data).decode('ascii')
-        obj_name = obj.name
-        obj_uuid = obj.opensim.uuid
-        mesh_name = mesh.name
-        mesh_uuid = mesh.opensim.uuid
-        pos, rot, scale = self.getObjectProperties(obj)
-        
-        self.simrt.Create(obj_name, obj_uuid, mesh_name, mesh_uuid,
-                           self.unapply_position(obj, pos),
-                           self.unapply_rotation(rot),
-                           self.unapply_scale(obj, scale), b64data,
-                           materials)
-
-    def doRtObjectUpload(self, context, obj):
-        mesh = obj.data
-        has_mesh_uuid = mesh.opensim.uuid
-        self.set_loading_state(obj, 'UPLOADING')
-        if has_mesh_uuid:
-            def finish_clone(materials):
-                self.sendObjectClone(obj, materials)
-            self.doExportMaterials(obj, cb=finish_clone)
-            return
-        def finish_upload(materials):
-            def send_upload(data):
-                self.sendObjectUpload(obj, mesh, data, materials)
-            self.doAsyncExportMesh(context, obj, send_upload)
-        self.doExportMaterials(obj, cb=finish_upload)
-        # export mesh
-        # upload prim
-        # self.sendObjectUpload(selected, mesh, data)
-        # send new prim
 
     def processMsgCommand(self, username, message):
         self.addStatus("message from "+username+": "+message)
@@ -866,6 +735,9 @@ class BaseApplication(Importer, Exporter):
         if not all_selected == self.sim_selection:
             self.simrt.Select(*all_selected)
             self.sim_selection = all_selected
+
+    def getSelected(self):
+        return editor.getSelected()
 
     def go(self):
         """

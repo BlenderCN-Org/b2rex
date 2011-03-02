@@ -28,7 +28,7 @@ class RexDataModule(SyncModule):
             return
         mesh = editor.find_with_uuid(meshId, bpy.data.meshes, "meshes")
         if mesh:
-            editor.createObjectWithMesh(mesh, objId, meshId)
+            editor.Object.createObjectWithMesh(mesh, objId, meshId)
             editor.queueRedraw()
         else:
             materials = []
@@ -60,7 +60,7 @@ class RexDataModule(SyncModule):
                                      (objId, meshId, materials),
                                             main=self.doMeshDownloadTranscode):
                         editor.add_mesh_callback(meshId,
-                                               editor.createObjectWithMesh,
+                                               editor.Object.createObjectWithMesh,
                                                objId,
                                                meshId, materials)
                 else:
@@ -83,7 +83,7 @@ class RexDataModule(SyncModule):
             return
         new_mesh = editor.create_mesh_fromomesh(meshId, "opensim", mesh, materials)
         if new_mesh:
-            editor.createObjectWithMesh(new_mesh, str(objId), meshId, materials)
+            editor.Object.createObjectWithMesh(new_mesh, str(objId), meshId, materials)
             editor.trigger_mesh_callbacks(meshId, new_mesh)
         else:
             print("No new mesh with processMeshArrived")
