@@ -1,3 +1,10 @@
+"""
+ AgentsModule. Will appear under the editor as editor.Agents, and
+ keeps track of agents in our connection.
+
+ The module can be used as a dictionary per agentID.
+"""
+
 from .base import SyncModule
 
 import bpy
@@ -5,27 +12,50 @@ import bpy
 class AgentsModule(SyncModule):
     _agents = {}
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('AgentMovementComplete',
                              self.processAgentMovementComplete)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('AgentMovementComplete')
 
     def processAgentMovementComplete(self, agentID, pos, lookat):
+        """
+        An AgentMovementComplete message arrived from the agent.
+        """
         agent = self.getAgent(agentID)
         agent.rotation_euler = lookat
         self._parent.apply_position(agent, pos)
 
     def __getitem__(self, agentID):
+        """
+        Get the agent with the specified uuid, will be created
+        if it doesnt exist.
+        """
         return self.getAgent(agentID)
 
     def __setitem__(self, agentID, value):
+        """
+        Set an agent as available.
+        """
         self._agents[agentID] = value
 
     def __iter__(self):
+        """
+        Get an iterator over all available agent uuids.
+        """
         return iter(self._agents)
 
     def getAgent(self, agentID):
+        """
+        Get the agent with the specified uuid, will be created
+        if it doesnt exist.
+        """
         editor = self._parent
         agent = editor.findWithUUID(agentID)
         if not agent:
