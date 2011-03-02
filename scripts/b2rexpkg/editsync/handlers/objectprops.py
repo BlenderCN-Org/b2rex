@@ -1,11 +1,14 @@
 from .base import SyncModule
 
+from b2rexpkg.tools.simtypes import PCodeEnum
+
 import bpy
 
 class ObjectPropertiesModule(SyncModule):
     def register(self, parent):
         parent.registerCommand('props', self.processPropsCommand)
         parent.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
+
     def unregister(self, parent):
         parent.unregisterCommand('props')
         parent.unregisterCommand('ObjectProperties')
@@ -13,7 +16,7 @@ class ObjectPropertiesModule(SyncModule):
     def processPropsCommand(self, objId, pars):
         editor = self._parent
         if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
-            agent = self.Agents[objId] # creates the agent
+            agent = editor.Agents[objId] # creates the agent
             if "NameValues" in pars:
                 props = pars["NameValues"]
                 if "FirstName" in props and "LastName" in props:
