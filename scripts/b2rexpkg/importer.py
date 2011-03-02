@@ -668,23 +668,22 @@ class Importer(ImporterBase):
         http_url, pars, data = pars
         assetName = pars[0] # we dont get the name here
         assetId = pars[0]
-        # XXX could be downloadded to disk
-        origin = "/tmp/"+assetId+".1.jpg"
         return self.decode_texture(assetId, assetName, data)
         #return self.decode_texture_fromfile(assetId, assetName, origin)
 
     def decode_texture(self, textureId, textureName, data):
-        f = open("/tmp/"+textureId+".1.jpg", "wb")
+        destpath = os.path.join(self.getExportDir(), textureId+".1.jpg")
+        f = open(destpath, "wb")
         f.write(data)
         f.close()
         return self.decode_texture_fromfile(textureId, textureName,
-                                     "/tmp/"+textureId+".1.jpg")
+                                     destpath)
 
     def decode_texture_fromfile(self, textureId, textureName, origin):
         split_name = textureName.split("/")
         if len(split_name) > 2:
             textureName = split_name[2]
-        dest = "/tmp/"+textureName
+        dest = os.path.join(self.getExportDir(),textureName)
         return self.convert_image_format(origin, 'png', dest)
 
     def convert_image_format(self, origin, ext, dest=None):
