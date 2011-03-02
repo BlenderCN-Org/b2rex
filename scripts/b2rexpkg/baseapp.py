@@ -332,6 +332,8 @@ class BaseApplication(Importer, Exporter):
         """
         Enable the real time agent.
         """
+        # for the moment we fet some parameters in a different way depending
+        # on the editor version.
         if sys.version_info[0] == 3:
             pars = self.exportSettings.getCurrentConnection()
             server_url = pars.url
@@ -343,18 +345,28 @@ class BaseApplication(Importer, Exporter):
 
         props = self.exportSettings
 
+        # no functionality yet to change region.
         region_name = 'last'
+
+        # we will send the editor version as our entrance punchline.
         firstline = 'Blender '+ self.getBlenderVersion()
+
+        # get the password from the credential manager since we dont store
+        # it with other blender data.
         username, password = credentials.get_credentials(server_url,
                                                               pars.username)
+
+        # if defined we insert the agent library path into the environment.
         if props.agent_libs_path:
             os.environ['SIMRT_LIBS_PATH'] = props.agent_libs_path
         elif 'SIMRT_LIBS_PATH' in os.environ:
             del os.environ['SIMRT_LIBS_PATH']
 
+        # now setup the login parameters to be forwarded to the agent.
         login_params = { 'region': region_name, 
                         'firstline': firstline }
        
+        # depending on the usename form we will use a different kind of login.
         if '@' in pars.username:
             # federated login
             auth_uri = pars.username.split('@')[1]
@@ -384,9 +396,12 @@ class BaseApplication(Importer, Exporter):
             login_params['last'] = pars.username.split()[1]
             login_params['passwd'] = password
 
+        # start the agent.
         self.simrt = simrt.run_thread(self, server_url,
                                       login_params)
         self.connected = True
+
+        # send our preferred throttle.
         self._lastthrottle = self.exportSettings.kbytesPerSecond*1024
         self.simrt.Throttle(self._lastthrottle)
 
