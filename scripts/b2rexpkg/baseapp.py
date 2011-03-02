@@ -508,7 +508,7 @@ class BaseApplication(Importer, Exporter):
         if selected:
             for obj in selected:
                 if obj.opensim.uuid:
-                    self.set_loading_state(obj, 'TAKING')
+                    editor.set_loading_state(obj, 'TAKING')
                     self.simrt.DeRezObject(obj.opensim.uuid)
 
     # Misc common functionality
@@ -565,7 +565,7 @@ class BaseApplication(Importer, Exporter):
         Position for an object arrived from the agent.
         """
         obj = self.findWithUUID(objId)
-        if obj and self.get_loading_state(obj) == 'OK':
+        if obj and editor.get_loading_state(obj) == 'OK':
             self._processPosCommand(obj, objId, pos)
             if rot:
                 self._processRotCommand(obj, objId, rot)
@@ -577,7 +577,7 @@ class BaseApplication(Importer, Exporter):
         Scale for an object arrived from the agent.
         """
         obj = self.findWithUUID(objId)
-        if obj and self.get_loading_state(obj) == 'OK':
+        if obj and editor.get_loading_state(obj) == 'OK':
             self._processScaleCommand(obj, objId, scale)
         else:
             self.add_callback('object.create', objId, self.processScaleCommand,
@@ -588,7 +588,7 @@ class BaseApplication(Importer, Exporter):
         Rotation for an object arrived from the agent.
         """
         obj = self.findWithUUID(objId)
-        if obj and self.get_loading_state(obj) == 'OK':
+        if obj and editor.get_loading_state(obj) == 'OK':
             self._processRotCommand(obj, objId, rot)
         else:
             self.add_callback('object.create', objId, self.processRotCommand,

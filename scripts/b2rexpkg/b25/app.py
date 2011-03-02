@@ -174,7 +174,9 @@ class B2Rex(BaseApplication):
     def onToggleRt(self, context=None):
         if not context:
             context = bpy.context
-        if not self.rt_on:
+        if self.rt_on:
+            self.addStatus("Agent disconnected.")
+        else:
             self.addStatus("Starting agent...")
             self.queueRedraw(immediate=True)
         BaseApplication.onToggleRt(self, context)
@@ -224,15 +226,6 @@ class B2Rex(BaseApplication):
         obj_uuid = obj.opensim.uuid
         if obj_uuid:
             return obj_uuid
-
-    def set_loading_state(self, obj, value):
-        """
-        Set the loading state for the given blender object.
-        """
-        obj.opensim.state = value
-
-    def get_loading_state(self, obj):
-        return str(obj.opensim.state)
 
     def set_uuid(self, obj, obj_uuid):
         """

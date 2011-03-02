@@ -9,6 +9,7 @@ from collections import defaultdict
 
 logger = logging.getLogger("b2rex.importer")
 
+from b2rexpkg import editor
 from .siminfo import GridInfo
 from .simconnection import SimConnection
 from .tools.simtypes import AssetType
@@ -342,7 +343,7 @@ class Importer25(object):
                              "objects")
         if not obj:
             obj = bpy.data.objects.new(name, mesh_data)
-            self.set_loading_state(obj, 'LOADING')
+            editor.set_loading_state(obj, 'LOADING')
         return obj
 
     def create_texture(self, name, filename):
@@ -977,7 +978,7 @@ class Importer(ImporterBase):
                 scene.objects.link(obj)
         except RuntimeError:
             pass # object already in scene
-        self.set_loading_state(obj, 'OK')
+        editor.set_loading_state(obj, 'OK')
         #new_mesh.update()
         #obj.makeDisplayList()
         #new_mesh.hasVertexColours(True) # for now we create them as blender does
@@ -1042,14 +1043,6 @@ class Importer(ImporterBase):
         if not "opensim" in obj.properties:
             obj.properties["opensim"] = {}
         obj.properties["opensim"]["uuid"] = str(obj_uuid)
-
-    def set_loading_state(self, obj, value):
-        """
-        Set the loading state for the given blender object.
-        """
-        if not "opensim" in obj.properties:
-            obj.properties["opensim"] = {}
-        obj.properties["opensim"]["state"] = value
 
     def check_group(self, groupid, scenegroup):
         """

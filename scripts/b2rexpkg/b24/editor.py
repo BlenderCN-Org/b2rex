@@ -174,4 +174,18 @@ data = EditorData()
 def getSelected():
     return map(lambda s: EditorObject(s), Blender.Object.GetSelected())
 
+def get_loading_state(obj):
+    if "opensim" in obj.properties and "state" in obj.properties["opensim"]:
+        return obj.properties["opensim"]["state"]
+    else:
+        return 'LOADING'
+
+def set_loading_state(obj, value):
+    """
+    Set the loading state for the given blender object.
+    """
+    if not "opensim" in obj.properties:
+        obj.properties["opensim"] = {}
+    obj.properties["opensim"]["state"] = value
+
 
