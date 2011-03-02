@@ -16,10 +16,10 @@
   - No crashes but needs some stuff in blender to be completely stable.
   - Fine grained control of performance parameters
   - Parenting
+  - Take from and to inventory
   - Make blender run simrt without the user noticing
   - Upload and download material and textures
- Blockers:
-  - b2.4 support partially broken
+  - b2.4 support partially working
 0.9 - Logic
  Goals:
   - Control of rex logic
