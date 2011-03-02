@@ -20,6 +20,9 @@ class RegionHandshakeModule(SyncModule):
         parent.unregisterCommand('RegionHandshake')
 
     def processRegionHandshake(self, regionID, pars):
+        """
+        RegionHandshake arrived from the simulator.
+        """
         print("REGION HANDSHAKE", pars)
 
 
