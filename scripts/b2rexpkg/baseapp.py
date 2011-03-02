@@ -19,6 +19,7 @@ from .editsync.handlers.asset import AssetModule
 from .editsync.handlers.online import OnlineModule
 from .editsync.handlers.agents import AgentsModule
 from .editsync.handlers.terrain import TerrainModule
+from .editsync.handlers.rexdata import RexDataModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
@@ -26,11 +27,10 @@ from .importer import Importer
 from .exporter import Exporter
 from .simconnection import SimConnection
 
-from .tools.simtypes import RexDrawType, AssetType, PCodeEnum
+from .tools.simtypes import RexDrawType, AssetType, PCodeEnum, ZERO_UUID_STR
 
 import bpy
 
-ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
 priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props', 'scale']
 
 if sys.version_info[0] == 3:
@@ -144,6 +144,7 @@ class BaseApplication(Importer, Exporter):
         del self._cmd_matrix[cmd]
 
     def initializeModules(self):
+        self.registerModule(RexDataModule(self))
         self.registerModule(TerrainModule(self))
         self.registerModule(StatsModule(self))
         self.registerModule(AssetModule(self))
@@ -158,7 +159,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('props', self.processPropsCommand)
         self.registerCommand('delete', self.processDeleteCommand)
         self.registerCommand('msg', self.processMsgCommand)
-        self.registerCommand('RexPrimData', self.processRexPrimDataCommand)
         self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
         self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
         self.registerCommand('connected', self.processConnectedCommand)
@@ -168,7 +168,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
 
         # internal
-        self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
 
@@ -412,55 +411,6 @@ class BaseApplication(Importer, Exporter):
             scene.objects.unlink(obj)
             self.queueRedraw()
 
-    def processRexPrimDataCommand(self, objId, pars):
-        self.stats[3] += 1
-        meshId = pars["RexMeshUUID"]
-        obj = self.findWithUUID(objId)
-        if obj or not meshId:
-            if obj:
-                logger.warning(("Object already created", obj, meshId, objId))
-            # XXX we dont update mesh for the moment
-            return
-        mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")
-        if mesh:
-            self.createObjectWithMesh(mesh, objId, meshId)
-            self.queueRedraw()
-        else:
-            materials = []
-            if "Materials" in pars:
-                materials = pars["Materials"]
-                for index, matId, asset_type in materials:
-                    if not matId == ZERO_UUID_STR:
-                        if asset_type == AssetType.OgreMaterial:
-                            self.Asset.downloadAsset(matId, asset_type,
-                                               self.materialArrived, (objId,
-                                                                         meshId,
-                                                                         matId,
-                                                                         asset_type,
-                                                                         index))
-                        elif asset_type == 0:
-                            self.Asset.downloadAsset(matId, asset_type,
-                                               self.materialTextureArrived, (objId,
-                                                                         meshId,
-                                                                         matId,
-                                                                         asset_type,
-                                                                         index))
-                        else:
-                            logger.warning("unhandled material of type " + str(asset_type))
-            if meshId and not meshId == ZERO_UUID_STR:
-                asset_type = pars["drawType"]
-                if asset_type == RexDrawType.Mesh:
-                    if not self.Asset.downloadAsset(meshId, AssetType.OgreMesh,
-                                    self.meshArrived, 
-                                     (objId, meshId, materials),
-                                            main=self.doMeshDownloadTranscode):
-                        self.add_mesh_callback(meshId,
-                                               self.createObjectWithMesh,
-                                               objId,
-                                               meshId, materials)
-                else:
-                    logger.warning("unhandled rexdata of type " + str(asset_type))
-
     def processPropsCommand(self, objId, pars):
         if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
             agent = self.Agents[objId] # creates the agent
@@ -554,21 +504,6 @@ class BaseApplication(Importer, Exporter):
         if assetType == AssetType.OgreMaterial:
             self.parse_material(matId, {"name":matId, "data":data}, meshId,
                                 matIdx)
-
-    def meshArrived(self, mesh, objId, meshId, materials):
-        self.command_queue.append(["mesharrived", mesh, objId, meshId, materials])
-
-    def processMeshArrived(self, mesh, objId, meshId, materials):
-        self.stats[4] += 1
-        obj = self.findWithUUID(objId)
-        if obj:
-            return
-        new_mesh = self.create_mesh_fromomesh(meshId, "opensim", mesh, materials)
-        if new_mesh:
-            self.createObjectWithMesh(new_mesh, str(objId), meshId, materials)
-            self.trigger_mesh_callbacks(meshId, new_mesh)
-        else:
-            print("No new mesh with processMeshArrived")
 
 
     def setMeshMaterials(self, mesh, materials):

@@ -1,4 +1,6 @@
 
+ZERO_UUID_STR = '00000000-0000-0000-0000-000000000000'
+
 class LayerTypes:
     LayerLand = 0x4C
     LayerWater = 0x57

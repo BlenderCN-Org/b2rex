@@ -1,0 +1,90 @@
+import logging
+from .base import SyncModule
+
+import bpy
+
+from b2rexpkg.tools.simtypes import AssetType, ZERO_UUID_STR, RexDrawType
+
+logger = logging.getLogger('b2rex.RexDataModule')
+
+class RexDataModule(SyncModule):
+    def register(self, parent):
+        parent.registerCommand('RexPrimData', self.processRexPrimDataCommand)
+        parent.registerCommand('mesharrived', self.processMeshArrived)
+
+    def unregister(self, parent):
+        parent.unregisterCommand('RexPrimData')
+        parent.unregisterCommand('mesharrived')
+
+    def processRexPrimDataCommand(self, objId, pars):
+        editor = self._parent
+        editor.stats[3] += 1
+        meshId = pars["RexMeshUUID"]
+        obj = editor.findWithUUID(objId)
+        if obj or not meshId:
+            if obj:
+                logger.warning(("Object already created", obj, meshId, objId))
+            # XXX we dont update mesh for the moment
+            return
+        mesh = editor.find_with_uuid(meshId, bpy.data.meshes, "meshes")
+        if mesh:
+            editor.createObjectWithMesh(mesh, objId, meshId)
+            editor.queueRedraw()
+        else:
+            materials = []
+            if "Materials" in pars:
+                materials = pars["Materials"]
+                for index, matId, asset_type in materials:
+                    if not matId == ZERO_UUID_STR:
+                        if asset_type == AssetType.OgreMaterial:
+                            editor.Asset.downloadAsset(matId, asset_type,
+                                               editor.materialArrived, (objId,
+                                                                         meshId,
+                                                                         matId,
+                                                                         asset_type,
+                                                                         index))
+                        elif asset_type == 0:
+                            editor.Asset.downloadAsset(matId, asset_type,
+                                               editor.materialTextureArrived, (objId,
+                                                                         meshId,
+                                                                         matId,
+                                                                         asset_type,
+                                                                         index))
+                        else:
+                            logger.warning("unhandled material of type " + str(asset_type))
+            if meshId and not meshId == ZERO_UUID_STR:
+                asset_type = pars["drawType"]
+                if asset_type == RexDrawType.Mesh:
+                    if not editor.Asset.downloadAsset(meshId, AssetType.OgreMesh,
+                                    self.meshArrived, 
+                                     (objId, meshId, materials),
+                                            main=self.doMeshDownloadTranscode):
+                        editor.add_mesh_callback(meshId,
+                                               editor.createObjectWithMesh,
+                                               objId,
+                                               meshId, materials)
+                else:
+                    logger.warning("unhandled rexdata of type " + str(asset_type))
+
+    def doMeshDownloadTranscode(self, pars):
+        http_url, pars, data = pars
+        assetName = pars[1] # we dont get the name here
+        assetId = pars[1]
+        return self._parent.create_mesh_frombinary(assetId, assetName, data)
+
+    def meshArrived(self, mesh, objId, meshId, materials):
+        self._parent.command_queue.append(["mesharrived", mesh, objId, meshId, materials])
+
+    def processMeshArrived(self, mesh, objId, meshId, materials):
+        editor = self._parent
+        editor.stats[4] += 1
+        obj = editor.findWithUUID(objId)
+        if obj:
+            return
+        new_mesh = editor.create_mesh_fromomesh(meshId, "opensim", mesh, materials)
+        if new_mesh:
+            editor.createObjectWithMesh(new_mesh, str(objId), meshId, materials)
+            editor.trigger_mesh_callbacks(meshId, new_mesh)
+        else:
+            print("No new mesh with processMeshArrived")
+

@@ -899,13 +899,6 @@ class Importer(ImporterBase):
         return self.create_mesh_fromomesh(scenegroup["asset"], asset["name"],
                                           mesh, materials)
 
-    def doMeshDownloadTranscode(self, pars):
-        http_url, pars, data = pars
-        assetName = pars[1] # we dont get the name here
-        assetId = pars[1]
-        return self.create_mesh_frombinary(assetId, assetName, data)
-
-
     def create_mesh_frombinary(self, meshId, meshName, data):
         mesh = oimporter.parse(data)
         return mesh
