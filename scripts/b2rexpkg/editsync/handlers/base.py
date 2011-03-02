@@ -1,3 +1,7 @@
+"""
+ Base class for editsync modules.
+"""
+
 import bpy
 
 class SyncModule(object):
@@ -9,8 +13,14 @@ class SyncModule(object):
         """
         return self.__class__.__name__.replace("Module", "")
     def setProperties(self, props):
+        """
+        Called when setting the module properties
+        """
         self._props = props
     def onToggleRt(self, enabled):
+        """
+        Called when agent is enabled or disabled.
+        """
         self._props = self._parent.exportSettings
         if enabled:
             self.simrt = self._parent.simrt
@@ -18,11 +28,21 @@ class SyncModule(object):
         else:
             self.simrt = None
             self.workpool = None
-    def check(self, starttime, budget):
-        pass
     def register(self, parent):
+        """
+        Called when the module is registered with the system.
+        """
         pass
     def unregister(self, parent):
+        """
+        Called when the module is unregistered from the system:
+        """
         pass
+    """
+    The following can be defined for getting called in specific
+    moments.
+
     def draw(self, layout, session, props):
-        pass
+    def check(self, starttime, budget):
+    """
+
