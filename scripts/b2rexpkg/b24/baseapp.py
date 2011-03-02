@@ -2,7 +2,7 @@ import traceback
 
 from .settings import ExportSettings
 from .editor import EditorObject
-from b2rexpkg.siminfo import GridInfo
+from b2rexpkg.tools.siminfo import GridInfo
 from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 
 from ogredotscene import Screen, HorizontalLayout

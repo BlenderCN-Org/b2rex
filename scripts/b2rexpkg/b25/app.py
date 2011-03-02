@@ -3,7 +3,7 @@ import math
 import uuid
 from io import StringIO
 
-from ..siminfo import GridInfo
+from ..tools.siminfo import GridInfo
 from ..compatibility import BaseApplication
 from ..tools.logger import logger
 

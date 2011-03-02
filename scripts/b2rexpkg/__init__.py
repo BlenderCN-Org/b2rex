@@ -33,7 +33,7 @@ bl_addon_info = {
 
 import sys
 import traceback
-from .siminfo import GridInfo
+from .tools.siminfo import GridInfo
 from .importer import Importer
 from .tools.logger import logger
 

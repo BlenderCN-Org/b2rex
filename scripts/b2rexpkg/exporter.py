@@ -13,11 +13,11 @@ from collections import defaultdict
 
 from io import StringIO
 
-from b2rexpkg import uuidexport
+from b2rexpkg.tools import uuidexport
 
-from .siminfo import GridInfo
-from .simconnection import SimConnection
-from .uuidexport import reset_uuids
+from .tools.siminfo import GridInfo
+from .tools.simconnection import SimConnection
+from .tools.uuidexport import reset_uuids
 from .tools.simtypes import AssetType
 
 if sys.version_info[0] == 2:

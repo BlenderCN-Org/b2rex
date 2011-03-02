@@ -6,7 +6,7 @@ from b2rexpkg.compatibility import BaseApplication
 from b2rexpkg.baseapp import HorizontalLayout, Box, Label, VerticalLayout
 from b2rexpkg.baseapp import IMMEDIATE
 
-from b2rexpkg.simconnection import SimConnection
+from b2rexpkg.tools.simconnection import SimConnection
 from b2rexpkg.importer import Importer
 
 import Blender

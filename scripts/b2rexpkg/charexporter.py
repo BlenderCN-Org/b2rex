@@ -4,10 +4,10 @@ RealXtend character exporter
 
 import os
 import b2rexpkg
-from b2rexpkg.siminfo import GridInfo
-from b2rexpkg.simconnection import SimConnection
+from b2rexpkg.tools.siminfo import GridInfo
+from b2rexpkg.tools.simconnection import SimConnection
 from b2rexpkg.b24.ogre_exporter import OgreExporter
-from b2rexpkg.uuidexport import reset_uuids
+from b2rexpkg.tools.uuidexport import reset_uuids
 
 from ogrepkg.base import indent
 from ogrepkg.armatureexport import GetArmatureObject

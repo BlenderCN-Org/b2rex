@@ -8,7 +8,7 @@ from hashlib import md5
 from collections import defaultdict
 
 import b2rexpkg
-from b2rexpkg.siminfo import GridInfo
+from b2rexpkg.tools.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR, OK
 from b2rexpkg import editor
 
@@ -28,7 +28,7 @@ from .tools.threadpool import ThreadPool, NoResultsPending
 
 from .importer import Importer
 from .exporter import Exporter
-from .simconnection import SimConnection
+from .tools.simconnection import SimConnection
 
 from .tools.simtypes import AssetType
 

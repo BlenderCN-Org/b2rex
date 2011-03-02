@@ -12,7 +12,7 @@ else:
 
 import xml.etree.ElementTree as ET
 
-from .tools.restconnector import RestConnector
+from .restconnector import RestConnector
 
 
 class GridInfo(RestConnector):

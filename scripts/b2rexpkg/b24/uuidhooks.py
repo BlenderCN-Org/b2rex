@@ -11,7 +11,7 @@ import ogrepkg.meshexport
 import ogrepkg.materialexport
 import uuid
 import Blender.Material
-from b2rexpkg import uuidexport
+from b2rexpkg.tools import uuidexport
 
 
 obj_export = ogredotscene.ObjectExporter.export
