@@ -1,22 +1,52 @@
-b2rex 0.7
+b2rex 0.8
 ---------------
 
 Connects Blender to RealXtend directly.
 
 Features:
-  - Manages ogre exporters internally.
-  - Connect to opensim world and get region info.
-  - Upload and clear worlds to realxtend directly from blender.
-  - Prepare characters for naali.
-  - Import and browse objects from realxtend regions.
+  - Can connect to taiga servers in real time using opensim protocol with
+    the following capabilities:
+      - Import objects into blender
+      - Both opensim and rex style login supported
+      - Upload new content into the world (meshes, materials, textures)
+      - Put things into and out of inventory
+      - Edit terrain
+      - Follow avatars
+      - Local teleport own avatar
+      - Parenting of objects
+      - Region chat
 
 Installation:
-  - Copy everything inside the scripts folder to your blender scripts folder.
+
+ Dependencies (python 2.6):
+  - greenlet (http://pypi.python.org/pypi/greenlet)
+  - eventlet (http://eventlet.net/)
+  - pyogp base (https://bitbucket.org/caedes/pyogp.lib.base)
+  - pyogp client (https://bitbucket.org/caedes/pyogp.lib.client)
+  - llbase (https://bitbucket.org/lindenlab/llbase)
+  - webob (http://pythonpaste.org/webob/)
+  - ogre exporter -2.5- (http://www.ogre3d.org/forums/viewtopic.php?f=4&t=61485)
+                  -2.49-
+
+NOTE: Blender 2.50 uses python 3, but the part of b2rex connecting to realxtend *still* runs with
+      python 2.6, so you need to have it installed, together with the above dependencies.
+
+ Blender 2.50:
+  - Copy the scripts/b2rexpkg folder to your blender "addons" folder.
+
+ Blender 2.49:
+  - Copy everything inside the "scripts" folder to your blender "scripts" folder.
 
 Server configuration:
-  - At the moment rest interfaces have to be enabled to.
-  - On linux xmlrpc functions on taiga-git where broken (see patch01).
-  - Added an xmlrpc communications component to taiga regions to manage uploading of worlds (ModularRex.RexNetwork.SceneUploadReceiver) (see SceneUploadReceiver.cs).
+  - For real time connection no special configuration is needed (any running taiga 
+    instance should work),
+    Two patches are provided to handle some advanced usage.
+        - terrain patch for incremental editing of terrain
+        - modrex inventory patch to handle non grid setup
+  - For xmlrpc interfacing more changes are needed and at the moment the method of access is
+    discouraged, several patches are provided to enable the xmlrpc functionality needed by b2rex.
+	- On linux xmlrpc functions on taiga-git where broken (see patch01).
+  	- Added an xmlrpc communications component to taiga regions to manage uploading of worlds (ModularRex.RexNetwork.SceneUploadReceiver) (see SceneUploadReceiver.cs).
 
 License:
   - See COPYING
