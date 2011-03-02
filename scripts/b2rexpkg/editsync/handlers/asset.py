@@ -25,6 +25,9 @@ class AssetModule(SyncModule):
         parent.unregisterCommand('AssetArrived')
 
     def processAssetArrived(self, assetId, b64data):
+        """
+        The data for an asset has arrived from the sim.
+        """
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         cb, cb_pars, main = self._requested_llassets['lludp:'+assetId]
         def _cb(request, result):
@@ -41,6 +44,17 @@ class AssetModule(SyncModule):
             cb(data, *cb_pars)
 
     def downloadAsset(self, assetId, assetType, cb, pars, main=None):
+        """
+        Download the given asset by uuid and assetType. Will call the provided
+        callback cb with the expanded parameters pars.
+
+        If the function main is provided it will be called on a thread before
+        calling the callback.
+
+        Returns False if the asset is already downloading.
+
+        This function uses either GetTexture caps or lludp.
+        """
         if "GetTexture" in self._parent.caps:
             asset_url = self._parent.caps["GetTexture"] + "?texture_id=" + assetId
             return self._parent.addDownload(asset_url, cb, pars, extra_main=main)

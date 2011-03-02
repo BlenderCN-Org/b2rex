@@ -1,3 +1,7 @@
+"""
+ TerrainModule: Manages LayerData and editor terrain objects.
+"""
+
 import sys
 import base64
 from .base import SyncModule
@@ -25,7 +29,10 @@ class TerrainModule(SyncModule):
         parent.unregisterCommand('LayerDataDecoded')
 
     def onToggleRt(self, enabled):
-        print("ENABLE TERRAIN")
+        """
+        Real time agent has been enabled. the first time we need to create the
+        TerrainSync object for the region and get a few pointers.
+        """
         if not self.terrain:
             self._props = self._parent.exportSettings
             self.terrain = TerrainSync(self._parent, self._props.terrainLOD)
@@ -36,6 +43,10 @@ class TerrainModule(SyncModule):
             self.simrt = None
 
     def check(self, starttime, timebudget):
+        """
+        Callback for the check stage of command processing. We need to see if
+        the terrain came back from edit mode and scan for changes to send.
+        """
         if not sys.version_info[0] == 3:
             return
         updated_blocks = []
@@ -59,6 +70,10 @@ class TerrainModule(SyncModule):
                              self.terrainEncoded, self._parent.default_error_db)
 
     def encodeTerrainBlock(self, args):
+        """
+        Function for the encoding thread, encodes and sends a block of terrain
+        data.
+        """
         datablock, x, y = args
         bindata = TerrainEncoder.encode([[datablock, x, y]])
         b64data = base64.urlsafe_b64encode(bindata).decode('ascii')
@@ -67,21 +82,36 @@ class TerrainModule(SyncModule):
         return True
 
     def terrainEncoded(self, request, result):
-        if result:
-            pass
+        """
+        Callback for a terrain encoder thread. we do nothing.
+        """
+        pass
 
     def processLayerData(self, layerType, b64data):
+        """
+        LayerData arrived from the simulator.
+        """
         self.workpool.addRequest(self.decodeTerrainBlock, [b64data],
                              self.terrainDecoded, self._parent.default_error_db)
 
     def processLayerDataDecoded(self, header, layer):
+        """
+        LayerData ready from the transcoding thread.
+        """
         self.terrain.apply_patch(layer, header.x, header.y)
 
     def decodeTerrainBlock(self, b64data):
+        """
+        Decode a block of terrain data from the transcoding thread. Converts from base64
+        into a python array.
+        """
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         terrpackets = TerrainDecoder.decode(data)
         return terrpackets
  
     def terrainDecoded(self, request, terrpackets):
+        """
+        Terrain data is ready, push it into the command processor queue.
+        """
         for header, layer in terrpackets:
             self._parent.command_queue.append(['LayerDataDecoded', header, layer])

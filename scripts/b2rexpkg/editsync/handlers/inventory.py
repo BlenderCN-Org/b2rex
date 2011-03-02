@@ -1,3 +1,7 @@
+"""
+ InventoryModule: Manages inventoy inside the editor and provides operations
+ for putting items in and out of inventory.
+"""
 import uuid
 import logging
 
@@ -24,14 +28,10 @@ class InventoryModule(SyncModule):
         parent.unregisterCommand('InventorySkeleton')
         parent.unregisterCommand('InventoryDescendents')
 
-    def onToggleRt(self, enabled):
-        self._props = self._parent.exportSettings
-        if enabled:
-            self.simrt = self._parent.simrt
-        else:
-            self.simrt = None
-
     def update_folders(self, folders):
+        """
+        Update the available folders with the given folder dict.
+        """
         props = bpy.context.scene.b2rex_props
         cached_folders = getattr(props, 'folders')
         cached_folders.clear()
@@ -48,6 +48,9 @@ class InventoryModule(SyncModule):
             cached_folders[folder['FolderID']] = folder
 
     def update_items(self, items):
+        """
+        Update the available items from the fiven item dict.
+        """
         props = bpy.context.scene.b2rex_props
         cached_items = getattr(props, '_items')
         cached_items.clear()
@@ -55,11 +58,17 @@ class InventoryModule(SyncModule):
             cached_items[item['ItemID']] = item
 
     def processInventoryDescendents(self, folder_id, folders, items):
+        """
+        Inventory descendents arrived from the sim.
+        """
         logger.debug("processInventoryDescendents")
         self.update_folders(folders)
         self.update_items(items)
            
     def processInventorySkeleton(self, inventory):
+        """
+        Inventory skeleton arrived from the sim.
+        """
         logger.debug("processInventorySkeleton")
 
         props = bpy.context.scene.b2rex_props
@@ -82,6 +91,9 @@ class InventoryModule(SyncModule):
         session.inventory = inventory
 
     def draw(self, layout, session, props):
+        """
+        Draw the inventory panel into the given layout.
+        """
         row = layout.column()
         row.alignment = 'CENTER'
         if not hasattr(session, 'inventory'):
@@ -105,6 +117,9 @@ class InventoryModule(SyncModule):
             self.draw_folder(layout, root_folder, 0)
 
     def draw_folder(self, layout, folder_id, indent):
+        """
+        Draw an inventory folder into the given layout.
+        """
  
         props = bpy.context.scene.b2rex_props
     

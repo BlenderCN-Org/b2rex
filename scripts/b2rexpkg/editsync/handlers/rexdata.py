@@ -1,3 +1,7 @@
+"""
+ RexDataModule: Manages RexData and mesh creation.
+"""
+
 import logging
 from .base import SyncModule
 
@@ -23,6 +27,9 @@ class RexDataModule(SyncModule):
         parent.unregisterCommand('mesharrived')
 
     def processRexPrimDataCommand(self, objId, pars):
+        """
+        RexPrimData arrived from the simulator.
+        """
         editor = self._parent
         editor.stats[3] += 1
         meshId = pars["RexMeshUUID"]
@@ -73,15 +80,25 @@ class RexDataModule(SyncModule):
                     logger.warning("unhandled rexdata of type " + str(asset_type))
 
     def doMeshDownloadTranscode(self, pars):
+        """
+        Function for the transcoding thread to convert and parse assets.
+        """
         http_url, pars, data = pars
         assetName = pars[1] # we dont get the name here
         assetId = pars[1]
         return self._parent.create_mesh_frombinary(assetId, assetName, data)
 
     def meshArrived(self, mesh, objId, meshId, materials):
+        """
+        A mesh arrived from a thread. We queue it into the command processor.
+        """
         self._parent.command_queue.append(["mesharrived", mesh, objId, meshId, materials])
 
     def processMeshArrived(self, mesh, objId, meshId, materials):
+        """
+        A mesh arrived and is fully decoded and parsed. Now we need to create
+        the editor mesh object and finish object creation.
+        """
         editor = self._parent
         editor.stats[4] += 1
         obj = editor.findWithUUID(objId)

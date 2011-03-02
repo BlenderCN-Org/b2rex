@@ -1,3 +1,7 @@
+"""
+ ChatModule: Allows to chat with the simulator.
+"""
+
 from .base import SyncModule
 
 import bpy
@@ -16,6 +20,9 @@ class ChatModule(SyncModule):
         parent.unregisterCommand('msg')
 
     def processMsgCommand(self, username, message):
+        """
+        A chat message arrived from the simulator.
+        """
         props = bpy.context.scene.b2rex_props
         props.chat.add()
         regionss = props.chat[-1]
@@ -23,12 +30,19 @@ class ChatModule(SyncModule):
         props.selected_chat = len(props.chat)-1
 
     def check(self, starttime, budget):
+        """
+        Check to see if the user wrote a new message for the chat,
+        if so, send it.
+        """
         props = self._props
         if props.next_chat:
             self.simrt.Msg(props.next_chat)
             props.next_chat = ""
 
     def draw(self, layout, session, props):
+        """
+        Draw the chat panel into the given layout.
+        """
         if not len(props.chat):
             return
         row = layout.column()

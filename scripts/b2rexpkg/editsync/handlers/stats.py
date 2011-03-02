@@ -1,3 +1,7 @@
+"""
+ StatsModule: Stats management.
+"""
+
 from .base import SyncModule
 
 import bpy
@@ -25,9 +29,15 @@ class StatsModule(SyncModule):
         parent.unregisterCommand('SimStats')
 
     def processSimStats(self, X, Y, Flags, ObjectCapacity, *args):
+        """
+        SimStats arrived from the simulator.
+        """
         self.simstats = [X, Y, Flags, ObjectCapacity] + list(args)
 
     def draw(self, layout, session, props):
+        """
+        Draw the stats panel into the given layout.
+        """
         row = layout.row() 
         if props.show_stats:
             row.prop(props,"show_stats", icon="TRIA_DOWN", text="Stats",

@@ -1,3 +1,6 @@
+"""
+ ObjectModule: Manages the synchronization of editor objects.
+"""
 import logging
 
 from .base import SyncModule
@@ -23,6 +26,11 @@ class ObjectModule(SyncModule):
         parent.unregisterCommand('meshcreated')
 
     def finishedLoadingObject(self, objId, obj=None):
+        """
+        To be called when an object has finished loading. This happens when we
+        gathered enough information to place the object, which includes parent,
+        scale and position.
+        """
         editor = self._parent
         if not obj:
             obj = editor.findWithUUID(objId)
@@ -34,6 +42,9 @@ class ObjectModule(SyncModule):
 
 
     def createObjectWithMesh(self, new_mesh, objId, meshId, materials=[]):
+        """
+        Create an object for the given mesh, with an optional list of materials.
+        """
         editor = self._parent
         obj = editor.getcreate_object(objId, "opensim", new_mesh)
         editor.setMeshMaterials(new_mesh, materials)
@@ -61,6 +72,11 @@ class ObjectModule(SyncModule):
         editor.trigger_callback('object.precreate', str(objId))
 
     def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
+        """
+        The agent informed of a mesh object that finished creation. It provides
+        new uuids for the object, since we set random uuids when creating but
+        the sim provides its own.
+        """
         foundobject = False
         foundmesh = False
         editor = self._parent
@@ -87,6 +103,9 @@ class ObjectModule(SyncModule):
             logger.warning("Could not find mesh for meshcreated")
 
     def processDeleteCommand(self, objId):
+        """
+        An object kill arrived from the simulator.
+        """
         editor = self._parent
         obj = editor.findWithUUID(objId)
         if obj:
@@ -102,6 +121,9 @@ class ObjectModule(SyncModule):
             editor.queueRedraw()
 
     def processLink(self, parentId, *childrenIds):
+        """
+        Link the given parent to the specified children.
+        """
         editor = self._parent
         parent = editor.findWithUUID(parentId)
         if parent:
@@ -120,6 +142,9 @@ class ObjectModule(SyncModule):
                               parentId, childId)
 
     def sendObjectClone(self, obj, materials):
+        """
+        Send a Clone command to the agent.
+        """
         editor = self._parent
         obj_name = obj.name
         mesh = obj.data
@@ -136,6 +161,9 @@ class ObjectModule(SyncModule):
                            editor.unapply_scale(obj, scale), materials)
         
     def sendObjectUpload(self, obj, mesh, data, materials):
+        """
+        Send a Create command tot he agent.
+        """
         editor = self._parent
         data = data.replace(b'MeshSerializer_v1.41', b'MeshSerializer_v1.40')
 
@@ -153,6 +181,11 @@ class ObjectModule(SyncModule):
                            materials)
 
     def doRtObjectUpload(self, context, obj):
+        """
+        Perform an object upload using the real time connection. If the given
+        mesh has the uuid set we will clone the object, otherwise we create
+        which means we have to upload the new mesh object.
+        """
         editor = self._parent
         mesh = obj.data
         has_mesh_uuid = mesh.opensim.uuid

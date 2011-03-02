@@ -1,3 +1,7 @@
+"""
+ ObjectPropertiesModule: Processor for ObjectProperties and ObjectUpdates.
+"""
+
 from .base import SyncModule
 
 from b2rexpkg.tools.simtypes import PCodeEnum
@@ -20,6 +24,9 @@ class ObjectPropertiesModule(SyncModule):
         parent.unregisterCommand('ObjectProperties')
 
     def processPropsCommand(self, objId, pars):
+        """
+        Properties arrived from an ObjectUpdate.
+        """
         editor = self._parent
         if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
             agent = editor.Agents[objId] # creates the agent
@@ -63,6 +70,10 @@ class ObjectPropertiesModule(SyncModule):
         self.processObjectPropertiesCommand(objId, pars)
 
     def processObjectPropertiesCommand(self, objId, pars):
+        """
+        Properties arrived from an ObjectProperties packet. Generally this
+        happens when the object is selected.
+        """
         editor = self._parent
         obj = editor.find_with_uuid(str(objId), bpy.data.objects, "objects")
         if obj:

@@ -1,3 +1,7 @@
+"""
+ RegionHandshakeModule: Process RegionHandshake commands.
+"""
+
 from .base import SyncModule
 
 import bpy
