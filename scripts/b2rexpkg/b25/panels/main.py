@@ -32,28 +32,6 @@ class ConnectionPanel(bpy.types.Panel):
         pass # we dont really want this callback, but keeps the object
         # from dying all the time so we keep it for now
 
-    def draw_connection_panel(self, layout, session, props):
-        box = layout.box()
-        if session.connected and session.rt_support:
-            box_c = box.row()
-            col = box_c.column()
-            col.operator("b2rex.connect", text="Connect")
-            col = box_c.column()
-            col.alignment = 'RIGHT'
-            if session.simrt and session.simrt.connected:
-                col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_ACTIVE')
-            else:
-                col.operator("b2rex.toggle_rt", text="RT", icon='LAYER_USED')
-            if session.simrt and False: # now done on menu
-                session.processView()
-                bpy.ops.b2rex.processqueue()
-            #col.prop(bpy.context.scene.b2rex_props, "rt_on", toggle=True)
-        else:
-            box.operator("b2rex.connect", text="Connect")
-        box.operator("b2rex.export", text="Export")
-
-        box.label(text="Status: "+session.status)
-
     def draw_connections(self, layout, session, props):
         box = layout.box()
         row = box.row()
@@ -146,7 +124,6 @@ class ConnectionPanel(bpy.types.Panel):
         props = context.scene.b2rex_props
         session = bpy.b2rex_session
 
-        #self.draw_connection_panel(layout, session, props)
         self.draw_connections(layout, session, props)
 
         session.drawModules(layout, props)
