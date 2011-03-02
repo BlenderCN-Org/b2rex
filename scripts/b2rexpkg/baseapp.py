@@ -289,7 +289,7 @@ class BaseApplication(Importer, Exporter):
         for mod in self._modules.values():
             mod.onToggleRt(self.rt_on)
 
-    def enableRt(context);
+    def enableRt(context):
         if sys.version_info[0] == 3:
             pars = self.exportSettings.getCurrentConnection()
             server_url = pars.url
