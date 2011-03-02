@@ -239,12 +239,6 @@ class Base24Application(Screen, BaseApplication):
             self.showSettings()
             self.settings_visible = True
 
-    def getObjectProperties(self, obj):
-        pos = list(obj.getLocation())
-        rot = list(obj.getEuler())
-        scale = list(obj.getSize())
-        return pos, rot, scale
-
     def _processPosCommand(self, obj, objId, pos):
         self.apply_position(obj, pos)
         self.positions[str(objId)] = list(obj.getLocation())

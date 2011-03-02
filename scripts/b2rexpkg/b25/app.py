@@ -233,9 +233,6 @@ class B2Rex(BaseApplication):
         """
         obj.opensim.uuid = obj_uuid
 
-    def getObjectProperties(self, obj):
-        return (obj.location, obj.rotation_euler, obj.scale)
-
     def _processScaleCommand(self, obj, objId, scale):
         self.apply_scale(obj, scale)
         #prev_scale = list(obj.scale)

@@ -602,7 +602,7 @@ class BaseApplication(Importer, Exporter):
         """
         obj_uuid = self.get_uuid(obj)
         if obj_uuid:
-            pos, rot, scale = self.getObjectProperties(obj)
+            pos, rot, scale = editor.getObjectProperties(obj)
             pos = list(pos)
             rot = list(rot)
             scale = list(scale)

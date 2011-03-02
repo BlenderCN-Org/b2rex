@@ -6,6 +6,8 @@ import logging
 from .base import SyncModule
 import base64
 
+import b2rexpkg
+
 import bpy
 
 logger = logging.getLogger('b2rex.Object')
@@ -37,7 +39,7 @@ class ObjectModule(SyncModule):
         if obj.opensim.state == 'OK':
             # already loaded so just updating
             return
-        editor.set_loading_state(obj, 'OK')
+        b2rexpkg.editor.set_loading_state(obj, 'OK')
         editor.trigger_callback('object.create', str(objId))
 
 
@@ -94,7 +96,7 @@ class ObjectModule(SyncModule):
                                               bpy.data.objects, "objects")
         if foundobject:
             editor.set_uuid(foundobject, new_obj_uuid)
-            editor.set_loading_state(foundobject, 'OK')
+            b2rexpkg.editor.set_loading_state(foundobject, 'OK')
         else:
             logger.warning("Could not find object for meshcreated")
         if foundmesh:
@@ -153,7 +155,7 @@ class ObjectModule(SyncModule):
         obj_uuid = obj.opensim.uuid
         mesh_name = mesh.name
         mesh_uuid = mesh.opensim.uuid
-        pos, rot, scale = editor.getObjectProperties(obj)
+        pos, rot, scale = b2rexpkg.editor.getObjectProperties(obj)
         
         self.simrt.Clone(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            editor.unapply_position(obj, pos),
@@ -172,7 +174,7 @@ class ObjectModule(SyncModule):
         obj_uuid = obj.opensim.uuid
         mesh_name = mesh.name
         mesh_uuid = mesh.opensim.uuid
-        pos, rot, scale = editor.getObjectProperties(obj)
+        pos, rot, scale = b2rexpkg.editor.getObjectProperties(obj)
         
         self.simrt.Create(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            editor.unapply_position(obj, pos),
@@ -189,7 +191,7 @@ class ObjectModule(SyncModule):
         editor = self._parent
         mesh = obj.data
         has_mesh_uuid = mesh.opensim.uuid
-        editor.set_loading_state(obj, 'UPLOADING')
+        b2rexpkg.editor.set_loading_state(obj, 'UPLOADING')
         if has_mesh_uuid:
             def finish_clone(materials):
                 self.sendObjectClone(obj, materials)

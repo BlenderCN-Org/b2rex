@@ -9,7 +9,6 @@ from collections import defaultdict
 
 logger = logging.getLogger("b2rex.importer")
 
-from b2rexpkg import editor
 from .siminfo import GridInfo
 from .simconnection import SimConnection
 from .tools.simtypes import AssetType
