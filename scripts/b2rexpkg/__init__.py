@@ -24,15 +24,11 @@ bl_addon_info = {
     'version': (0, 8, 0),
     'blender': (2, 5, 6),
     'api': 33928,
-    'location': 'Text window > Properties panel (ctrl+F) or '\
-        'Console > Console menu',
+    'location': 'Tools window > Scene panel',
     'warning': '',
-    'description': 'Click an icon to display its name and copy it '\
-        'to the clipboard',
-    'wiki_url': 'http://wiki.blender.org/index.php/Extensions:2.5/'\
-        'Py/Scripts/System/Display_All_Icons',
-    'tracker_url': 'http://projects.blender.org/tracker/index.php?'\
-        'func=detail&aid=22011&group_id=153&atid=469',
+    'description': 'Connect to opensim and realxtend servers',
+    'wiki_url': 'https://sim.lorea.org/pg/pages/view/438/',
+    'tracker_url': 'https://github.com/b2rex/b2rex',
     'category': 'B2Rex'}
 
 import sys
