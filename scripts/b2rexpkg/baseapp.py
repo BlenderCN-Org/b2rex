@@ -14,6 +14,8 @@ from b2rexpkg.siminfo import GridInfo
 from b2rexpkg import IMMEDIATE, ERROR
 from b2rexpkg import editor
 
+from .editsync.handlers.map import MapModule
+from .editsync.handlers.caps import CapsModule
 from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
 from .editsync.handlers.online import OnlineModule
@@ -21,6 +23,8 @@ from .editsync.handlers.agents import AgentsModule
 from .editsync.handlers.object import ObjectModule
 from .editsync.handlers.terrain import TerrainModule
 from .editsync.handlers.rexdata import RexDataModule
+from .editsync.handlers.objectprops import ObjectPropertiesModule
+from .editsync.handlers.regionhandshake import RegionHandshakeModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
 
@@ -115,13 +119,14 @@ class BaseApplication(Importer, Exporter):
         self._modules[module.getName()] = module
         module.register(self)
         setattr(self, module.getName(), module)
-        if hasattr(module, "check"):
-            self._module_cb["check"].append(module.check)
+        for section in ["check", "draw"]:
+            if hasattr(module, section):
+                self._module_cb[section].append(getattr(module, section))
         #module.setProperties(self.exportSettings)
 
     def drawModules(self, layout, props):
-        for mod in self._modules.values():
-            mod.draw(layout, self, props)
+        for draw_cb in self._module_cb["draw"]:
+            draw_cb(layout, self, props)
 
     def add_callback(self, section, signal, callback, *parameters):
         self._callbacks[str(section)][str(signal)].append((callback, parameters))
@@ -147,8 +152,12 @@ class BaseApplication(Importer, Exporter):
         del self._cmd_matrix[cmd]
 
     def initializeModules(self):
+        self.registerModule(MapModule(self))
+        self.registerModule(CapsModule(self))
         self.registerModule(ObjectModule(self))
         self.registerModule(RexDataModule(self))
+        self.registerModule(ObjectPropertiesModule(self))
+        self.registerModule(RegionHandshakeModule(self))
         self.registerModule(TerrainModule(self))
         self.registerModule(StatsModule(self))
         self.registerModule(AssetModule(self))
@@ -161,29 +170,16 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('rot', self.processRotCommand)
         self.registerCommand('scale', self.processScaleCommand)
         self.registerCommand('msg', self.processMsgCommand)
-        self.registerCommand('props', self.processPropsCommand)
-        self.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
-        self.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
         self.registerCommand('connected', self.processConnectedCommand)
-        self.registerCommand('capabilities', self.processCapabilities)
-        self.registerCommand('RegionHandshake', self.processRegionHandshake)
-        self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
 
         # internal
+        self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
-
-    def processRegionHandshake(self, regionID, pars):
-        print("REGION HANDSHAKE", pars)
-
-    def processCoarseLocationUpdate(self, agent_id, pos):
-        #print("COARSE LOCATION UPDATE", agent_id, pos)
-        pass
 
     def processConnectedCommand(self, agent_id, agent_access):
         self.agent_id = agent_id
         self.agent_access = agent_access
-        print("CONNECTED AS", agent_id)
 
     def default_error_db(self, request, error):
         if hasattr(error[1], "code") and error[1].code in [404]:
@@ -287,70 +283,73 @@ class BaseApplication(Importer, Exporter):
             self.rt_on = False
             self.simrt = None
         else:
-            if sys.version_info[0] == 3:
-                pars = self.exportSettings.getCurrentConnection()
-                server_url = pars.url
-                credentials = self.credentials
-            else:
-                pars = self.exportSettings
-                server_url = pars.server_url
-                credentials = self.exportSettings.credentials
-
-            props = self.exportSettings
-            #region_uuid = list(self.regions.keys())[props.selected_region]
-            #region_name = self.regions[region_uuid]['name']
-            region_name = 'last'
-            firstline = 'Blender '+ self.getBlenderVersion()
-            username, password = credentials.get_credentials(server_url,
-                                                                  pars.username)
-            if props.agent_libs_path:
-                os.environ['SIMRT_LIBS_PATH'] = props.agent_libs_path
-            elif 'SIMRT_LIBS_PATH' in os.environ:
-                del os.environ['SIMRT_LIBS_PATH']
-
-            login_params = { 'region': region_name, 
-                            'firstline': firstline }
-           
-            if '@' in pars.username:
-                auth_uri = pars.username.split('@')[1]
-                con = SimConnection()
-                con.connect('http://'+auth_uri)
-                account = pars.username
-                passwd_hash = '$1$'+md5(password.encode('ascii')).hexdigest()
-
-                res = con._con.ClientAuthentication({'account':account,
-                                               'passwd':passwd_hash,
-                                               'loginuri':server_url})
-
-                avatarStorageUrl = res['avatarStorageUrl']
-                sessionHash = res['sessionHash']
-                gridUrl = res['gridUrl']
-                print("Authenticate OK", avatarStorageUrl, gridUrl)
-
-                login_params['first'] = 'NotReallyNeeded'
-                login_params['last'] = 'NotReallyNeeded'
-                login_params['AuthenticationAddress'] = auth_uri
-                login_params['account'] = pars.username
-                login_params['passwd'] = passwd_hash
-                login_params['sessionhash'] = sessionHash
-
-            else:
-                login_params['first'] = pars.username.split()[0]
-                login_params['last'] = pars.username.split()[1]
-                login_params['passwd'] = password
-
-            self.simrt = simrt.run_thread(self, server_url,
-                                          login_params)
-            self.connected = True
-            self._lastthrottle = self.exportSettings.kbytesPerSecond*1024
-            self.simrt.Throttle(self._lastthrottle)
-
-            if not context:
-                Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
+            self.enableRt(context)
             self.rt_on = True
 
         for mod in self._modules.values():
             mod.onToggleRt(self.rt_on)
+
+    def enableRt(context);
+        if sys.version_info[0] == 3:
+            pars = self.exportSettings.getCurrentConnection()
+            server_url = pars.url
+            credentials = self.credentials
+        else:
+            pars = self.exportSettings
+            server_url = pars.server_url
+            credentials = self.exportSettings.credentials
+
+        props = self.exportSettings
+
+        region_name = 'last'
+        firstline = 'Blender '+ self.getBlenderVersion()
+        username, password = credentials.get_credentials(server_url,
+                                                              pars.username)
+        if props.agent_libs_path:
+            os.environ['SIMRT_LIBS_PATH'] = props.agent_libs_path
+        elif 'SIMRT_LIBS_PATH' in os.environ:
+            del os.environ['SIMRT_LIBS_PATH']
+
+        login_params = { 'region': region_name, 
+                        'firstline': firstline }
+       
+        if '@' in pars.username:
+            # federated login
+            auth_uri = pars.username.split('@')[1]
+            con = SimConnection()
+            con.connect('http://'+auth_uri)
+            account = pars.username
+            passwd_hash = '$1$'+md5(password.encode('ascii')).hexdigest()
+
+            res = con._con.ClientAuthentication({'account':account,
+                                           'passwd':passwd_hash,
+                                           'loginuri':server_url})
+
+            avatarStorageUrl = res['avatarStorageUrl']
+            sessionHash = res['sessionHash']
+            gridUrl = res['gridUrl']
+
+            login_params['first'] = 'NotReallyNeeded'
+            login_params['last'] = 'NotReallyNeeded'
+            login_params['AuthenticationAddress'] = auth_uri
+            login_params['account'] = pars.username
+            login_params['passwd'] = passwd_hash
+            login_params['sessionhash'] = sessionHash
+
+        else:
+            # normal opensim login
+            login_params['first'] = pars.username.split()[0]
+            login_params['last'] = pars.username.split()[1]
+            login_params['passwd'] = password
+
+        self.simrt = simrt.run_thread(self, server_url,
+                                      login_params)
+        self.connected = True
+        self._lastthrottle = self.exportSettings.kbytesPerSecond*1024
+        self.simrt.Throttle(self._lastthrottle)
+
+        if not context:
+            Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
 
     def redraw(self):
         if b2rexpkg.safe_mode:
@@ -370,72 +369,6 @@ class BaseApplication(Importer, Exporter):
             except Exception as e:
                 print("Error executing", cmd, e)
                 traceback.print_exc()
-
-    def processCapabilities(self, caps):
-        self.caps = caps
-
-    def processPropsCommand(self, objId, pars):
-        if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
-            agent = self.Agents[objId] # creates the agent
-            if "NameValues" in pars:
-                props = pars["NameValues"]
-                if "FirstName" in props and "LastName" in props:
-                    agent.name = props['FirstName']+" "+props["LastName"]
-                    self._total['objects'][objId] = agent.name
-        else:
-            parentId = pars["ParentID"]
-            obj = self.findWithUUID(objId)
-            if obj:
-                # we have the object
-                if parentId:
-                    parent = self.findWithUUID(parentId)
-                    if parent:
-                        obj.parent = parent
-                        self.finishedLoadingObject(objId, obj)
-                    else:
-                        self.add_callback('object.precreate', parentId,
-                                          self.Object.processLink,
-                              parentId, objId)
-                else:
-                    obj.parent = None
-                    # apply final callbacks
-                    self.finishedLoadingObject(objId, obj)
-            elif parentId:
-                # need to wait for object and the parent to appear
-                self.add_callback('object.precreate', objId, self.Object.processLink, parentId, objId)
-            else:
-                # need to wait for the object and afterwards
-                # trigger the object create
-                # need to wait for object and the parent to appear
-                #def call_precreate(obj_id):
-                #    self.trigger_callback('object.create', obj_id)
-                self.insert_callback('object.precreate',
-                                     objId,
-                                     self.finishedLoadingObject,
-                                     objId)
-                #print("parent for unexisting object!")
-        self.processObjectPropertiesCommand(objId, pars)
-
-
-    def finishedLoadingObject(self, objId, obj=None):
-        if not obj:
-            obj = self.findWithUUID(objId)
-        if obj.opensim.state == 'OK':
-            # already loaded so just updating
-            return
-        self.set_loading_state(obj, 'OK')
-        self.trigger_callback('object.create', str(objId))
-
-    def processObjectPropertiesCommand(self, objId, pars):
-        obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
-        if obj:
-            if "Name" in pars:
-                obj.name = pars["Name"]
-                obj.opensim.name = pars["Name"]
-
-            self.applyObjectProperties(obj, pars)
-        else:
-            self.add_callback('object.create', objId, self.processObjectPropertiesCommand, objId, pars)
 
     def applyObjectProperties(self, obj, pars):
         pass

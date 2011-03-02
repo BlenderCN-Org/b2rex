@@ -16,6 +16,17 @@ class ObjectModule(SyncModule):
         parent.unregisterCommand('delete')
         parent.unregisterCommand('meshcreated')
 
+    def finishedLoadingObject(self, objId, obj=None):
+        editor = self._parent
+        if not obj:
+            obj = editor.findWithUUID(objId)
+        if obj.opensim.state == 'OK':
+            # already loaded so just updating
+            return
+        editor.set_loading_state(obj, 'OK')
+        editor.trigger_callback('object.create', str(objId))
+
+
     def createObjectWithMesh(self, new_mesh, objId, meshId, materials=[]):
         editor = self._parent
         obj = editor.getcreate_object(objId, "opensim", new_mesh)
@@ -93,7 +104,7 @@ class ObjectModule(SyncModule):
                 if child:
                     child.parent = parent
                     # apply final callbacks
-                    editor.finishedLoadingObject(childId, child)
+                    self.finishedLoadingObject(childId, child)
                 else:
                     # shouldnt happen :)
                     print("b2rex.processLink: cant find child to link!")
