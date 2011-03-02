@@ -6,14 +6,14 @@ class OnlineModule(SyncModule):
     def register(self, parent):
         parent.registerCommand('OfflineNotification',
                              self.processOfflineNotification)
-        self.registerCommand('OnlineNotification',
+        parent.registerCommand('OnlineNotification',
                              self.processOnlineNotification)
     def unregister(self, parent):
         parent.unregisterCommand('OfflineNotification')
         parent.unregisterCommand('OnlineNotification')
 
     def processOnlineNotification(self, agentID):
-        self._parent._agents[agentID] = agentID
+        self.Agents[agentID] = agentID
 
     def processOfflineNotification(self, agentID):
         pass # should get a kill..

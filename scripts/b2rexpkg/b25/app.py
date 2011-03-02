@@ -255,7 +255,7 @@ class B2Rex(BaseApplication):
         self.positions[objId] = obj.location
 
     def _processRotCommand(self, obj, objId, rot):
-        if objId in self._agents:
+        if objId in self.Agents:
             rot = obj.rotation_euler
             obj.rotation_euler = (rot[0]+math.pi/2.0, rot[1], rot[2]+math.pi/2.0)
         else:

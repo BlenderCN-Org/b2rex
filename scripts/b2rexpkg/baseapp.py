@@ -17,6 +17,7 @@ from b2rexpkg import editor
 from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
 from .editsync.handlers.online import OnlineModule
+from .editsync.handlers.agents import AgentsModule
 from .editsync.handlers.terrain import TerrainModule
 
 from .tools.threadpool import ThreadPool, NoResultsPending
@@ -102,7 +103,6 @@ class BaseApplication(Importer, Exporter):
         self.buttons = {}
         self.settings_visible = False
         self._requested_urls = []
-        self._agents = {}
         self._modules = {}
         self._module_checks = []
         self.initializeCommands()
@@ -148,6 +148,7 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(StatsModule(self))
         self.registerModule(AssetModule(self))
         self.registerModule(OnlineModule(self))
+        self.registerModule(AgentsModule(self))
 
     def initializeCommands(self):
         self._cmd_matrix = {}
@@ -165,39 +166,11 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('capabilities', self.processCapabilities)
         self.registerCommand('RegionHandshake', self.processRegionHandshake)
         self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
-        parent.registerCommand('AgentMovementComplete',
-                             self.processAgentMovementComplete)
 
         # internal
         self.registerCommand('mesharrived', self.processMeshArrived)
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
-
-    def processAgentMovementComplete(self, agentID, pos, lookat):
-        agent = self.getAgent(agentID)
-        agent.rotation_euler = lookat
-        self.apply_position(agent, pos)
-
-    def getAgent(self, agentID):
-        agent = self.findWithUUID(agentID)
-        if not agent:
-            camera = bpy.data.cameras.new(agentID)
-            agent = bpy.data.objects.new(agentID, camera)
-            self.set_uuid(agent, agentID)
-            self._agents[agentID] = agentID
-
-            scene = self.get_current_scene()
-            if agentID in self.positions:
-                self.apply_position(agent, self.positions[agentID], raw=True)
-            scene.objects.link(agent)
-            try:
-                agent.show_name = True
-                agent.show_x_ray = True
-            except:
-                pass # blender2.5 only
-            if not agentID == self.agent_id:
-                self.set_immutable(agent)
-        return agent
 
     def processRegionHandshake(self, regionID, pars):
         print("REGION HANDSHAKE", pars)
@@ -490,7 +463,7 @@ class BaseApplication(Importer, Exporter):
 
     def processPropsCommand(self, objId, pars):
         if "PCode" in pars and pars["PCode"] == PCodeEnum.Avatar:
-            agent = self.getAgent(objId) # creates the agent
+            agent = self.Agents[objId] # creates the agent
             if "NameValues" in pars:
                 props = pars["NameValues"]
                 if "FirstName" in props and "LastName" in props:
