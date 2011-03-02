@@ -134,20 +134,23 @@ class ProxyAgent(Thread):
         self.check_timer.start()
 
     def start_agent(self):
+        script_path = os.path.dirname(__file__)
+        tools_path = os.path.join(script_path, 'tools')
+        libs_path = os.path.join(script_path, 'libs')
+        agent_path = os.path.join(script_path, 'simrt.py')
+
         environ = dict(os.environ)
         if 'PYTHONPATH' in environ:
             prev_python_path = environ['PYTHONPATH'] + os.pathsep
         else:
             prev_python_path = ""
 
-        if 'SIMRT_LIBS_PATH' in environ:
-            prev_python_path = environ['SIMRT_LIBS_PATH'] + os.pathsep
-        else:
-            prev_python_path = ""
-
-        script_path = os.path.dirname(__file__)
-        tools_path = os.path.join(script_path, 'tools')
-        agent_path = os.path.join(script_path, 'simrt.py')
+        if 'SIMRT_LIBS_PATH' in environ and os.path.exists(environ['SIMRT_LIBS_PATH']):
+            # user defined libs path
+            prev_python_path += environ['SIMRT_LIBS_PATH'] + os.pathsep
+        elif os.path.exists(libs_path):
+            # else look for included libraries under b2rexpkg/libs
+            prev_python_path = libs_path + os.pathsep
 
         environ['PYTHONPATH'] = prev_python_path + script_path + os.pathsep + tools_path
         agent = subprocess.Popen(['/usr/bin/python', agent_path], env=environ)
