@@ -127,7 +127,7 @@ class Exporter(object):
         """
         export_dir = self.exportSettings.path
         if not export_dir:
-            export_dir = tempfile.tempdir
+            export_dir = tempfile.gettempdir()
         return export_dir
 
     def packTo(self, from_path, to_zip):
