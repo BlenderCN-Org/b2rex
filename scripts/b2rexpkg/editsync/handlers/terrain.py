@@ -11,10 +11,16 @@ class TerrainModule(SyncModule):
     # Terrain
     terrain = None
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('LayerData', self.processLayerData)
         parent.registerCommand('LayerDataDecoded', self.processLayerDataDecoded)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('LayerData')
         parent.unregisterCommand('LayerDataDecoded')
 

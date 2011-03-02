@@ -11,10 +11,16 @@ logger = logging.getLogger('b2rex.InventoryModule')
 
 class InventoryModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         parent.registerCommand('InventoryDescendents', self.processInventoryDescendents)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('InventorySkeleton')
         parent.unregisterCommand('InventoryDescendents')
 

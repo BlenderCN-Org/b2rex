@@ -4,9 +4,15 @@ import bpy
 
 class RegionHandshakeModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('RegionHandshake', self.processRegionHandshake)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('RegionHandshake')
 
     def processRegionHandshake(self, regionID, pars):

@@ -12,10 +12,16 @@ simstats_labels = ["X", "Y", "Flags", "ObjectCapacity", "TimeDilation",
 
 class StatsModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('SimStats', self.processSimStats)
         self.simstats = None
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('SimStats')
 
     def processSimStats(self, X, Y, Flags, ObjectCapacity, *args):

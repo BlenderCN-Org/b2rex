@@ -6,10 +6,16 @@ import bpy
 
 class ObjectPropertiesModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('props', self.processPropsCommand)
         parent.registerCommand('ObjectProperties', self.processObjectPropertiesCommand)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('props')
         parent.unregisterCommand('ObjectProperties')
 

@@ -4,9 +4,15 @@ import bpy
 
 class MapModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('CoarseLocationUpdate')
 
     def processCoarseLocationUpdate(self, agent_id, pos):

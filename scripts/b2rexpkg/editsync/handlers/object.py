@@ -9,10 +9,16 @@ logger = logging.getLogger('b2rex.Object')
 
 class ObjectModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('delete', self.processDeleteCommand)
         parent.registerCommand('meshcreated', self.processMeshCreated)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('delete')
         parent.unregisterCommand('meshcreated')
 

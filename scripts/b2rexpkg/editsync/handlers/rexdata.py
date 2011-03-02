@@ -9,10 +9,16 @@ logger = logging.getLogger('b2rex.RexDataModule')
 
 class RexDataModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('RexPrimData', self.processRexPrimDataCommand)
         parent.registerCommand('mesharrived', self.processMeshArrived)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('RexPrimData')
         parent.unregisterCommand('mesharrived')
 

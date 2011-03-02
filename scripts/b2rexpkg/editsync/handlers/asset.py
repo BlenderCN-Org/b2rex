@@ -1,3 +1,9 @@
+"""
+ AssetModule. Allows to download assets and provides a callback.
+ Requires the caps functionality, but can download assets both over
+ lludp or http using GetTexture cap.
+"""
+
 import base64
 
 from .base import SyncModule
@@ -7,9 +13,15 @@ import bpy
 class AssetModule(SyncModule):
     _requested_llassets = {}
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('AssetArrived', self.processAssetArrived)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('AssetArrived')
 
     def processAssetArrived(self, assetId, b64data):

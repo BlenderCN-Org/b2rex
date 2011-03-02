@@ -4,17 +4,16 @@ import bpy
 
 class ChatModule(SyncModule):
     def register(self, parent):
+        """
+        Register this module with the editor
+        """
         parent.registerCommand('msg', self.processMsgCommand)
 
     def unregister(self, parent):
+        """
+        Unregister this module from the editor
+        """
         parent.unregisterCommand('msg')
-
-    def onToggleRt(self, enabled):
-        self._props = self._parent.exportSettings
-        if enabled:
-            self.simrt = self._parent.simrt
-        else:
-            self.simrt = None
 
     def processMsgCommand(self, username, message):
         props = bpy.context.scene.b2rex_props
