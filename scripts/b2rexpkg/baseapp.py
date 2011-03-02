@@ -32,17 +32,17 @@ from .importer import Importer
 from .exporter import Exporter
 from .simconnection import SimConnection
 
-from .tools.simtypes import RexDrawType, AssetType, PCodeEnum, ZERO_UUID_STR
+from .tools.simtypes import AssetType
 
 import bpy
 
 priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props', 'scale']
 
 if sys.version_info[0] == 3:
-        import urllib.request as urllib2
+    import urllib.request as urllib2
 else:
-        import Blender
-        import urllib2
+    import Blender
+    import urllib2
 
 
 eventlet_present = False
@@ -115,6 +115,7 @@ class BaseApplication(Importer, Exporter):
         Importer.__init__(self, self.gridinfo)
         Exporter.__init__(self, self.gridinfo)
 
+    # Modules
     def registerModule(self, module):
         self._modules[module.getName()] = module
         module.register(self)
@@ -122,12 +123,12 @@ class BaseApplication(Importer, Exporter):
         for section in ["check", "draw"]:
             if hasattr(module, section):
                 self._module_cb[section].append(getattr(module, section))
-        #module.setProperties(self.exportSettings)
 
     def drawModules(self, layout, props):
         for draw_cb in self._module_cb["draw"]:
             draw_cb(layout, self, props)
 
+    # Generic callback functionality
     def add_callback(self, section, signal, callback, *parameters):
         self._callbacks[str(section)][str(signal)].append((callback, parameters))
 
@@ -139,18 +140,7 @@ class BaseApplication(Importer, Exporter):
             callback(*parameters)
         del self._callbacks[str(section)][str(signal)]
 
-    def registerTextureImage(self, image):
-        # register a texture with the sim
-        if not image.opensim.uuid:
-            image.opensim.uuid = str(uuid.uuid4())
-        return image.opensim.uuid
-
-    def registerCommand(self, cmd, callback):
-        self._cmd_matrix[cmd] = callback
-
-    def unregisterCommand(self, cmd):
-        del self._cmd_matrix[cmd]
-
+    # Initialization
     def initializeModules(self):
         self.registerModule(MapModule(self))
         self.registerModule(CapsModule(self))
@@ -177,19 +167,7 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('materialarrived', self.processMaterialArrived)
         self.registerCommand('texturearrived', self.processTextureArrived)
 
-    def processConnectedCommand(self, agent_id, agent_access):
-        self.agent_id = agent_id
-        self.agent_access = agent_access
-
-    def default_error_db(self, request, error):
-        if hasattr(error[1], "code") and error[1].code in [404]:
-            pass
-        else:
-            logger.warning("error downloading "+str(request)+": "+str(error))
-            if hasattr(error[1], "code"):
-                print("error downloading "+str(request)+": "+str(error[1].code))
-            traceback.print_tb(error[2])
-
+    # Threaded Downloader
     def addDownload(self, http_url, cb, cb_pars=(), error_cb=None, extra_main=None):
         if http_url in self._requested_urls:
             return False
@@ -216,16 +194,24 @@ class BaseApplication(Importer, Exporter):
         self.pool.addRequest(self.doDownload, [[http_url, cb_pars]], _main_cb, _error_cb)
         return True
 
+    def default_error_db(self, request, error):
+        if hasattr(error[1], "code") and error[1].code in [404]:
+            pass
+        else:
+            logger.warning("error downloading "+str(request)+": "+str(error))
+            if hasattr(error[1], "code"):
+                print("error downloading "+str(request)+": "+str(error[1].code))
+            traceback.print_tb(error[2])
+
     def doDownload(self, pars):
         http_url, pars = pars
         req = urllib2.urlopen(http_url)
         return req.read()
 
-    def addStatus(self, text, priority=0):
-        pass
-
-    def initGui(self, title):
-        pass
+    # Connection
+    def processConnectedCommand(self, agent_id, agent_access):
+        self.agent_id = agent_id
+        self.agent_access = agent_access
 
     def connect(self, base_url, username="", password=""):
         """
@@ -270,9 +256,7 @@ class BaseApplication(Importer, Exporter):
         self.connected = True
         self.addStatus("Connected to " + self.griddata['gridnick'])
 
-    def addRtCheckBox(self):
-        pass
-
+    # Rt enable/disable
     def onToggleRt(self, context=None):
         if context:
             if context.scene:
@@ -351,6 +335,7 @@ class BaseApplication(Importer, Exporter):
         if not context:
             Blender.Window.QAdd(Blender.Window.GetAreaID(),Blender.Draw.REDRAW,0,1)
 
+    # Redraw from thread
     def redraw(self):
         if b2rexpkg.safe_mode:
             return
@@ -359,6 +344,13 @@ class BaseApplication(Importer, Exporter):
             self.stats[5] += 1
             self._last_time = time.time()
             self.queueRedraw(True)
+
+    # Commands
+    def registerCommand(self, cmd, callback):
+        self._cmd_matrix[cmd] = callback
+
+    def unregisterCommand(self, cmd):
+        del self._cmd_matrix[cmd]
 
     def processCommand(self, cmd, *args):
         self.stats[0] += 1
@@ -370,9 +362,7 @@ class BaseApplication(Importer, Exporter):
                 print("Error executing", cmd, e)
                 traceback.print_exc()
 
-    def applyObjectProperties(self, obj, pars):
-        pass
-
+    # Material related callbacks
     def materialArrived(self, data, objId, meshId, matId, assetType, matIdx):
         self.command_queue.append(["materialarrived", data, objId, meshId,
                                       matId, assetType, matIdx])
@@ -386,14 +376,8 @@ class BaseApplication(Importer, Exporter):
                                 matIdx)
 
 
-    def setMeshMaterials(self, mesh, materials):
-        presentIds = list(map(lambda s: s.opensim.uuid, mesh.materials))
-        for idx, matId, asset_type in materials:
-            mat = self.find_with_uuid(matId, bpy.data.materials, 'materials')
-            if mat and not matId in presentIds:
-                mesh.materials.append(mat)
 
-
+    # Object actions
     def doRtUpload(self, context):
         selected = bpy.context.selected_objects
         if selected:
@@ -418,6 +402,13 @@ class BaseApplication(Importer, Exporter):
                     self.set_loading_state(obj, 'TAKING')
                     self.simrt.DeRezObject(obj.opensim.uuid)
 
+    # Misc common functionality
+    def registerTextureImage(self, image):
+        # register a texture with the sim
+        if not image.opensim.uuid:
+            image.opensim.uuid = str(uuid.uuid4())
+        return image.opensim.uuid
+
     def processMsgCommand(self, username, message):
         self.addStatus("message from "+username+": "+message)
 
@@ -425,6 +416,14 @@ class BaseApplication(Importer, Exporter):
         obj = self.find_with_uuid(str(objId), bpy.data.objects, "objects")
         return obj
 
+    def setMeshMaterials(self, mesh, materials):
+        presentIds = list(map(lambda s: s.opensim.uuid, mesh.materials))
+        for idx, matId, asset_type in materials:
+            mat = self.find_with_uuid(matId, bpy.data.materials, 'materials')
+            if mat and not matId in presentIds:
+                mesh.materials.append(mat)
+
+    # Position commands
     def processPosCommand(self, objId, pos, rot=None):
         obj = self.findWithUUID(objId)
         if obj and self.get_loading_state(obj) == 'OK':
@@ -450,6 +449,7 @@ class BaseApplication(Importer, Exporter):
             self.add_callback('object.create', objId, self.processRotCommand,
                               objId, rot)
             
+    # Checks
     def processUpdate(self, obj):
         obj_uuid = self.get_uuid(obj)
         if obj_uuid:
@@ -612,7 +612,6 @@ class BaseApplication(Importer, Exporter):
         self.stats[6] = (currbudget)*1000 # processed
         self.stats[7] = threading.activeCount()-1
 
-    # Checks
     def checkUuidConsistency(self, selected):
         # look for duplicates
         if self.rawselected == selected:
@@ -672,6 +671,13 @@ class BaseApplication(Importer, Exporter):
     def getSelected(self):
         return editor.getSelected()
 
+    # Callbacks to override in specific applications
+    def addStatus(self, text, priority=0):
+        pass
+
+    def initGui(self, title):
+        pass
+
     def go(self):
         """
         Start the ogre interface system
@@ -684,5 +690,10 @@ class BaseApplication(Importer, Exporter):
     def queueRedraw(self, pars=None):
         pass
 
+    def applyObjectProperties(self, obj, pars):
+        pass
+
+    def addRtCheckBox(self):
+        pass
 
 
