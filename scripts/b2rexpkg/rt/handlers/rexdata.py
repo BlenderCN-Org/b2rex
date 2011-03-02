@@ -121,7 +121,7 @@ class RexDataHandler(Handler):
         # bool properties
         for prop in ['RexIsVisible', 'RexCastShadows',
                      'RexLightCreatesShadows', 'RexDescriptionTexture',
-                     'RexDescriptionTexture']:
+                     'RexScaleToPrim']:
             if prop in args:
                 data += struct.pack('<?', args[prop])
             else:
