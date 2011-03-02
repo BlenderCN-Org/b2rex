@@ -20,7 +20,7 @@ from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty
 from b2rexpkg.tools.passmanager import PasswordManager
 
-from b2rexpkg import IMMEDIATE, ERROR
+from b2rexpkg import IMMEDIATE, ERROR, OK
 
 import bpy
 
@@ -174,6 +174,9 @@ class B2Rex(BaseApplication):
     def onToggleRt(self, context=None):
         if not context:
             context = bpy.context
+        if not self.rt_on:
+            self.addStatus("Starting agent...")
+            self.queueRedraw(immediate=True)
         BaseApplication.onToggleRt(self, context)
         if self.simrt:
             self.register_draw_callbacks(context)
@@ -210,7 +213,7 @@ class B2Rex(BaseApplication):
         print("do_check regionuuid" + self.region_uuid)
         self.region_report = self.check_region(self.region_uuid)
 
-    def addStatus(self, status, level=0):
+    def addStatus(self, status, level=OK):
         self.status = status
         self.status_level = level
 

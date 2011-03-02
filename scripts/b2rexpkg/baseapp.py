@@ -265,6 +265,7 @@ class BaseApplication(Importer, Exporter):
         """
         self.agent_id = agent_id
         self.agent_access = agent_access
+        self.addStatus("Connected to region")
 
     def connect(self, base_url, username="", password=""):
         """
@@ -525,6 +526,7 @@ class BaseApplication(Importer, Exporter):
         Error received from the agent.
         """
         self.addStatus(error, ERROR)
+        self.queueRedraw(immediate=True)
 
     def processAgentQuit(self, msg):
         """
@@ -868,7 +870,7 @@ class BaseApplication(Importer, Exporter):
         """
         pass
 
-    def queueRedraw(self, pars=None):
+    def queueRedraw(self, pars=None, immediate=False):
         """
         queue a redraw for the application.
         """
