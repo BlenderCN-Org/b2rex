@@ -521,9 +521,15 @@ class BaseApplication(Importer, Exporter):
         return image.opensim.uuid
 
     def processError(self, error):
+        """
+        Error received from the agent.
+        """
         self.addStatus(error, ERROR)
 
     def processAgentQuit(self, msg):
+        """
+        Quit received from the agent.
+        """
         if self.rt_on:
             self.onToggleRt()
             self.queueRedraw()
