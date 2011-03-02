@@ -104,7 +104,7 @@ class BaseApplication(Importer, Exporter):
         self.settings_visible = False
         self._requested_urls = []
         self._modules = {}
-        self._module_checks = []
+        self._module_cb = defaultdict(list)
         self.initializeCommands()
         self.initializeModules()
         Importer.__init__(self, self.gridinfo)
@@ -114,6 +114,8 @@ class BaseApplication(Importer, Exporter):
         self._modules[module.getName()] = module
         module.register(self)
         setattr(self, module.getName(), module)
+        if hasattr(module, "check"):
+            self._module_cb["check"].append(module.check)
         #module.setProperties(self.exportSettings)
 
     def drawModules(self, layout, props):
@@ -738,8 +740,8 @@ class BaseApplication(Importer, Exporter):
             self.second_budget = 0
             self.second_start = time.time()
 
-        for module in self._modules.values():
-            module.check(starttime, framebudget)
+        for check_cb in self._module_cb["check"]:
+            check_cb(starttime, framebudget)
         self.checkObjects()
 
         # process command queue
