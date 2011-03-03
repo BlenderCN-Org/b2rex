@@ -85,6 +85,10 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     agent_libs_path = StringProperty(name='agent libraries',
                                      default='',
                                      description='path to the agent python libraries')
+    tools_path = StringProperty(name='tools path',
+                                     default='',
+                                     description='path to tools required by the exporter')
+
     export_dir = StringProperty(name='export dir',
                                 default='',
                                 description='') 

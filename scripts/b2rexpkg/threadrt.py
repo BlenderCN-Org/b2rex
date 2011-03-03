@@ -1,5 +1,6 @@
 from threading import Thread, Timer
 from .tools.jsonsocket import JsonSocket
+from .tools import runexternal
 
 try:
     from queue import Queue
@@ -136,6 +137,7 @@ class ProxyAgent(Thread):
     def start_agent(self):
         script_path = os.path.dirname(__file__)
         tools_path = os.path.join(script_path, 'tools')
+        bin_path = os.path.join(script_path, 'bin')
         libs_path = os.path.join(script_path, 'libs')
         agent_path = os.path.join(script_path, 'simrt.py')
 
@@ -152,8 +154,16 @@ class ProxyAgent(Thread):
             # else look for included libraries under b2rexpkg/libs
             prev_python_path = libs_path + os.pathsep
 
+        user_py_paths = []
+        if 'SIMRT_TOOLS_PATH' in environ and os.path.exists(environ['SIMRT_TOOLS_PATH']):
+            user_py_paths.append(environ['SIMRT_TOOLS_PATH'])
+        if os.path.exists(bin_path):
+            user_py_paths.append(bin_path)
+        # now look for the binary
+        py_path = runexternal.find_python2(user_py_paths)
+
         environ['PYTHONPATH'] = prev_python_path + script_path + os.pathsep + tools_path
-        agent = subprocess.Popen(['/usr/bin/python', agent_path], env=environ)
+        agent = subprocess.Popen([py_path, agent_path], env=environ)
         return agent
 
 

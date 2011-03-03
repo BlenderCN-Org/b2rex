@@ -3,7 +3,6 @@ import os
 import sys
 import logging
 import time
-import popen2
 import traceback
 from collections import defaultdict
 from threading import Thread

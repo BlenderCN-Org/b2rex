@@ -364,6 +364,12 @@ class BaseApplication(Importer, Exporter):
         elif 'SIMRT_LIBS_PATH' in os.environ:
             del os.environ['SIMRT_LIBS_PATH']
 
+        # tools path, where python may be located
+        if props.tools_path:
+            os.environ['SIMRT_TOOLS_PATH'] = props.tools_path
+        elif 'SIMRT_TOOLS_PATH' in os.environ:
+            del os.environ['SIMRT_TOOLS_PATH']
+
         # now setup the login parameters to be forwarded to the agent.
         login_params = { 'region': region_name, 
                         'firstline': firstline }

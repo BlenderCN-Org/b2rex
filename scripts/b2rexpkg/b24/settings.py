@@ -36,6 +36,7 @@ class ExportSettings:
         self.pool_workers = 5
         self.rt_budget = 20
         self.next_chat = ""
+        self.tools_path = ""
         self.rt_sec_budget = 500
         self.terrainLOD = 1
         self.load()

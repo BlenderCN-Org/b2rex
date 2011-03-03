@@ -139,7 +139,7 @@ class ConnectionPanel(bpy.types.Panel):
         if props.expand:
             row.prop(props,"expand", icon="TRIA_DOWN", text="Settings",
                      emboss=True)
-            for prop in ['agent_libs_path']: # "loc", "path", "pack", "server_url", "username", "password",
+            for prop in ['agent_libs_path', 'tools_path']: # "loc", "path", "pack", "server_url", "username", "password",
                 row = layout.row()
                 row.prop(props, prop)
 

@@ -12,6 +12,7 @@ logger = logging.getLogger("b2rex.importer")
 from .tools.siminfo import GridInfo
 from .tools.simconnection import SimConnection
 from .tools.simtypes import AssetType
+from .tools import runexternal
 
 import xml.parsers.expat
 
@@ -695,8 +696,11 @@ class Importer(ImporterBase):
             # its already there.. probably should update but for now we dont
             # care
             return dest
+        user_paths = []
+        if self.exportSettings.tools_path:
+            user_paths = [self.exportSettings.tools_path]
         try:
-            subprocess.call(["convert",
+            subprocess.call([runexternal.find_application("convert", user_paths),
                               origin,
                               dest])
             return dest
