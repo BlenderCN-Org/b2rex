@@ -2,6 +2,7 @@ from .base import Handler
 from pyogp.lib.client.inventory import UDP_Inventory
 from pyogp.lib.client.inventory import InventoryItem
 import uuid
+import random
 from pyogp.lib.base.datatypes import UUID
 from pyogp.lib.base.message.message import Message, Block
 
@@ -161,6 +162,57 @@ class InventoryHandler(Handler):
                 if str(folder.FolderID) == str(folder_id):
                     folder.Descendents -= 1
                     break
+
+    def findItem(self, item_id):
+        items = self.inventory.items
+
+        for _item in items: 
+            if str(_item.ItemID) == str(item_id):
+                return _item
+
+    def processUpdateInventoryItem(self, item_id, trID, asset_type, inv_type, name, desc):
+        agent = self.manager.client
+        item = self.findItem(item_id)
+        print("UPDATING INVENTORY ITEM", item, item_id)
+        if item:
+            self.sendUpdateInventoryItem(agent, trID, [item])
+
+    def sendUpdateInventoryItem(self, agent, transaction_id, inventory_items = []):
+        """ sends an UpdateInventoryItem packet to a region 
+
+        this function expects an InventoryItem instance already with updated data
+        """
+        packet = Message('UpdateInventoryItem',
+                        Block('AgentData',
+                                AgentID = agent.agent_id,
+                                SessionID = agent.session_id,
+                                TransactionID = UUID()),
+                        *[Block('InventoryData',
+                                ItemID = item.ItemID,
+                                FolderID = item.FolderID,
+                                CallbackID = random.randint (0, pow (2, 32)-1),
+                                CreatorID = item.CreatorID,
+                                OwnerID = item.OwnerID,
+                                GroupID = item.GroupID,
+                                BaseMask = item.BaseMask,
+                                OwnerMask = item.OwnerMask,
+                                GroupMask = item.GroupMask,
+                                EveryoneMask = item.EveryoneMask,
+                                NextOwnerMask = item.NextOwnerMask,
+                                GroupOwned = item.GroupOwned,
+                                TransactionID = UUID(transaction_id),
+                                Type = item.Type,
+                                InvType = item.InvType,
+                                Flags = item.Flags,
+                                SaleType = item.SaleType,
+                                SalePrice = item.SalePrice,
+                                Name = item.Name,
+                                Description = item.Description,
+                                CreationDate = item.CreationDate,
+                                CRC = item.CRC) for item in inventory_items])
+
+        agent.region.enqueue_message(packet)
+
 
     def processCreateInventoryItem(self, trID, asset_type, inv_type, name, desc):
         wearable_type = 0

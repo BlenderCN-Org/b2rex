@@ -190,12 +190,16 @@ class InventoryModule(SyncModule):
                             row.operator('b2rex.removeinventoryitem', text="", icon='ZOOMOUT', emboss=False).item_id=str(item['ItemID']) 
                         elif item['InvType'] == 10:
                             row.label(text=item['Name'], icon='WORDWRAP_ON')
-                            if not session.Scripting.find_text(item['ItemID']):
-                                op = row.operator('b2rex.requestasset', text="",
-                                             icon='PARTICLE_DATA',
-                                             emboss=False)
-                                op.asset_id=str(item['AssetID'])
-                                op.asset_type = 10 # LLSD Script
+                            if not session.Scripting.find_text(item['AssetID']):
+                                if "Downloading" in item:
+                                    row.label(icon='FORCE_DRAG', text='')
+                                else:
+                                    op = row.operator('b2rex.requestasset', text="",
+                                                 icon='PARTICLE_DATA',
+                                                 emboss=False)
+                                    op.item_id=str(item['ItemID'])
+                                    op.asset_id=str(item['AssetID'])
+                                    op.asset_type = 10 # LLSD Script
                             #row.label(text=item['Name'], icon='SCRIPT')
                         else:
                             row.label(text=item['Name'] + str(item['InvType']))

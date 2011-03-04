@@ -31,20 +31,13 @@ class ScriptingModule(SyncModule):
     def upload(self, name):
         editor = self._parent
         text_obj = bpy.data.texts[name]
-        if text_obj.opensim.uuid:
-            self.update_text(text_obj)
-        else:
-            self.upload_text(text_obj)
+        self.upload_text(text_obj)
 
     def find_text(self, text_uuid):
         editor = self._parent
-        editor.find_with_uuid(text_uuid, bpy.data.texts, 'texts')
-
-    def update_text(self, text_obj):
-        print("update text")
+        return editor.find_with_uuid(text_uuid, bpy.data.texts, 'texts')
 
     def create_llsd_script(self, assetID, assetType, data):
-        print("llsd script arrived!", data)
         editor = self._parent
         text = data.decode('ascii')
         name = 'text'
@@ -55,6 +48,7 @@ class ScriptingModule(SyncModule):
 
         text_obj = bpy.data.texts.new(name)
         text_obj.write(text)
+        text_obj.opensim.uuid = assetID
         
 
     def upload_text(self, text_obj):
@@ -66,11 +60,10 @@ class ScriptingModule(SyncModule):
         # initialize object sim state
         name = text_obj.name
         desc = "test script"
-        text_obj.opensim.uuid = str(uuid.uuid4())
-        text_obj.opensim.state = 'UPLOADING'
+        item_id = ""
+
         # asset uploaded callback
         def upload_finished(old_uuid, new_uuid, tr_uuid):
-            print("UPLOAD FINISHED, GO ON CREATING INVENTORY ITEM")
             text_obj.opensim.uuid = new_uuid
             text_obj.opensim.state = 'OK'
             self.simrt.CreateInventoryItem(tr_uuid,
@@ -78,8 +71,31 @@ class ScriptingModule(SyncModule):
                                            LLSDText,
                                            name,
                                            desc)
+        def update_finished(old_uuid, new_uuid, tr_uuid):
+            text_obj.opensim.uuid = new_uuid
+            text_obj.opensim.state = 'OK'
+            item = editor.Inventory[item_id]
+            # XXX this should happen automatically?
+            item['AssetID'] = new_uuid
+            self.simrt.UpdateInventoryItem(item_id,
+                                           tr_uuid,
+                                           LLSDText,
+                                           LLSDText,
+                                           name,
+                                           desc)
+
+        if text_obj.opensim.uuid:
+            for item in editor.Inventory:
+                if item['AssetID'] == text_obj.opensim.uuid:
+                    item_id = item['ItemID']
+
+            cb = update_finished
+        else:
+            text_obj.opensim.uuid = str(uuid.uuid4())
+            cb = upload_finished
+        text_obj.opensim.state = 'UPLOADING'
         # start uploading
         editor.Asset.upload(text_obj.opensim.uuid, LLSDText,
                             text_data.encode('ascii'),
-                            upload_finished)
+                            cb)
 
