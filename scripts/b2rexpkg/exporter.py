@@ -38,7 +38,6 @@ class Exporter(object):
             self.gridinfo = GridInfo()
         self.sim = SimConnection()
         self.ogre = OgreExporter()
-        self._exporttasks = {}
 
     def connect(self, base_url, username="", password=""):
         """
@@ -187,26 +186,19 @@ class Exporter(object):
         mesh.materials.append(newmat)
         return newmat
 
-    def uploadImage(self, image):
+    def uploadImage(self, image, cb):
         imagepath = os.path.realpath(bpy.path.abspath(image.filepath))
         if os.path.exists(imagepath):
             converted_path = self.convert_image_format(imagepath, 'jpc')
             if os.path.exists(converted_path):
                 f = open(converted_path, 'rb')
-                encoded = base64.urlsafe_b64encode(f.read()).decode('ascii')
+                self.Asset.upload(image.opensim.uuid, 0, f.read(), cb)
                 f.close()
-                self.simrt.UploadAsset(image.opensim.uuid, 0, encoded)
                 return image.opensim.uuid
 
-    def processAssetUploadFinished(self, newAssetID, assetID):
-        print("processAssetUploadFinished")
-        if assetID in self._exporttasks:
-            self._exporttasks[assetID](assetID, newAssetID)
-            del self._exporttasks[assetID]
-
-    def uploadMaterial(self, material, data):
-        encoded = base64.urlsafe_b64encode(data.encode('ascii')).decode('ascii')
-        self.simrt.UploadAsset(material.opensim.uuid, AssetType.OgreMaterial, encoded)
+    def uploadMaterial(self, material, data, cb):
+        self.Asset.upload(material.opensim.uuid, AssetType.OgreMaterial,
+                               data, cb)
         return material.opensim.uuid
 
 
@@ -240,10 +232,9 @@ class Exporter(object):
                     f.seek(0)
                     data = f.read()
                     print("MATERIAL", data)
-                    id = self.uploadMaterial(bmat, data)
+                    id = self.uploadMaterial(bmat, data, material_finished)
                     if id:
                         tokens[id] = bmat
-                        self._exporttasks[id] = material_finished
                 else:
                     materialsdone.append(bmat.opensim.uuid)
                 materials.append(bmat.opensim.uuid)
@@ -261,10 +252,9 @@ class Exporter(object):
         for face in faces:
             if not face.image.opensim.uuid:
                 face.image.opensim.uuid = str(uuid.uuid4())
-                id = self.uploadImage(face.image)
+                id = self.uploadImage(face.image, image_finished)
                 if id:
                     tokens[id] = face
-                    self._exporttasks[id] = image_finished
         if not len(tokens):
             process_materials()
 

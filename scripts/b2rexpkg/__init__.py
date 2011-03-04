@@ -54,10 +54,11 @@ else:
     from .b25.ops import Upload, ExportUpload, Sync, Check, ProcessQueue
     from .b25.panels.main import ConnectionPanel
     from .b25.panels.menu import Menu
+    from .b25.panels.text import B2RexTextMenu
     from .b25.panels.object import ObjectPropertiesPanel
     from .b25.panels.objectdbg import ObjectDebugPanel
 
-    from .b25.properties import B2RexRegions, B2RexProps
+    from .b25.properties import B2RexRegions, B2RexProps, B2RexTextProps
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.properties import B2RexImageProps, B2RexChatLine
@@ -75,6 +76,8 @@ def register():
                                                name="b2rex object props")
     bpy.types.Mesh.opensim = PointerProperty(type=B2RexMeshProps,
                                                name="b2rex object props")
+    bpy.types.Text.opensim = PointerProperty(type=B2RexTextProps,
+                                               name="b2rex text props")
     bpy.types.Material.opensim = PointerProperty(type=B2RexMaterialProps,
                                                name="b2rex object props")
     bpy.types.Texture.opensim = PointerProperty(type=B2RexTextureProps,

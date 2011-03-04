@@ -12,17 +12,36 @@ import bpy
 
 class AssetModule(SyncModule):
     _requested_llassets = {}
+    _exporttasks = {}
     def register(self, parent):
         """
         Register this module with the editor
         """
         parent.registerCommand('AssetArrived', self.processAssetArrived)
+        parent.registerCommand('AssetUploadFinished',
+                               self.processAssetUploadFinished)
+
 
     def unregister(self, parent):
         """
         Unregister this module from the editor
         """
         parent.unregisterCommand('AssetArrived')
+        parent.unregisterCommand('AssetUploadFinished')
+
+    def upload(self, assetID, assetType, data, cb=None):
+        encoded = base64.urlsafe_b64encode(data).decode('ascii')
+
+        if cb and assetID:
+            self._exporttasks[assetID] = cb
+
+        self.simrt.UploadAsset(assetID, assetType, encoded)
+
+    def processAssetUploadFinished(self, newAssetID, assetID):
+        print("processAssetUploadFinished")
+        if assetID in self._exporttasks:
+            self._exporttasks[assetID](assetID, newAssetID)
+            del self._exporttasks[assetID]
 
     def processAssetArrived(self, assetId, b64data):
         """

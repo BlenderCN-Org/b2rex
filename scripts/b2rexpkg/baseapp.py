@@ -17,6 +17,7 @@ from .editsync.handlers.caps import CapsModule
 from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
 from .editsync.handlers.online import OnlineModule
+from .editsync.handlers.scripting import ScriptingModule
 from .editsync.handlers.agents import AgentsModule
 from .editsync.handlers.object import ObjectModule
 from .editsync.handlers.terrain import TerrainModule
@@ -182,6 +183,7 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(AssetModule(self))
         self.registerModule(OnlineModule(self))
         self.registerModule(AgentsModule(self))
+        self.registerModule(ScriptingModule(self))
 
     def initializeCommands(self):
         """
@@ -195,7 +197,6 @@ class BaseApplication(Importer, Exporter):
         self.registerCommand('connected', self.processConnectedCommand)
 
         # internal
-        self.registerCommand('AssetUploadFinished', self.processAssetUploadFinished)
         self.registerCommand('error', self.processError)
         self.registerCommand('agentquit', self.processAgentQuit)
         self.registerCommand('materialarrived', self.processMaterialArrived)

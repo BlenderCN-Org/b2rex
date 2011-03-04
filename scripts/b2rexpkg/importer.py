@@ -833,7 +833,12 @@ class Importer(ImporterBase):
                 if not mapto == 'use_map_color_diffuse':
                     new_slot.use_map_color_diffuse = False
                 new_slot.texture = btex
-                new_slot.texture_coords = 'ORCO'
+                new_slot.texture_coords = 'UV'
+                if mapto in 'use_map_normal':
+                    new_slot.normal_map_space = 'TANGENT'
+                    new_slot.normal_factor = 1.0
+                    btex.use_normal_map = True
+                    btex.use_mipmap = False
             if mapto in ['use_map_color_diffuse', 'COL']:
                 self.trigger_material_callbacks(self.get_uuid(bmat), ogremat,
                                                 matIdx)
