@@ -89,7 +89,7 @@ class InventoryHandler(Handler):
 
     def serializableInventory(self):
         folders = [{'Name' : member.Name, 'ParentID' : str(member.ParentID), 'FolderID' : str(member.FolderID), 'Descendents' : int(member.Descendents)} for member in self.inventory.folders]
-        items = [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items] 
+        items = [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'AssetID' : str(member.AssetID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items] 
         return folders, items
 
     def onInventoryDescendents(self, packet):
@@ -161,6 +161,25 @@ class InventoryHandler(Handler):
                 if str(folder.FolderID) == str(folder_id):
                     folder.Descendents -= 1
                     break
+
+    def processCreateInventoryItem(self, trID, asset_type, inv_type, name, desc):
+        wearable_type = 0
+        agent = self.manager.client
+        next_owner_permission = 0
+        print("processCreateInventoryItem", trID, asset_type)
+        self.inventory.send_CreateInventoryItem(agent.agent_id,
+                                      agent.session_id,
+                                      0,
+                                      UUID(),
+                                      UUID(trID),
+                                      next_owner_permission,
+                                      asset_type,
+                                      inv_type,
+                                      wearable_type,
+                                      name,
+                                      desc)
+
+
 
     def processRemoveInventoryItem(self, item_id):
         logger = self.logger

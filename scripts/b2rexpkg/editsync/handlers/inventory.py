@@ -52,7 +52,7 @@ class InventoryModule(SyncModule):
         Update the available items from the fiven item dict.
         """
         props = bpy.context.scene.b2rex_props
-        cached_items = getattr(props, '_items')
+        cached_items = props._items
         cached_items.clear()
         for item in items:
             cached_items[item['ItemID']] = item
@@ -64,7 +64,19 @@ class InventoryModule(SyncModule):
         logger.debug("processInventoryDescendents")
         self.update_folders(folders)
         self.update_items(items)
-           
+
+    def __iter__(self):
+        props = bpy.context.scene.b2rex_props
+        return iter(props._items.values())
+
+    def __contains__(self, itemID):
+        props = bpy.context.scene.b2rex_props
+        return itemID in props._items
+
+    def __getitem__(self, itemID):
+        props = bpy.context.scene.b2rex_props
+        return props._items[itemID]
+
     def processInventorySkeleton(self, inventory):
         """
         Inventory skeleton arrived from the sim.
@@ -176,6 +188,15 @@ class InventoryModule(SyncModule):
                             row.operator('b2rex.localview', text="", icon='MUTE_IPO_OFF', emboss=False).item_id=str(item['ItemID']) 
                             row.operator('b2rex.rezobject', text="", icon='PARTICLE_DATA', emboss=False).item_id=str(item['ItemID']) 
                             row.operator('b2rex.removeinventoryitem', text="", icon='ZOOMOUT', emboss=False).item_id=str(item['ItemID']) 
+                        elif item['InvType'] == 10:
+                            row.label(text=item['Name'], icon='WORDWRAP_ON')
+                            if not session.Scripting.find_text(item['ItemID']):
+                                op = row.operator('b2rex.requestasset', text="",
+                                             icon='PARTICLE_DATA',
+                                             emboss=False)
+                                op.asset_id=str(item['AssetID'])
+                                op.asset_type = 10 # LLSD Script
+                            #row.label(text=item['Name'], icon='SCRIPT')
                         else:
                             row.label(text=item['Name'] + str(item['InvType']))
       

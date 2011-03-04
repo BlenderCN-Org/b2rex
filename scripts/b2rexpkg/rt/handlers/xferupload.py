@@ -11,9 +11,10 @@ except:
     from b2rexpkg.rt.tools import uuid_combine
 
 class XferUploader(object):
-    def __init__(self, data, cb):
+    def __init__(self, data, cb, tr_uuid):
         self.cb = cb
         self.data = data
+        self.tr_uuid = tr_uuid
         self.total = len(data)/1024
         self.first = True
         self.nseq = 1
@@ -71,7 +72,7 @@ class XferUploadManager(Handler):
         #if len(data) < 1024:
         #    init_data = array('c', data)
         #else:
-        newuploader = XferUploader(data, cb)
+        newuploader = XferUploader(data, cb, tr_uuid)
         self._uploaders[str(assetID)] = newuploader
 
         self._agent.asset_manager.upload_asset(tr_uuid,
@@ -82,8 +83,9 @@ class XferUploadManager(Handler):
         return  assetID
 
     def processUploadAsset(self, assetID, assetType, b64data):
-        def finish(newAssetID):
-            self.out_queue.put(["AssetUploadFinished", str(newAssetID), assetID])
+        def finish(newAssetID, trID):
+            self.out_queue.put(["AssetUploadFinished", str(newAssetID), assetID,
+                               str(trID)])
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         self.uploadAsset(assetType, data, finish)
 
@@ -123,8 +125,9 @@ class XferUploadManager(Handler):
         assetID = packet['AssetBlock'][0]['UUID']
         if str(assetID) in self._uploaders:
             print("AssetUploadComplete Go On", assetID)
-            self._uploaders[str(assetID)].cb(assetID)
-            xferID = self._uploaders[str(assetID)].xferID
+            uploader = self._uploaders[str(assetID)]
+            xferID = uploader.xferID
+            uploader.cb(assetID, uploader.tr_uuid)
             del self._uploaders[xferID]
             del self._uploaders[str(assetID)]
         else:

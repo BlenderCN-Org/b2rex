@@ -607,9 +607,9 @@ class Importer(ImporterBase):
         self._imported_ogre_materials = {}
 
         self._objects = {}
-        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
+        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0,"texts":0}
+        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0,"texts":0}
+        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{},"texts":{}}
 
     def add_mesh_callback(self, meshId, cb, *args):
         mesh = self.find_with_uuid(meshId, bpy.data.meshes, "meshes")

@@ -81,6 +81,19 @@ class UploadText(bpy.types.Operator):
         bpy.b2rex_session.Scripting.upload(self.text)
         return {'FINISHED'}
 
+class RequestAsset(bpy.types.Operator):
+    bl_idname = "b2rex.requestasset"
+    bl_label = "request asset"
+    asset_id = StringProperty(name="asset_id",default='')
+    asset_type = IntProperty(name="asset_type",default=0)
+    def __init__(self, context):
+        pass
+
+    def execute(self, context):
+        bpy.b2rex_session.Asset.downloadAssetDefault(self.asset_id,
+                                                     self.asset_type)
+        return {'FINISHED'}
+
 
 class Connect(bpy.types.Operator):
     bl_idname = "b2rex.connect"

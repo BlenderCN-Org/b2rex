@@ -13,6 +13,7 @@ import bpy
 class AssetModule(SyncModule):
     _requested_llassets = {}
     _exporttasks = {}
+    _asset_constructors = {}
     def register(self, parent):
         """
         Register this module with the editor
@@ -37,10 +38,10 @@ class AssetModule(SyncModule):
 
         self.simrt.UploadAsset(assetID, assetType, encoded)
 
-    def processAssetUploadFinished(self, newAssetID, assetID):
+    def processAssetUploadFinished(self, newAssetID, assetID, trID):
         print("processAssetUploadFinished")
         if assetID in self._exporttasks:
-            self._exporttasks[assetID](assetID, newAssetID)
+            self._exporttasks[assetID](assetID, newAssetID, trID)
             del self._exporttasks[assetID]
 
     def processAssetArrived(self, assetId, b64data):
@@ -62,7 +63,20 @@ class AssetModule(SyncModule):
         else:
             cb(data, *cb_pars)
 
-    def downloadAsset(self, assetId, assetType, cb, pars, main=None):
+    def registerAssetType(self, assetType, assetConstructor):
+        self._asset_constructors[assetType] = assetConstructor
+
+    def _assetArrived(self, data, assetId, assetType):
+        print("Asset arrived")
+        if assetType in self._asset_constructors:
+            self._asset_constructors[assetType](assetId, assetType, data)
+
+    def downloadAssetDefault(self, assetId, assetType):
+        print("Downloading Asset", assetId, assetType)
+        self.downloadAsset(assetId, assetType, self._assetArrived,
+                                (assetId, assetType))
+
+    def downloadAsset(self, assetId, assetType, cb, pars=(), main=None):
         """
         Download the given asset by uuid and assetType. Will call the provided
         callback cb with the expanded parameters pars.

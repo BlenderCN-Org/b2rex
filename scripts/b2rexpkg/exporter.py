@@ -209,7 +209,7 @@ class Exporter(object):
         materialsdone = []
         changednames = []
         tokens = {}
-        def material_finished(token, newAssetID):
+        def material_finished(token, newAssetID, trID):
             print("material_finished go on", token)
             idx = materials.index(token)
             mat = tokens.pop(token)
@@ -241,7 +241,7 @@ class Exporter(object):
             if len(materialsdone) == len(materials):
                 cb(materials)
 
-        def image_finished(token, newAssetID):
+        def image_finished(token, newAssetID, trID):
             print("image finished go on", token)
             face = tokens.pop(token)
             face.image.opensim.uuid = newAssetID

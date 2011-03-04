@@ -172,6 +172,7 @@ class BaseApplication(Importer, Exporter):
         """
         Initialize editor modules.
         """
+        self.registerModule(AssetModule(self))
         self.registerModule(MapModule(self))
         self.registerModule(CapsModule(self))
         self.registerModule(ObjectModule(self))
@@ -180,7 +181,6 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(RegionHandshakeModule(self))
         self.registerModule(TerrainModule(self))
         self.registerModule(StatsModule(self))
-        self.registerModule(AssetModule(self))
         self.registerModule(OnlineModule(self))
         self.registerModule(AgentsModule(self))
         self.registerModule(ScriptingModule(self))
