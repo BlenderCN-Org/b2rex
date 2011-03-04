@@ -37,6 +37,11 @@ class B2RexConnections(bpy.types.IDPropertyGroup):
 class B2RexRegions(bpy.types.IDPropertyGroup):
     name = StringProperty(name='name', default='', description='')
 
+class B2RexTextProps(bpy.types.IDPropertyGroup):
+    uuid = StringProperty(name='uuid', default='', description='')
+    state = EnumProperty(items=states, default='OFFLINE', description='')
+
+
 class B2RexChatLine(bpy.types.IDPropertyGroup):
     name = StringProperty(name='name', default='', description='')
 

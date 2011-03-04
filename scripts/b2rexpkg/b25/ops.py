@@ -70,6 +70,17 @@ class AddConnection(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class UploadText(bpy.types.Operator):
+    bl_idname = "b2rex.upload_text"
+    bl_label = "Upload to Sim"
+    text = StringProperty(name="text",default='')
+    def __init__(self, context):
+        pass
+
+    def execute(self, context):
+        bpy.b2rex_session.Scripting.upload(self.text)
+        return {'FINISHED'}
+
 
 class Connect(bpy.types.Operator):
     bl_idname = "b2rex.connect"
