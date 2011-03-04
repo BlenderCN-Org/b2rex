@@ -177,6 +177,14 @@ class InventoryHandler(Handler):
         if item:
             self.sendUpdateInventoryItem(agent, trID, [item])
 
+    def processRezScript(self, obj_uuid_str, item_id):
+        agent = self.manager.client
+        obj = agent.region.objects.get_object_from_store(FullID = obj_uuid_str)
+        item = self.findItem(item_id)
+        if obj and item:
+            agent.objects.send_RezScript(agent, obj, UUID(item_id),
+                                         Name=item.Name)
+
     def sendUpdateInventoryItem(self, agent, transaction_id, inventory_items = []):
         """ sends an UpdateInventoryItem packet to a region 
 
