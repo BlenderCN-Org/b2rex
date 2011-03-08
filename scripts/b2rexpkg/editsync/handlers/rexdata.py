@@ -12,6 +12,7 @@ from b2rexpkg.tools.simtypes import AssetType, ZERO_UUID_STR, RexDrawType
 logger = logging.getLogger('b2rex.RexDataModule')
 
 class RexDataModule(SyncModule):
+    rexobjects = []
     def register(self, parent):
         """
         Register this module with the editor
@@ -34,6 +35,8 @@ class RexDataModule(SyncModule):
         editor.stats[3] += 1
         meshId = pars["RexMeshUUID"]
         obj = editor.findWithUUID(objId)
+        if pars["drawType"] == RexDrawType.Mesh:
+            self.rexobjects.append(objId)
         if obj or not meshId:
             if obj:
                 logger.warning(("Object already created", obj, meshId, objId))

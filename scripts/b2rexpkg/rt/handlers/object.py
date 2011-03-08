@@ -26,6 +26,13 @@ except:
 
 from .base import Handler
 
+CUT_QUANTA = 0.00002
+SCALE_QUANTA = 0.01
+SHEAR_QUANTA = 0.01
+TAPER_QUANTA = 0.01
+REV_QUANTA = 0.015
+HOLLOW_QUANTA = 0.00002
+
 class ObjectHandler(Handler):
     _eatupdates = defaultdict(int)
     _next_create = 1000
@@ -380,6 +387,33 @@ class ObjectHandler(Handler):
            return
        pars = { "OwnerID": str(ObjectData_block["OwnerID"]),
                 "PCode":ObjectData_block["PCode"]}
+
+       pars['PathBegin'] = ObjectData_block['PathBegin'] * CUT_QUANTA
+       pars['PathEnd'] = (50000-ObjectData_block['PathEnd']) * CUT_QUANTA
+       pars['PathScaleX'] = (200-ObjectData_block['PathScaleX']) * SCALE_QUANTA
+       pars['PathScaleY'] = (200-ObjectData_block['PathScaleY']) * SCALE_QUANTA
+       pars['PathShearX'] = (ObjectData_block['PathShearX']) * SHEAR_QUANTA
+       pars['PathShearY'] = (ObjectData_block['PathShearY']) * SHEAR_QUANTA
+
+       pars['PathSkew'] = (ObjectData_block['PathSkew']) * SCALE_QUANTA
+
+       pars['ProfileBegin'] = ObjectData_block['ProfileBegin'] * CUT_QUANTA
+       pars['ProfileEnd'] = (50000-ObjectData_block['ProfileEnd']) * CUT_QUANTA
+
+       pars['PathCurve'] = ObjectData_block['PathCurve']
+       pars['ProfileCurve'] = ObjectData_block['ProfileCurve']
+
+       pars['ProfileHollow'] = ObjectData_block['ProfileHollow'] * HOLLOW_QUANTA
+
+       pars['PathRadiusOffset'] = ObjectData_block['PathRadiusOffset'] * SCALE_QUANTA
+       pars['PathRevolutions'] = (ObjectData_block['PathRevolutions']) * REV_QUANTA+1.0
+
+       pars['PathTaperX'] = (ObjectData_block['PathTaperX']) * TAPER_QUANTA
+       pars['PathTaperY'] = (ObjectData_block['PathTaperY']) * TAPER_QUANTA
+       pars['PathTwist'] = ObjectData_block['PathTwist'] * SCALE_QUANTA
+       pars['PathTwistBegin'] = ObjectData_block['PathTwistBegin'] * SCALE_QUANTA
+       
+
        namevalue = NameValueList(ObjectData_block['NameValue'])
        if namevalue._dict:
            pars['NameValues'] = namevalue._dict

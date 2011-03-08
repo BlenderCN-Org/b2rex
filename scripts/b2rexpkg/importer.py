@@ -277,6 +277,10 @@ class Importer25(object):
     def _get_local_pos(self, pos, parent):
         p_scale = parent.scale
         return (pos[0]/p_scale[0], pos[1]/p_scale[1], pos[2]/p_scale[2])
+        parent_imatrix = parent.matrix_world.copy().invert()
+        pos_v = mathutils.Vector(pos)
+        l_pos = pos_v*parent_imatrix
+        return (l_pos[0], l_pos[1], l_pos[2])
 
     def _get_global_pos(self, pos, parent):
         p_scale = parent.scale
@@ -284,10 +288,29 @@ class Importer25(object):
 
     def _get_local_rot(self, rot, parent):
         return rot
+        parent_imatrix = parent.matrix_world.copy().invert()
+        euler = mathutils.Quaternion((rot[3], rot[0], rot[1], rot[2]))
+        r_mat = euler.to_matrix().to_4x4()
+        l_rmat = r_mat*parent_imatrix
+        rot = l_rmat.to_quat()
+        return (rot.w, rot.x, rot.y, rot.z)
 
     def _get_local_scale(self, scale, parent):
+        parent_imatrix = parent.matrix_world.to_euler().to_matrix()
+        parent_imatrix.invert()
         p_scale = parent.scale
-        return (scale[0]/p_scale[0], scale[1]/p_scale[1], scale[2]/p_scale[2])
+        scale = (scale[0]/p_scale[0], scale[1]/p_scale[1], scale[2]/p_scale[2])
+        scale = mathutils.Vector(scale)
+        #scale_x = mathutils.Matrix.Scale(scale[0], 3, mathutils.Vector((1,0,0)))
+        #scale_y = mathutils.Matrix.Scale(scale[1], 3, mathutils.Vector((0,1,0)))
+        #scale_z = mathutils.Matrix.Scale(scale[2], 3, mathutils.Vector((0,0,1)))
+        #scale_m = scale_x * scale_y * scale_z
+        scale = scale * parent_imatrix
+        l_pos = scale
+        return (l_pos[0], l_pos[1], l_pos[2])
+
+                #p_scale = parent.scale
+                #return (scale[0]/p_scale[0], scale[1]/p_scale[1], scale[2]/p_scale[2])
 
     def _get_global_scale(self, scale, parent):
         p_scale = parent.scale

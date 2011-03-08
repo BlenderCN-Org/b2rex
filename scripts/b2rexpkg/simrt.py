@@ -194,6 +194,10 @@ class AgentManager(object):
 
         # send throttle
         self.throttle.sendThrottle()
+        if not caps_sent:
+            for cap in client.region.capabilities:
+                caps[cap] = client.region.capabilities[cap].public_url
+            self.out_queue.put(["capabilities", caps])
 
         # speak up the first line
         if "firstline" in login_params:

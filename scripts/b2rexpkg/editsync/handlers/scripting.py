@@ -38,6 +38,7 @@ class ScriptingModule(SyncModule):
         return editor.find_with_uuid(text_uuid, bpy.data.texts, 'texts')
 
     def create_llsd_script(self, assetID, assetType, data):
+        print("AssetArrived")
         editor = self._parent
         text = data.decode('ascii')
         name = 'text'

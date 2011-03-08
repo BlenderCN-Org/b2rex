@@ -38,6 +38,8 @@ class ObjectPropertiesModule(SyncModule):
         else:
             parentId = pars["ParentID"]
             obj = editor.findWithUUID(objId)
+            if not obj and not objId in editor.RexData.rexobjects and pars["PCode"] == PCodeEnum.Primitive:
+                    obj = editor.Prims.create(objId, pars)
             if obj:
                 # we have the object
                 if parentId:

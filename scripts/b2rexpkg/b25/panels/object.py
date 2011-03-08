@@ -40,6 +40,8 @@ class ObjectPropertiesPanel(bpy.types.Panel):
         if not session.simrt:
             box = self.layout.box()
             box.label("Not connected yet")
+            for obj in context.selected_objects:
+                self.draw_prim(box, obj)
             return
 
         box = layout.box()
@@ -48,6 +50,36 @@ class ObjectPropertiesPanel(bpy.types.Panel):
                 self.draw_terrain(box, obj)
             else:
                 self.draw_object(box, obj)
+
+    def draw_prim(self, box, obj):
+        props = obj.data.opensim.prim
+        box.label(text="Prim Parameters")
+        box.prop(props, 'extrapolationType')
+        box.prop(props, 'sides')
+        box.prop(props, 'hollowSides')
+        box.prop(props, 'hollow')
+        row = box.row()
+        row.prop(props, 'profile')
+        row = box.row()
+        row.prop(props, 'twist')
+        row = box.row()
+        row.prop(props, 'topShear')
+        row = box.row()
+        row.prop(props, 'pathCut')
+        row = box.row()
+        row.prop(props, 'taper')
+        # row = box.row()
+        # row.prop(props, 'dimpleBegin')
+        # row.prop(props, 'dimpleEnd')
+        if props.extrapolationType == 'CIRCULAR':
+            box.prop(props, 'radius')
+            box.prop(props, 'skew')
+            row = box.row()
+            row.prop(props, 'holeSize')
+            box.prop(props, 'revolutions')
+            box.prop(props, 'stepsPerRevolution')
+        row = box.row()
+        op = box.operator('b2rex.genprim')
 
     def draw_terrain(self, box, obj):
         terrain = bpy.b2rex_session.Terrain.terrain

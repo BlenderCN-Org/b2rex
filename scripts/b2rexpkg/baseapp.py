@@ -16,6 +16,7 @@ from .editsync.handlers.map import MapModule
 from .editsync.handlers.caps import CapsModule
 from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
+from .editsync.handlers.prims import PrimsModule
 from .editsync.handlers.online import OnlineModule
 from .editsync.handlers.scripting import ScriptingModule
 from .editsync.handlers.agents import AgentsModule
@@ -35,7 +36,8 @@ from .tools.simtypes import AssetType
 
 import bpy
 
-priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'props', 'scale']
+priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'scale',
+                     'RexPrimData']
 
 if sys.version_info[0] == 3:
     import urllib.request as urllib2
@@ -173,6 +175,7 @@ class BaseApplication(Importer, Exporter):
         Initialize editor modules.
         """
         self.registerModule(AssetModule(self))
+        self.registerModule(PrimsModule(self))
         self.registerModule(MapModule(self))
         self.registerModule(CapsModule(self))
         self.registerModule(ObjectModule(self))

@@ -168,6 +168,15 @@ class ProcessQueue(bpy.types.Operator):
         bpy.b2rex_session.onProcessQueue(context)
         return {'FINISHED'}
 
+class GenPrim(bpy.types.Operator):
+    bl_idname = "b2rex.genprim"
+    bl_label = "genprim"
+
+    def execute(self, context):
+        bpy.b2rex_session.Prims.generate(context)
+        return {'FINISHED'}
+
+
 class Delete(bpy.types.Operator):
     bl_idname = "b2rex.delete"
     bl_label = "delete"

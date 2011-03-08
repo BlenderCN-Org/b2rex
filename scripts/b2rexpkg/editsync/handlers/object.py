@@ -72,6 +72,7 @@ class ObjectModule(SyncModule):
                 scene.objects.link(obj)
             new_mesh.update()
         editor.trigger_callback('object.precreate', str(objId))
+        return obj
 
     def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
         """
