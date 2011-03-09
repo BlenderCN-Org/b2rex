@@ -6,7 +6,9 @@ from bpy.props import FloatVectorProperty, EnumProperty
 
 from b2rexpkg.b25.properties import B2RexBaseProps
 
-prim_extrude = [('TITLE', 'Extrusion Types', ""), ("LINEAR", "Linear", ""), ("CIRCULAR", "Circular", "")]
+prim_extrude = [('TITLE', 'Extrusion Types', ""),
+                ("LINEAR", "Linear", ""),
+                ("CIRCULAR", "Circular", "")]
 
 class B2RexPrimProps(B2RexBaseProps):
     extrapolationType = EnumProperty(items=prim_extrude, default='LINEAR', description='')
