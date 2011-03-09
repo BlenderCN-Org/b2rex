@@ -127,7 +127,7 @@ def generate_llsd(fsm, instdict):
                 if actuator.type == 'State':
                     pars = generate_actuator_pars(actuator, actions, instdict,
                                                   idx, False)
-                    _write("    "+actuator.type+' '+pars+';')
+                    _write("    state "+pars+';')
                 else:
                     pars = generate_actuator_pars(actuator, actions, instdict, idx)
                     _write("    "+actuator.type+'('+pars+');')

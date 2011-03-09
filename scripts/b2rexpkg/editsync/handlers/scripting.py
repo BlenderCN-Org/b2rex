@@ -297,6 +297,7 @@ class ScriptingModule(SyncModule):
         row.operator('b2rex.fsm', text='', icon='ZOOMIN').action = '_add_sensor'
         if currstate.sensors:
             row.operator('b2rex.fsm', text='', icon='ZOOMOUT').action = '_delete_sensor'
+        mainbox.operator('b2rex.fsm', text='Generate', icon='SCRIPT').action = '_generate_llsd'
         if props.selected_sensor >= len(currstate.sensors):
             return
         #box = box.box()
@@ -351,6 +352,5 @@ class ScriptingModule(SyncModule):
         # draw actuators one by one
         #for actuator in currstate.sensors[props.selected_sensor].actuators:
             #    box.label(text=str(actuator))
-        mainbox.operator('b2rex.fsm', text='Generate', icon='SCRIPT').action = '_generate_llsd'
 
 
