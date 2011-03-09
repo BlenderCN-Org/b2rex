@@ -9,6 +9,19 @@ Sensors:
     - pos: {
        type: vector
     }
+  link_message:
+    - sender_num: {
+       type: integer
+    }
+    - num: {
+       type: integer
+    }
+    - str: {
+       type: string
+    }
+    - id: {
+       type: key
+    }
   land_collision_start: land_collision
   land_collision_end: land_collision
   listen:
@@ -44,6 +57,23 @@ Actuators:
        type: string,
        default: foo
     }
+  llMessageLinked:
+    - linknum: {
+       type: integer,
+       default: 0
+    }
+    - num: {
+       type: integer,
+       default: 0
+    }
+    - str: {
+       type: string,
+       default: ""
+    }
+    - id: {
+       type: key,
+       default: ""
+    }
   llWhisper: llSay
   llOwnerSay:
     - msg: {
@@ -51,7 +81,7 @@ Actuators:
        default: foo
     }
   llDie: []
-  state:
+  State:
     - name: {
        type: string,
        default: default

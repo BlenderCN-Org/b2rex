@@ -13,7 +13,7 @@ sensors, actuators = parse_llsd_data()
 # Operators
 class FsmAction(bpy.types.Operator):
     bl_idname = "b2rex.fsm"
-    bl_label = "connect"
+    bl_label = "fsmaction"
     action = StringProperty(name="action",default='add_state')
     def execute(self, context):
         getattr(bpy.b2rex_session.Scripting, self.action)(context)
@@ -21,11 +21,20 @@ class FsmAction(bpy.types.Operator):
 
 class FsmActuatorTypeAction(bpy.types.Operator):
     bl_idname = "b2rex.fsm_actuatortype"
-    bl_label = "connect"
+    bl_label = "actuatortype"
     type = EnumProperty(items=actuators, description='')
     def execute(self, context):
         bpy.b2rex_session.Scripting.set_actuator_type(context, self.type)
         return {'FINISHED'}
+
+class FsmSensorTypeAction(bpy.types.Operator):
+    bl_idname = "b2rex.fsm_sensortype"
+    bl_label = "sensortype"
+    type = EnumProperty(items=sensors, description='')
+    def execute(self, context):
+        bpy.b2rex_session.Scripting.set_sensor_type(context, self.type)
+        return {'FINISHED'}
+
 
 #
 # Model
