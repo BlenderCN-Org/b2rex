@@ -4,6 +4,8 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty, EnumProperty
 
+from .logic import B2RexFsm
+
 import logging
 
 states = (("UPLOADING", 'Uploading', 'standard level, show only errors'),
@@ -53,6 +55,7 @@ class B2RexObjectProps(B2RexBaseProps):
     uuid = StringProperty(name='uuid', default='', description='')
     state = EnumProperty(items=states, default='OFFLINE', description='')
     everyonemask_expand = BoolProperty(name='everyonemask_expand', default=False)
+    fsm = PointerProperty(type=B2RexFsm, name="fsm")
 
 prim_extrude = [('TITLE', 'Extrusion Types', ""), ("LINEAR", "Linear", ""), ("CIRCULAR", "Circular", "")]
 

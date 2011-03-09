@@ -42,7 +42,8 @@ class SyncModule(object):
     The following can be defined for getting called in specific
     moments.
 
-    def draw(self, layout, session, props):
+    def draw(self, layout, editor, props):
+    def draw_object(self, layout, editor, obj):
     def check(self, starttime, budget):
     """
 

@@ -134,7 +134,7 @@ class BaseApplication(Importer, Exporter):
         self._modules[module.getName()] = module
         module.register(self)
         setattr(self, module.getName(), module)
-        for section in ["check", "draw"]:
+        for section in ["check", "draw", "draw_object"]:
             if hasattr(module, section):
                 self._module_cb[section].append(getattr(module, section))
 
@@ -144,6 +144,14 @@ class BaseApplication(Importer, Exporter):
         """
         for draw_cb in self._module_cb["draw"]:
             draw_cb(layout, self, props)
+
+    def drawObjectModules(self, layout, obj):
+        """
+        Calls to draw all modules registered in the system.
+        """
+        for draw_cb in self._module_cb["draw_object"]:
+            draw_cb(layout, self, obj)
+
 
     # Generic callback functionality
     def add_callback(self, section, signal, callback, *parameters):
