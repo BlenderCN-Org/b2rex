@@ -30,16 +30,24 @@ class ScriptingModule(SyncModule):
         parent.unregisterCommand('OnlineNotification')
 
     def upload(self, name):
+        """
+        Upload the text with the given name to the sim.
+        """
         editor = self._parent
         text_obj = bpy.data.texts[name]
         self.upload_text(text_obj)
 
     def find_text(self, text_uuid):
+        """
+        Find the text object with the given uuid
+        """
         editor = self._parent
         return editor.find_with_uuid(text_uuid, bpy.data.texts, 'texts')
 
     def create_llsd_script(self, assetID, assetType, data):
-        print("AssetArrived")
+        """
+        Import a sl script arriving from the simulator.
+        """
         editor = self._parent
         text = data.decode('ascii')
         name = 'text'
@@ -53,7 +61,11 @@ class ScriptingModule(SyncModule):
         text_obj.opensim.uuid = assetID
         
 
+    # Upload a text object to the sim
     def upload_text(self, text_obj):
+        """
+        Upload the given blender text object to the simulator.
+        """
         editor = self._parent
         text_data = ""
         # gather text data
@@ -101,31 +113,50 @@ class ScriptingModule(SyncModule):
                             text_data.encode('ascii'),
                             cb)
 
+
+    # Logic Editor
     def _add_state(self, context):
-        editor = self._parent
-        objs = editor.getSelected()
-        for obj in objs:
-            props = obj.opensim.fsm
-            props.states.add()
-            state = props.states[-1]
-            if props.selected_state:
-                state.name = props.selected_state
-            else:
-                state.name = 'default'
-            props.selected_state = state.name
+        """
+        Add state operator
+        """
+        fsm = self._get_fsm()
+        state = fsm.states.add()
+        if fsm.selected_state:
+            state.name = fsm.selected_state
+        else:
+            state.name = 'default'
+        fsm.selected_state = state.name
 
     def _add_sensor(self, context):
+        """
+        Add sensor operator
+        """
         fsm, state = self._get_fsm_state()
         sensor = state.sensors.add()
         sensor.name = sensor.type
 
     def _up_actuator(self, context):
+        """
+        Move actuator up operator
+        """
         fsm, sensor = self._get_fsm_sensor()
         sel = fsm.selected_actuator
         sensor.actuators.move(sel, sel-1)
         fsm.selected_actuator -= 1
 
+    def _down_actuator(self, context):
+        """
+        Move actuator down operator
+        """
+        fsm, sensor = self._get_fsm_sensor()
+        sel = fsm.selected_actuator
+        sensor.actuators.move(sel, sel+1)
+        fsm.selected_actuator += 1
+
     def _get_fsm(self):
+        """
+        Get the current active fsm.
+        """
         editor = self._parent
         objs = editor.getSelected()
         obj = objs[0]
@@ -133,28 +164,33 @@ class ScriptingModule(SyncModule):
         return fsm
 
     def _get_fsm_state(self):
+        """
+        Get the current active fsm and state
+        """
         fsm = self._get_fsm()
         state = fsm.states[fsm.selected_state]
         return fsm, state
 
     def _get_fsm_sensor(self):
+        """
+        Get the current active fsm and sensor
+        """
         fsm, state = self._get_fsm_state()
         sensor = state.sensors[fsm.selected_sensor]
         return fsm, sensor
 
-    def _down_actuator(self, context):
-        fsm, sensor = self._get_fsm_sensor()
-        sel = fsm.selected_actuator
-        sensor.actuators.move(sel, sel+1)
-        fsm.selected_actuator += 1
-
     def _add_actuator(self, context):
+        """
+        Add actuator operator
+        """
         fsm, sensor = self._get_fsm_sensor()
         actuator = sensor.actuators.add()
         actuator.name = actuator.type
 
     def _delete_state(self, context):
-        print("delete_state!")
+        """
+        Delete state operator
+        """
         fsm = self._get_fsm()
         fsm.states.remove(fsm.selected_state)
         if len(fsm.states):
@@ -163,22 +199,34 @@ class ScriptingModule(SyncModule):
             fsm.selected_state = ""
 
     def _delete_sensor(self, context):
+        """
+        Delete sensor operator
+        """
         fsm, state = self._get_fsm_state()
         state.sensors.remove(fsm.selected_sensor)
         fsm.selected_sensor = 0
 
     def _delete_actuator(self, context):
+        """
+        Delete actuator operator
+        """
         fsm, sensor = self._get_fsm_sensor()
         sensor.actuators.remove(fsm.selected_actuator)
         fsm.selected_actuator = 0
 
     def _generate_llsd(self, context):
+        """
+        Generate script operator
+        """
         editor = self._parent
         obj = editor.getSelected()[0]
         fsm = obj.opensim.fsm
         print(generate_llsd(fsm, obj))
 
     def set_sensor_type(self, context, type):
+        """
+        Set sensor type operator
+        """
         editor = self._parent
         obj = editor.getSelected()[0]
         fsm, sensor = self._get_fsm_sensor()
@@ -186,6 +234,9 @@ class ScriptingModule(SyncModule):
         sensor.name = type
 
     def set_actuator_type(self, context, type):
+        """
+        Set actuator type operator
+        """
         editor = self._parent
         obj = editor.getSelected()[0]
         fsm, sensor = self._get_fsm_sensor()
@@ -213,6 +264,9 @@ class ScriptingModule(SyncModule):
                 obj[tmp_name] = val
 
     def draw_object(self, box, editor, obj):
+        """
+        Draw scripting section in the object panel.
+        """
         if not self.expand(box):
             return False
         mainbox = box.box()
