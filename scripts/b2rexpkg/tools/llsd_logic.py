@@ -45,7 +45,7 @@ def parse_llsd_data():
         sensors += ((sensor, sensor, sensor),)
     return (sensors, actuators)
 
-def generate_actuator_pars(actuator, actions):
+def generate_actuator_pars(actuator, actions, instdict, idx):
     """
     Generate the parameters for an actuator call from
     the actuator instance and the definition.
@@ -67,7 +67,10 @@ def generate_actuator_pars(actuator, actions):
             _cls = str
             _val = ""
         if _cls:
-           if hasattr(actuator, name):
+           tmp_name = 'tmp_' + str(idx) + name
+           if tmp_name in instdict:
+               _val = instdict[tmp_name]
+           elif hasattr(actuator, name):
                _val = _cls(getattr(actuator, name))
            elif 'default' in pardata:
                _val = pardata['default']
@@ -88,7 +91,7 @@ def generate_sensor_pars(sensor, sensors):
         pars += pardata['type'] + " " + name
     return pars
 
-def generate_llsd(fsm):
+def generate_llsd(fsm, instdict):
     """
     Generate an llsd fsm script from an instance declaration.
     """
@@ -108,8 +111,8 @@ def generate_llsd(fsm):
             pars = generate_sensor_pars(sensor, sensors)
             _write('  '+sensor.type+'('+pars+')')
             _write("  {")
-            for actuator in sensor.actuators:
-                pars = generate_actuator_pars(actuator, actions)
+            for idx, actuator in enumerate(sensor.actuators):
+                pars = generate_actuator_pars(actuator, actions, instdict, idx)
                 _write("    "+actuator.type+'('+pars+')')
             _write("  }")
         _write("}")

@@ -4,7 +4,7 @@
 import uuid
 
 from .base import SyncModule
-from b2rexpkg.tools.llsd_logic import generate_llsd
+from b2rexpkg.tools.llsd_logic import generate_llsd, get_llsd_info
 
 import bpy
 
@@ -134,6 +134,16 @@ class ScriptingModule(SyncModule):
             sensor.actuators.add()
             actuator = sensor.actuators[-1]
             actuator.name = 'newactuator'
+            return
+            llsd_info = get_llsd_info()["Actuators"]
+            act_info = llsd_info[actuator.type]
+            for prop in act_info:
+                name = list(prop.keys())[0]
+                data = list(prop.values())[0]
+                tmp_name = "tmp_" + name
+                if not tmp_name in obj:
+                    obj[tmp_name] = "bla"
+                box.prop(obj, '["'+tmp_name+'"]')
 
 
     def _delete_state(self, context):
@@ -144,32 +154,48 @@ class ScriptingModule(SyncModule):
         editor = self._parent
         obj = editor.getSelected()[0]
         fsm = obj.opensim.fsm
-        print(generate_llsd(fsm))
-        return
-        for state in fsm.states:
-            print(state.name)
-            print("{")
-            for sensor in state.sensors:
-                pars = 'integer num_detected'
-                print('  '+sensor.type+'('+pars+')')
-                print("  {")
-                for actuator in sensor.actuators:
-                    print("    "+actuator.type+'()')
-                print("  }")
-            print("}")
+        print(generate_llsd(fsm, obj))
+
+    def set_actuator_type(self, context, type):
+        editor = self._parent
+        obj = editor.getSelected()[0]
+        fsm = obj.opensim.fsm
+        state = fsm.states[fsm.selected_state]
+        sensor = state.sensors[fsm.selected_sensor]
+        actuator = sensor.actuators[fsm.selected_actuator]
+        actuator.type = type
+        actuator.name = type
+        llsd_info = get_llsd_info()["Actuators"]
+        act_info = llsd_info[actuator.type]
+        pre = str(fsm.selected_actuator)
+        for prop in act_info:
+            name = list(prop.keys())[0]
+            data = list(prop.values())[0]
+            tmp_name = "tmp_" + pre + name
+            if not tmp_name in obj:
+                if data['type'] == 'integer':
+                    val = 0
+                elif data['type'] == 'string':
+                    val = "bla"
+                elif data['type'] == 'float':
+                    val = 0.0
+                obj[tmp_name] = val
 
     def draw_object(self, box, editor, obj):
-        mainbox = box
-        box = box.box()
-        box.label("States")
+        mainbox = box.box()
+        main_row = mainbox.row()
+        box = main_row.column()
+        #box = box.box()
+        box.label("State")
         props = obj.opensim.fsm
         # draw state list
         row = box.row()
-        row.prop_search(props, 'selected_state', props, 'states')
         if not props.states or (props.selected_state and not props.selected_state in props.states):
             row.operator('b2rex.fsm', text='', icon='ZOOMIN').action = '_add_state'
         if props.states:
             row.operator('b2rex.fsm', text='', icon='ZOOMOUT').action = '_delete_state'
+        row.prop_search(props, 'selected_state', props, 'states')
+
         # draw sensor list
         if not props.selected_state or not props.selected_state in props.states:
             return
@@ -184,28 +210,45 @@ class ScriptingModule(SyncModule):
             row.operator('b2rex.fsm', text='', icon='ZOOMOUT').action = '_delete_sensor'
         if props.selected_sensor >= len(currstate.sensors):
             return
-        box = box.box()
+        #box = box.box()
+        box = main_row.column()
+        box.label("Sensor")
         # draw current sensor controls
         currsensor = currstate.sensors[props.selected_sensor]
         box.prop(currsensor, 'name')
-        box.prop(currsensor, 'type')
+        box.prop(currsensor, 'type', text='Type')
+
+        if currsensor.actuators:
+            box.template_list(currsensor,
+                          'actuators',
+                          props,
+                          'selected_actuator')
 
         row = box.row()
         row.operator('b2rex.fsm', text='', icon='ZOOMIN').action = '_add_actuator'
         if currsensor.actuators:
             row.operator('b2rex.fsm', text='', icon='ZOOMOUT').action = '_delete_actuator'
 
-            box.template_list(currsensor,
-                          'actuators',
-                          props,
-                          'selected_actuator')
-
         if props.selected_actuator >= len(currsensor.actuators):
             return
 
         curractuator = currsensor.actuators[props.selected_actuator]
-        box.prop(curractuator, 'name')
-        box.prop(curractuator, 'type')
+        #box.prop(curractuator, 'name')
+        row = box.row()
+        row.label(text='Type:')
+        row.operator_menu_enum('b2rex.fsm_actuatortype',
+                               'type',
+                               text=curractuator.type, icon='BLENDER')
+
+        llsd_info = get_llsd_info()["Actuators"]
+        act_info = llsd_info[curractuator.type]
+        pre = str(props.selected_actuator)
+        for prop in act_info:
+            name = list(prop.keys())[0]
+            data = list(prop.values())[0]
+            tmp_name = "tmp_" + pre + name
+            if tmp_name in obj:
+                box.prop(obj, '["'+tmp_name+'"]', text=name)
         # draw actuators one by one
         #for actuator in currstate.sensors[props.selected_sensor].actuators:
             #    box.label(text=str(actuator))

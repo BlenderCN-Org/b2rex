@@ -63,7 +63,8 @@ else:
     from .b25.properties import B2RexObjectProps, B2RexMaterialProps
     from .b25.properties import B2RexMeshProps, B2RexTextureProps
     from .b25.properties import B2RexImageProps, B2RexChatLine
-    from .b25.logic import B2RexState, B2RexSensor, B2RexActuator, B2RexFsm, FsmAction
+    from .b25.logic import B2RexState, B2RexSensor, B2RexActuator, B2RexFsm
+    from .b25.logic import FsmActuatorTypeAction, FsmAction
     from .b25.app import B2Rex
 
 import bpy

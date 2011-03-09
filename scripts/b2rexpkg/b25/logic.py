@@ -19,6 +19,15 @@ class FsmAction(bpy.types.Operator):
         getattr(bpy.b2rex_session.Scripting, self.action)(context)
         return {'FINISHED'}
 
+class FsmActuatorTypeAction(bpy.types.Operator):
+    bl_idname = "b2rex.fsm_actuatortype"
+    bl_label = "connect"
+    type = EnumProperty(items=actuators, description='')
+    def execute(self, context):
+        bpy.b2rex_session.Scripting.set_actuator_type(context, self.type)
+        return {'FINISHED'}
+
+#
 # Model
 class B2RexActuator(bpy.types.IDPropertyGroup):
     type = EnumProperty(items=actuators, description='')
