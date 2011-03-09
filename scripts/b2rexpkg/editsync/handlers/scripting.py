@@ -125,11 +125,15 @@ class ScriptingModule(SyncModule):
         sensor.actuators.move(sel, sel-1)
         fsm.selected_actuator -= 1
 
-    def _get_fsm_state(self):
+    def _get_fsm(self):
         editor = self._parent
         objs = editor.getSelected()
         obj = objs[0]
         fsm = obj.opensim.fsm
+        return fsm
+
+    def _get_fsm_state(self):
+        fsm = self._get_fsm()
         state = fsm.states[fsm.selected_state]
         return fsm, state
 
@@ -151,10 +155,21 @@ class ScriptingModule(SyncModule):
 
     def _delete_state(self, context):
         print("delete_state!")
+        fsm = self._get_fsm()
+        fsm.states.remove(fsm.selected_state)
+        if len(fsm.states):
+            fsm.selected_state = fsm.states[0].name
+        else:
+            fsm.selected_state = ""
+
+    def _delete_sensor(self, context):
+        fsm, state = self._get_fsm_state()
+        state.sensors.remove(fsm.selected_sensor)
+        fsm.selected_sensor = 0
 
     def _delete_actuator(self, context):
         fsm, sensor = self._get_fsm_sensor()
-        sensor.remove(fsm.selected_actuator)
+        sensor.actuators.remove(fsm.selected_actuator)
         fsm.selected_actuator = 0
 
     def _generate_llsd(self, context):
