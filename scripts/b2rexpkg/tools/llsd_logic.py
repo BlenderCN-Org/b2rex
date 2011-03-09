@@ -40,9 +40,15 @@ def parse_llsd_data():
     actuators = ()
     llsd_info = get_llsd_info()
     for actuator in llsd_info['Actuators']:
-        actuators += ((actuator, actuator, actuator),)
+        if actuator.startswith('ll'):
+            actuator_name = actuator[2:]
+        else:
+            actuator_name = actuator
+        actuators += ((actuator, actuator_name, actuator),)
     for sensor in llsd_info['Sensors']:
-        sensors += ((sensor, sensor, sensor),)
+        sensor_name = sensor.replace('_', ' ')
+        sensor_name = sensor_name[0].upper() + sensor_name[1:]
+        sensors += ((sensor, sensor_name, sensor),)
     return (sensors, actuators)
 
 def generate_actuator_pars(actuator, actions, instdict, idx):
@@ -113,7 +119,7 @@ def generate_llsd(fsm, instdict):
             _write("  {")
             for idx, actuator in enumerate(sensor.actuators):
                 pars = generate_actuator_pars(actuator, actions, instdict, idx)
-                _write("    "+actuator.type+'('+pars+')')
+                _write("    "+actuator.type+'('+pars+');')
             _write("  }")
         _write("}")
     text.seek(0)

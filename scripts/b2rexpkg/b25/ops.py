@@ -179,7 +179,7 @@ class ProcessQueue(bpy.types.Operator):
 
 class GenPrim(bpy.types.Operator):
     bl_idname = "b2rex.genprim"
-    bl_label = "genprim"
+    bl_label = "Generate Prim"
 
     def execute(self, context):
         bpy.b2rex_session.Prims.generate(context)

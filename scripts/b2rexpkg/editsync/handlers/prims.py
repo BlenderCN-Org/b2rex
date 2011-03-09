@@ -200,19 +200,20 @@ class PrimsModule(SyncModule):
             return
 
         props = obj.data.opensim.prim
+        box = box.box()
         box.label(text="Prim Parameters")
         box.prop(props, 'extrapolationType')
-        box.prop(props, 'sides')
+        box.prop(props, 'sides', icon='MOD_DISPLACE')
         box.prop(props, 'hollowSides')
-        box.prop(props, 'hollow')
+        box.prop(props, 'hollow', icon='PROP_CON')
         row = box.row()
-        row.prop(props, 'profile')
+        row.prop(props, 'profile', icon='SURFACE_NCURVE')
         row = box.row()
-        row.prop(props, 'twist')
+        row.prop(props, 'twist', icon='FORCE_VORTEX')
         row = box.row()
-        row.prop(props, 'topShear')
+        row.prop(props, 'topShear', icon='MOD_SIMPLEDEFORM')
         row = box.row()
-        row.prop(props, 'pathCut')
+        row.prop(props, 'pathCut', icon='CURVE_BEZCURVE')
         row = box.row()
         row.prop(props, 'taper')
         # row = box.row()
@@ -220,12 +221,12 @@ class PrimsModule(SyncModule):
         # row.prop(props, 'dimpleEnd')
         if props.extrapolationType == 'CIRCULAR':
             box.prop(props, 'radius')
-            box.prop(props, 'skew')
+            box.prop(props, 'skew', icon='FORCE_MAGNETIC')
             row = box.row()
             row.prop(props, 'holeSize')
             box.prop(props, 'revolutions')
             box.prop(props, 'stepsPerRevolution')
         row = box.row()
-        op = box.operator('b2rex.genprim')
+        op = box.operator('b2rex.genprim', icon='MESH_ICOSPHERE')
 
 

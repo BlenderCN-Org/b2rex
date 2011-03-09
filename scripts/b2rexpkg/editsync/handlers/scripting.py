@@ -254,6 +254,6 @@ class ScriptingModule(SyncModule):
         # draw actuators one by one
         #for actuator in currstate.sensors[props.selected_sensor].actuators:
             #    box.label(text=str(actuator))
-        mainbox.operator('b2rex.fsm', text='Generate').action = '_generate_llsd'
+        mainbox.operator('b2rex.fsm', text='Generate', icon='SCRIPT').action = '_generate_llsd'
 
 
