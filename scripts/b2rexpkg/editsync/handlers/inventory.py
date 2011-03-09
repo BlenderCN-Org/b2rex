@@ -13,11 +13,14 @@ from .base import SyncModule
 
 logger = logging.getLogger('b2rex.InventoryModule')
 
+
 class InventoryModule(SyncModule):
+
     def register(self, parent):
         """
         Register this module with the editor
         """
+        bpy.types.B2RexObjectProps.inventory = property(self.get_inventory)
         parent.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         parent.registerCommand('InventoryDescendents', self.processInventoryDescendents)
 
@@ -64,6 +67,9 @@ class InventoryModule(SyncModule):
         logger.debug("processInventoryDescendents")
         self.update_folders(folders)
         self.update_items(items)
+
+    def get_inventory(self, obj):
+        return {}
 
     def __iter__(self):
         props = bpy.context.scene.b2rex_props
