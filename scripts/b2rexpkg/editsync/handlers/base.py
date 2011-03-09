@@ -13,6 +13,19 @@ class SyncModule(object):
         Return the name under which this handler should be registered.
         """
         return self.__class__.__name__.replace("Module", "")
+
+    def register_property(self, origcls, prop, destcls):
+        """
+        Register a property with an editor model
+        """
+        setattr(origcls, prop, bpy.props.PointerProperty(type=destcls))
+
+    def unregister_property(self, origcls, prop):
+        """
+        Unregister a property from an editor model
+        """
+        delattr(origcls, prop)
+
     def setProperties(self, props):
         """
         Called when setting the module properties

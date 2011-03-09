@@ -6,6 +6,8 @@ from .base import SyncModule
 from b2rexpkg.tools.primmesher import PrimMesh
 from b2rexpkg.tools.primmesher import Extrusion, PathType, ProfileShape, HollowShape
 
+from .props.prims import B2RexPrimProps
+
 import bpy
 
 class PrimsModule(SyncModule):
@@ -13,12 +15,15 @@ class PrimsModule(SyncModule):
         """
         Register this module with the editor
         """
+        self.register_property(bpy.types.B2RexMeshProps, 'prim', B2RexPrimProps)
+
         parent.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
 
     def unregister(self, parent):
         """
         Unregister this module from the editor
         """
+        self.unregister_property(bpy.types.B2RexMeshProps, 'prim')
         parent.unregisterCommand('CoarseLocationUpdate')
 
     def create(self, objId, pars):
