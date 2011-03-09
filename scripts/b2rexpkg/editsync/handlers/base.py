@@ -38,6 +38,15 @@ class SyncModule(object):
         Called when the module is unregistered from the system:
         """
         pass
+    def expand(self, box):
+        if self._expand:
+            box.operator('b2rex.section', icon="TRIA_DOWN", text="Prim",
+                     emboss=True).section = self.getName()
+        else:
+            box.operator("b2rex.section", icon="TRIA_RIGHT", text="Prim",
+                     emboss=True).section = self.getName()
+        return self._expand
+
     """
     The following can be defined for getting called in specific
     moments.

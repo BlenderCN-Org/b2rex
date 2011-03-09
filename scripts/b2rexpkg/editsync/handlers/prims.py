@@ -9,6 +9,7 @@ from b2rexpkg.tools.primmesher import Extrusion, PathType, ProfileShape, HollowS
 import bpy
 
 class PrimsModule(SyncModule):
+    _expand = False
     def register(self, parent):
         """
         Register this module with the editor
@@ -191,6 +192,9 @@ class PrimsModule(SyncModule):
         pass
 
     def draw_object(self, box, editor, obj):
+        if not self.expand(box):
+            return
+
         props = obj.data.opensim.prim
         box.label(text="Prim Parameters")
         box.prop(props, 'extrapolationType')
