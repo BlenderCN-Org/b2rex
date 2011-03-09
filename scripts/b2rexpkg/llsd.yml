@@ -5,6 +5,12 @@ Sensors:
     - num_detected: {
        type: integer
     }
+  land_collision:
+    - pos: {
+       type: vector
+    }
+  land_collision_start: land_collision
+  land_collision_end: land_collision
   listen:
     - channel: {
        type: integer
