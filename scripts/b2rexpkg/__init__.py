@@ -52,7 +52,7 @@ else:
     from .b25 import editor
     from .b25.ops import Connect, Export, Import, Settings, SetLogLevel, Redraw
     from .b25.ops import Upload, ExportUpload, Sync, Check, ProcessQueue
-    from .b25.ops import RequestAsset
+    from .b25.ops import RequestAsset, Section
     from .b25.panels.main import ConnectionPanel
     from .b25.panels.menu import Menu
     from .b25.panels.text import B2RexTextMenu

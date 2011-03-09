@@ -5,6 +5,7 @@
 import bpy
 
 class SyncModule(object):
+    _expand = False
     def __init__(self, parent):
         self._parent = parent
     def getName(self):
@@ -40,10 +41,10 @@ class SyncModule(object):
         pass
     def expand(self, box):
         if self._expand:
-            box.operator('b2rex.section', icon="TRIA_DOWN", text="Prim",
+            box.operator('b2rex.section', icon="TRIA_DOWN", text=self.getName(),
                      emboss=True).section = self.getName()
         else:
-            box.operator("b2rex.section", icon="TRIA_RIGHT", text="Prim",
+            box.operator("b2rex.section", icon="TRIA_RIGHT", text=self.getName(),
                      emboss=True).section = self.getName()
         return self._expand
 

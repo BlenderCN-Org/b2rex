@@ -109,6 +109,15 @@ class Connect(bpy.types.Operator):
         bpy.b2rex_session.onconnect(context)
         return {'FINISHED'}
 
+class Section(bpy.types.Operator):
+    bl_idname = "b2rex.section"
+    bl_label = "section"
+    section = StringProperty()
+    def execute(self, context):
+        getattr(bpy.b2rex_session, self.section)._expand ^= 1
+        return {'FINISHED'}
+
+
 class Redraw(bpy.types.Operator):
     bl_idname = "b2rex.redraw"
     bl_label = "redraw"

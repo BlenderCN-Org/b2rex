@@ -139,36 +139,37 @@ class ConnectionPanel(bpy.types.Panel):
         if props.expand:
             row.prop(props,"expand", icon="TRIA_DOWN", text="Settings",
                      emboss=True)
-            for prop in ['agent_libs_path', 'tools_path']: # "loc", "path", "pack", "server_url", "username", "password",
-                row = layout.row()
-                row.prop(props, prop)
-
-            check_icon = ['CHECKBOX_DEHLT', 'CHECKBOX_HLT']
-            col = layout.column_flow()
-            col.operator('b2rex.toggleImportTerrain', text="Import Terrain", icon=check_icon[props.importTerrain], emboss=False) 
-            col.operator('b2rex.toggleImportTextures', text="Import Textures", icon=check_icon[props.importTextures], emboss=False) 
-            col.operator('b2rex.toggle_safe_mode', text="Safe Mode",
-                         icon=check_icon[b2rexpkg.safe_mode], emboss=False) 
-
-            #col.prop(props,"regenMaterials")
-            #col.prop(props,"regenObjects")
-
-            #col.prop(props,"regenTextures")
-            #col.prop(props,"regenMeshes")
-
-            box = layout.row()
-            box.operator_menu_enum("b2rex.loglevel", 'level', icon='INFO',
-                                   text=getLogLabel(props.loglevel))
-            box = layout.row()
-            box.prop(props, "kbytesPerSecond")
-            box = layout.row()
-            box.prop(props, "rt_budget")
-            box = layout.row()
-            box.prop(props, "rt_sec_budget")
-            box = layout.row()
-            box.prop(props, "pool_workers")
-            box = layout.row()
-            box.prop(props, "terrainLOD")
         else:
             row.prop(props,"expand", icon="TRIA_RIGHT", text="Settings",
                      emboss=True)
+            return
+        for prop in ['agent_libs_path', 'tools_path']: # "loc", "path", "pack", "server_url", "username", "password",
+            row = layout.row()
+            row.prop(props, prop)
+
+        check_icon = ['CHECKBOX_DEHLT', 'CHECKBOX_HLT']
+        col = layout.column_flow()
+        col.operator('b2rex.toggleImportTerrain', text="Import Terrain", icon=check_icon[props.importTerrain], emboss=False) 
+        col.operator('b2rex.toggleImportTextures', text="Import Textures", icon=check_icon[props.importTextures], emboss=False) 
+        col.operator('b2rex.toggle_safe_mode', text="Safe Mode",
+                     icon=check_icon[b2rexpkg.safe_mode], emboss=False) 
+
+        #col.prop(props,"regenMaterials")
+        #col.prop(props,"regenObjects")
+
+        #col.prop(props,"regenTextures")
+        #col.prop(props,"regenMeshes")
+
+        box = layout.row()
+        box.operator_menu_enum("b2rex.loglevel", 'level', icon='INFO',
+                               text=getLogLabel(props.loglevel))
+        box = layout.row()
+        box.prop(props, "kbytesPerSecond")
+        box = layout.row()
+        box.prop(props, "rt_budget")
+        box = layout.row()
+        box.prop(props, "rt_sec_budget")
+        box = layout.row()
+        box.prop(props, "pool_workers")
+        box = layout.row()
+        box.prop(props, "terrainLOD")

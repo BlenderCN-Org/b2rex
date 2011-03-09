@@ -9,7 +9,6 @@ from b2rexpkg.tools.primmesher import Extrusion, PathType, ProfileShape, HollowS
 import bpy
 
 class PrimsModule(SyncModule):
-    _expand = False
     def register(self, parent):
         """
         Register this module with the editor

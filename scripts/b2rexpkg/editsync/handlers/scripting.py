@@ -182,6 +182,8 @@ class ScriptingModule(SyncModule):
                 obj[tmp_name] = val
 
     def draw_object(self, box, editor, obj):
+        if not self.expand(box):
+            return False
         mainbox = box.box()
         main_row = mainbox.row()
         box = main_row.column()
