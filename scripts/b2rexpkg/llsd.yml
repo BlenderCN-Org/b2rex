@@ -4,7 +4,20 @@ Sensors:
   touch:
     - num_detected: {
        type: integer
-   }
+    }
+  listen:
+    - channel: {
+       type: integer
+    }
+    - name: {
+       type: string
+    }
+    - id: {
+       type: key
+    }
+    - message: {
+       type: string
+    }
   touch_start: touch
   touch_end: touch
   collision: touch
@@ -32,9 +45,31 @@ Actuators:
        default: foo
     }
   llDie: []
+  state:
+    - name: {
+       type: string,
+       default: default
+    }
   llSetTimerEvents:
     - wait_time: {
        type: float,
        default: 5.0
+    }
+  llListen:
+    - channel: {
+       type: int,
+       default: 0
+    }
+    - name: {
+       type: string,
+       default: ''
+    }
+    - id: {
+       type: key,
+       default: ''
+    }
+    - msg: {
+       type: string,
+       default: ''
     }
 

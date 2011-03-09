@@ -115,40 +115,47 @@ class ScriptingModule(SyncModule):
             props.selected_state = state.name
 
     def _add_sensor(self, context):
+        fsm, state = self._get_fsm_state()
+        sensor = state.sensors.add()
+        sensor.name = 'newsensor'
+
+    def _up_actuator(self, context):
+        fsm, sensor = self._get_fsm_sensor()
+        sel = fsm.selected_actuator
+        sensor.actuators.move(sel, sel-1)
+        fsm.selected_actuator -= 1
+
+    def _get_fsm_state(self):
         editor = self._parent
         objs = editor.getSelected()
-        for obj in objs:
-            props = obj.opensim.fsm
-            state = props.states[props.selected_state]
-            state.sensors.add()
-            sensor = state.sensors[-1]
-            sensor.name = 'newsensor'
+        obj = objs[0]
+        fsm = obj.opensim.fsm
+        state = fsm.states[fsm.selected_state]
+        return fsm, state
+
+    def _get_fsm_sensor(self):
+        fsm, state = self._get_fsm_state()
+        sensor = state.sensors[fsm.selected_sensor]
+        return fsm, sensor
+
+    def _down_actuator(self, context):
+        fsm, sensor = self._get_fsm_sensor()
+        sel = fsm.selected_actuator
+        sensor.actuators.move(sel, sel+1)
+        fsm.selected_actuator += 1
 
     def _add_actuator(self, context):
-        editor = self._parent
-        objs = editor.getSelected()
-        for obj in objs:
-            props = obj.opensim.fsm
-            state = props.states[props.selected_state]
-            sensor = state.sensors[props.selected_sensor]
-            sensor.actuators.add()
-            actuator = sensor.actuators[-1]
-            actuator.name = 'newactuator'
-            return
-            llsd_info = get_llsd_info()["Actuators"]
-            act_info = llsd_info[actuator.type]
-            for prop in act_info:
-                name = list(prop.keys())[0]
-                data = list(prop.values())[0]
-                tmp_name = "tmp_" + name
-                if not tmp_name in obj:
-                    obj[tmp_name] = "bla"
-                box.prop(obj, '["'+tmp_name+'"]')
-
+        fsm, sensor = self._get_fsm_sensor()
+        actuator = sensor.actuators.add()
+        actuator.name = 'newactuator'
 
     def _delete_state(self, context):
         print("delete_state!")
 
+    def _delete_actuator(self, context):
+        fsm, sensor = self._get_fsm_sensor()
+        sensor.remove(fsm.selected_actuator)
+        fsm.selected_actuator = 0
 
     def _generate_llsd(self, context):
         editor = self._parent
@@ -159,9 +166,7 @@ class ScriptingModule(SyncModule):
     def set_actuator_type(self, context, type):
         editor = self._parent
         obj = editor.getSelected()[0]
-        fsm = obj.opensim.fsm
-        state = fsm.states[fsm.selected_state]
-        sensor = state.sensors[fsm.selected_sensor]
+        fsm, sensor = self._get_fsm_sensor()
         actuator = sensor.actuators[fsm.selected_actuator]
         actuator.type = type
         actuator.name = type
@@ -173,9 +178,13 @@ class ScriptingModule(SyncModule):
             data = list(prop.values())[0]
             tmp_name = "tmp_" + pre + name
             if not tmp_name in obj:
-                if data['type'] == 'integer':
+                if 'default' in data:
+                    val = data['default']
+                elif data['type'] == 'integer':
                     val = 0
                 elif data['type'] == 'string':
+                    val = "bla"
+                elif data['type'] == 'key':
                     val = "bla"
                 elif data['type'] == 'float':
                     val = 0.0
@@ -230,6 +239,10 @@ class ScriptingModule(SyncModule):
         row.operator('b2rex.fsm', text='', icon='ZOOMIN').action = '_add_actuator'
         if currsensor.actuators:
             row.operator('b2rex.fsm', text='', icon='ZOOMOUT').action = '_delete_actuator'
+            if props.selected_actuator > 0:
+                row.operator('b2rex.fsm', text='', icon='TRIA_UP').action = '_up_actuator'
+            if props.selected_actuator < len(currsensor.actuators) -1:
+                row.operator('b2rex.fsm', text='', icon='TRIA_DOWN').action = '_down_actuator'
 
         if props.selected_actuator >= len(currsensor.actuators):
             return
