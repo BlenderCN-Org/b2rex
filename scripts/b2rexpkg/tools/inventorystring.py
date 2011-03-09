@@ -21,7 +21,6 @@ class InventoryStringParser(object):
         Parse the given string data.
         """
         inventory = defaultdict(list)
-        currobject = None
         targets = [inventory]
         lastline = ""
         for line in data.split('\n'):
@@ -32,8 +31,10 @@ class InventoryStringParser(object):
                     lastline = lastline.replace(self._titlefilter, '')
                 newtarget = {}
                 try:
+                    # currtarget is a defaultdict(list)
                     currtarget[lastline].append(newtarget)
                 except:
+                    # other
                     currtarget[lastline] = newtarget
                 targets.append(newtarget)
             elif '\t}' in line:
