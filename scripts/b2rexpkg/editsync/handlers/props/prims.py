@@ -40,7 +40,8 @@ class B2RexPrimProps(B2RexBaseProps):
     taper = FloatVectorProperty(name="taper", size=2, min=-1.0, max=1.0,
                                 default=(0.0, 0.0),
                                 description='taper x/y')
-    revolutions = FloatProperty(name="revolutions", min=0.0, max=3.0)
+    revolutions = FloatProperty(name="revolutions", min=0.1, max=3.0,
+                                default=1.0)
     stepsPerRevolution = IntProperty(name="stepsPerRevolution", min=1, max=100,
                                     default=24)
 
