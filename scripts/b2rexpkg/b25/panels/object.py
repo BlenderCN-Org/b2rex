@@ -50,7 +50,7 @@ class ObjectPropertiesPanel(bpy.types.Panel):
                 self.draw_terrain(box, obj)
             else:
                 self.draw_object(box, obj)
-                # session.drawObjectModules(box, obj)
+                session.drawObjectModules(box, obj)
 
     def draw_terrain(self, box, obj):
         terrain = bpy.b2rex_session.Terrain.terrain
