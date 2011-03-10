@@ -282,7 +282,7 @@ class InventoryModule(SyncModule):
         newrunning = not founditem['running']
         #inv[item_uuid]['running'] = newrunning
         self.simrt.SetScriptRunning(obj_uuid, founditem['item_id'], newrunning)
-        self.simrt.GetScriptRunning(obj.uuid, item['item_id'])
+        self.simrt.GetScriptRunning(obj_uuid, founditem['item_id'])
 
     def draw_object(self, box, editor, obj):
        if not editor.simrt:
