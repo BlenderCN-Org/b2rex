@@ -14,6 +14,12 @@ class SyncModule(object):
         """
         return self.__class__.__name__.replace("Module", "")
 
+    def getPanelName(self):
+        """
+        Return the name under which this handlers panel should be registered.
+        """
+        return self.getName()
+
     def register_property(self, origcls, prop, destcls):
         """
         Register a property with an editor model
@@ -55,11 +61,11 @@ class SyncModule(object):
     def expand(self, box, icons=['TRIA_DOWN', 'TRIA_RIGHT']):
         if self._expand:
             icon=icons[0]
-            box.operator('b2rex.section', icon=icon, text=self.getName(),
+            box.operator('b2rex.section', icon=icon, text=self.getPanelName(),
                      emboss=True).section = self.getName()
         else:
             icon=icons[1]
-            box.operator("b2rex.section", icon=icon, text=self.getName(),
+            box.operator("b2rex.section", icon=icon, text=self.getPanelName(),
                      emboss=True).section = self.getName()
         return self._expand
 
