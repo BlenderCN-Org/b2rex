@@ -74,7 +74,10 @@ class InventoryModule(SyncModule):
         self.update_items(items)
 
     def get_inventory(self, obj):
-        return self.obj_inventory[obj.uuid]
+        if not obj.uuid in self.obj_inventory:
+            return {}
+        else:
+            return self.obj_inventory[obj.uuid]
 
     def set_inventory(self, obj, items):
         self.obj_inventory[obj.uuid] = items
@@ -246,10 +249,10 @@ class InventoryModule(SyncModule):
 
     def draw_object(self, box, editor, obj):
        if obj.opensim.inventory_expand:
-           box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_DOWN', emboss=False).obj_uuid = obj.opensim.uuid
+           box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_DOWN', emboss=True).obj_uuid = obj.opensim.uuid
            for _item in obj.opensim.inventory:
                box.label(_item['name'])
        else:
-           box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_RIGHT', emboss=False).obj_uuid = obj.opensim.uuid
+           box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_RIGHT', emboss=True).obj_uuid = obj.opensim.uuid
  
 

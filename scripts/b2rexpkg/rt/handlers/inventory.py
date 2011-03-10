@@ -143,8 +143,6 @@ class InventoryHandler(Handler):
         logger.debug('onReplyTaskInventory')
         filename = packet['InventoryData'][0]['Filename']
         self.filename = filename
-        print(packet)
-	print(filename)
         self.sendXferRequest(self.manager.client, filename)
 
     def onInventoryDescendents(self, packet):
@@ -163,17 +161,13 @@ class InventoryHandler(Handler):
         xferpacket = packet['XferID'][0]['Packet']
         data = packet['DataPacket'][0]['Data']
 
-        if int(xferpacket) == 0:
-            print("shortened")
+        if int(xferpacket) == 0 or int(xferpacket) == 0x80000000:
             data = data[4:]
 
         self.xfer_list[xferid] += data
 
-        print(data)
-        if xferpacket == 0x80000002: #last packet
-             print(self.xfer_list[xferid])
+        if xferpacket & 0x80000000: #last packet
              p = InventoryStringParser(self.xfer_list[xferid], 'inv_')
-             print(p.result)
              self.out_queue.put(['ObjectInventory', p.result])
              del self.xfer_list[xferid]
 
