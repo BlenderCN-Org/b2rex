@@ -183,9 +183,14 @@ class ScriptingModule(SyncModule):
         """
         Add actuator operator
         """
+        editor = self._parent
+        obj = editor.getSelected()[0]
         fsm, sensor = self._get_fsm_sensor()
         actuator = sensor.actuators.add()
         actuator.name = actuator.type
+        actuator.id = fsm.next_id
+        fsm.next_id += 1
+        self._initialize_actuator(obj, actuator)
 
     def _delete_state(self, context):
         """
@@ -243,9 +248,12 @@ class ScriptingModule(SyncModule):
         actuator = sensor.actuators[fsm.selected_actuator]
         actuator.type = type
         actuator.name = type
+        self._initialize_actuator(obj, actuator)
+
+    def _initialize_actuator(self, obj, actuator):
         llsd_info = get_llsd_info()["Actuators"]
         act_info = llsd_info[actuator.type]
-        pre = str(fsm.selected_actuator)
+        pre = str(actuator.id)
         for prop in act_info:
             name = list(prop.keys())[0]
             data = list(prop.values())[0]
@@ -342,7 +350,7 @@ class ScriptingModule(SyncModule):
 
         llsd_info = get_llsd_info()["Actuators"]
         act_info = llsd_info[curractuator.type]
-        pre = str(props.selected_actuator)
+        pre = str(curractuator.id)
         for prop in act_info:
             name = list(prop.keys())[0]
             data = list(prop.values())[0]

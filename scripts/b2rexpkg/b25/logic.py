@@ -39,6 +39,7 @@ class FsmSensorTypeAction(bpy.types.Operator):
 #
 # Model
 class B2RexActuator(bpy.types.IDPropertyGroup):
+    id = IntProperty()
     type = EnumProperty(items=actuators, description='')
 
 class B2RexSensor(bpy.types.IDPropertyGroup):
@@ -50,6 +51,7 @@ class B2RexState(bpy.types.IDPropertyGroup):
     sensors = CollectionProperty(type=B2RexSensor)
 
 class B2RexFsm(bpy.types.IDPropertyGroup):
+    next_id = IntProperty(default=0)
     selected_state = StringProperty()
     selected_sensor = IntProperty()
     selected_actuator = IntProperty()

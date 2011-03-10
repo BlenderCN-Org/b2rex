@@ -123,7 +123,8 @@ def generate_llsd(fsm, instdict):
             pars = generate_sensor_pars(sensor, sensors)
             _write('  '+sensor.type+'('+pars+')')
             _write("  {")
-            for idx, actuator in enumerate(sensor.actuators):
+            for actuator in sensor.actuators:
+                idx = actuator.id
                 if actuator.type == 'State':
                     pars = generate_actuator_pars(actuator, actions, instdict,
                                                   idx, False)
