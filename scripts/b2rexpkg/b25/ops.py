@@ -381,6 +381,18 @@ class ToggleSafeMode(bpy.types.Operator):
         b2rexpkg.safe_mode ^= True
         return {'FINISHED'}
 
+class ObjectInventoryOperator(bpy.types.Operator):
+    bl_idname = "b2rex.objectinventory"
+    bl_label = "Open object inventory"
+    obj_uuid = StringProperty()
+    item_uuid = StringProperty()
+    action = StringProperty(name="")
+    def execute(self, context):
+        getattr(bpy.b2rex_session.Inventory, self.action)(self.obj_uuid,
+                                                          self.item_uuid)
+        return {'FINISHED'}
+
+
 class ObjectItems(bpy.types.Operator):
     bl_idname = "b2rex.objectitems"
     bl_label = "Open object inventory"
