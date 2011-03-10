@@ -255,11 +255,12 @@ class AgentManager(object):
     def initialize_agent(self):
         # let's disable inventory handling for this example
         settings = Settings()
+        settings.ENABLE_APPEARANCE_MANAGEMENT = False
         settings.ENABLE_INVENTORY_MANAGEMENT = False
-        settings.ENABLE_EQ_LOGGING = False
+        settings.ENABLE_EQ_LOGGING = True
         settings.ENABLE_CAPS_LOGGING = False
-        settings.ENABLE_REGION_EVENT_QUEUE = False
-        settings.REGION_EVENT_QUEUE_POLL_INTERVAL = 1
+        settings.ENABLE_REGION_EVENT_QUEUE = True
+        settings.REGION_EVENT_QUEUE_POLL_INTERVAL = 5
 
         #First, initialize the agent
         client = Agent(settings = settings, handle_signals=False)
