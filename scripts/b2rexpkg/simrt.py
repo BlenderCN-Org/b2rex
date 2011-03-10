@@ -35,6 +35,7 @@ from rt.handlers.layerdata import LayerDataHandler
 from rt.handlers.parcel import ParcelHandler
 from rt.handlers.object import ObjectHandler
 from rt.handlers.select import SelectHandler
+from rt.handlers.scripting import ScriptingHandler
 from rt.handlers.inventory import InventoryHandler
 from rt.handlers.rexdata import RexDataHandler
 from rt.handlers.throttle import ThrottleHandler
@@ -128,6 +129,7 @@ class AgentManager(object):
         self.add_handler(ThrottleHandler(self))
         self.add_handler(RexDataHandler(self))
         self.add_handler(InventoryHandler(self))
+        self.add_handler(ScriptingHandler(self))
         self.add_handler(ChatHandler(self))
         self.add_handler(SelectHandler(self))
         self.add_handler(ObjectHandler(self))

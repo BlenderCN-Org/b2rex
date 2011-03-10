@@ -141,6 +141,7 @@ class InventoryHandler(Handler):
     def onReplyTaskInventory(self, packet):
         logger = self.logger
         logger.debug('onReplyTaskInventory')
+        print("ReplyTaskInventory", packet['InventoryData'][0]['TaskID'])
         filename = packet['InventoryData'][0]['Filename']
         self.filename = filename
         self.sendXferRequest(self.manager.client, filename)
@@ -320,4 +321,5 @@ class InventoryHandler(Handler):
 
         client = self.manager.client
         self.inventory.send_RemoveInventoryItem(client.agent_id, client.session_id, UUID(str(item_id)))
+
 
