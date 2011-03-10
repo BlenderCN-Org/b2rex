@@ -17,6 +17,7 @@ class ObjectModule(SyncModule):
         """
         Register this module with the editor
         """
+        parent.registerCommand('ObjectInventory', self.processObjectInventory)
         parent.registerCommand('delete', self.processDeleteCommand)
         parent.registerCommand('meshcreated', self.processMeshCreated)
 
@@ -73,6 +74,17 @@ class ObjectModule(SyncModule):
             new_mesh.update()
         editor.trigger_callback('object.precreate', str(objId))
         return obj
+
+    def processObjectInventory(self, obj_inv):
+
+        obj_uuid = obj_inv['object'][0]['obj_id']
+        items = obj_inv['item']
+
+        editor = self._parent
+        foundobject = editor.find_with_uuid(obj_uuid, bpy.data.objects, "objects")
+
+        if foundobject:
+            foundobject.opensim.inventory = items
 
     def processMeshCreated(self, obj_uuid, mesh_uuid, new_obj_uuid, asset_id):
         """

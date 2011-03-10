@@ -1,10 +1,24 @@
 from .base import Handler
+from tools.inventorystring import InventoryStringParser
 from pyogp.lib.client.inventory import UDP_Inventory
 from pyogp.lib.client.inventory import InventoryItem
 import uuid
 import random
 from pyogp.lib.base.datatypes import UUID
 from pyogp.lib.base.message.message import Message, Block
+from collections import defaultdict
+
+
+def sendRequestTaskInventory(agent, obj_uuid):
+    obj = agent.region.objects.get_object_from_store(FullID = str(obj_uuid))
+    packet = Message('RequestTaskInventory',
+                    Block('AgentData',
+                          AgentID = agent.agent_id,
+                          SessionID = agent.session_id),
+                    Block('InventoryData',
+                          LocalID = obj.LocalID))
+    agent.region.enqueue_message(packet)
+
 
 def sendRezObject(agent, inventory_item, RayStart, RayEnd, FromTaskID = UUID(), BypassRaycast = 1,  RayTargetID = UUID(), RayEndIsIntersection = False, RezSelected = False, RemoveItem = True, ItemFlags = 0, GroupMask = 0, EveryoneMask = 0, NextOwnerMask = 0):
     """ sends a RezObject packet to a region """
@@ -54,12 +68,18 @@ def sendRezObject(agent, inventory_item, RayStart, RayEnd, FromTaskID = UUID(), 
 class InventoryHandler(Handler):
     def onAgentConnected(self, agent):
         self.inventory = UDP_Inventory(agent)
+        self.filename = None
+        self.xfer_list = defaultdict(str)
 
     def onRegionConnect(self, region):
         res = region.message_handler.register("InventoryDescendents")
         res.subscribe(self.onInventoryDescendents)
         res = region.message_handler.register("UpdateCreateInventoryItem")
         res.subscribe(self.onUpdateCreateInventoryItem)
+        res = region.message_handler.register("ReplyTaskInventory")
+        res.subscribe(self.onReplyTaskInventory)
+        res = region.message_handler.register("SendXferPacket")
+        res.subscribe(self.onSendXferPacket)
         self.inventory.enable_callbacks()
 
     def onRegionConnected(self, region):
@@ -71,9 +91,34 @@ class InventoryHandler(Handler):
 
         self.inventory._parse_folders_from_login_response()
 
+    def sendXferConfirmPacket(self, agent, xferid, packet):
+        packet = Message('ConfirmXferPacket',
+                        Block('XferID',
+                              ID = xferid,
+                              Packet = packet))
+        agent.region.enqueue_message(packet)
+    
+    def sendXferRequest(self, agent, filename):
+        xferid = random.getrandbits(64)
+        packet = Message('RequestXfer',
+                        Block('XferID',
+                              ID = xferid,
+                              Filename = filename,
+                              FilePath = 0,
+                              DeleteOnCompletion = False,
+                              UseBigPackets = False,
+                              VFileID = UUID(str("00000000-0000-0000-0000-000000000000")),
+                              VFileType = 0))
+    
+        agent.region.enqueue_message(packet)
+    
     def processFetchInventoryDescendents(self, *args):
         self.logger.debug('inventory processFetchInventoryDescendents')
         self.inventory.sendFetchInventoryDescendentsRequest(*args)
+
+    def processRequestTaskInventory(self, *args):
+        self.logger.debug('inventory processRequestTaskInventory')
+        sendRequestTaskInventory(self.manager.client, *args)
 
     def processRezObject(self, item_id, raystart, rayend):
         self.logger.debug('inventory processRezObject')
@@ -93,14 +138,46 @@ class InventoryHandler(Handler):
         items = [{'Name' : member.Name, 'FolderID' : str(member.FolderID), 'AssetID' : str(member.AssetID), 'ItemID' : str(member.ItemID), 'InvType' : member.InvType} for member in self.inventory.items] 
         return folders, items
 
+    def onReplyTaskInventory(self, packet):
+        logger = self.logger
+        logger.debug('onReplyTaskInventory')
+        filename = packet['InventoryData'][0]['Filename']
+        self.filename = filename
+        print(packet)
+	print(filename)
+        self.sendXferRequest(self.manager.client, filename)
+
     def onInventoryDescendents(self, packet):
         logger = self.logger
         logger.debug('onInventoryDescendents')
         folder_id = packet['AgentData'][0]['FolderID']
         folders, items = self.serializableInventory()
         
-
+ 
         self.out_queue.put(['InventoryDescendents', str(folder_id), folders, items])
+
+    def onSendXferPacket(self, packet):
+        logger = self.logger
+        logger.debug('onSendXferPacket')
+        xferid = packet['XferID'][0]['ID']
+        xferpacket = packet['XferID'][0]['Packet']
+        data = packet['DataPacket'][0]['Data']
+
+        if int(xferpacket) == 0:
+            print("shortened")
+            data = data[4:]
+
+        self.xfer_list[xferid] += data
+
+        print(data)
+        if xferpacket == 0x80000002: #last packet
+             print(self.xfer_list[xferid])
+             p = InventoryStringParser(self.xfer_list[xferid], 'inv_')
+             print(p.result)
+             self.out_queue.put(['ObjectInventory', p.result])
+             del self.xfer_list[xferid]
+
+        self.sendXferConfirmPacket(self.manager.client, xferid, xferpacket)
 
 
     def onUpdateCreateInventoryItem(self, packet):
@@ -182,7 +259,7 @@ class InventoryHandler(Handler):
         obj = agent.region.objects.get_object_from_store(FullID = obj_uuid_str)
         item = self.findItem(item_id)
         if obj and item:
-            agent.objects.send_RezScript(agent, obj, UUID(item_id),
+            agent.region.objects.send_RezScript(agent, obj, UUID(item_id),
                                          Name=item.Name)
 
     def sendUpdateInventoryItem(self, agent, transaction_id, inventory_items = []):
