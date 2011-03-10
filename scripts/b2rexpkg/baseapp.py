@@ -37,7 +37,7 @@ from .tools.simtypes import AssetType
 import bpy
 
 priority_commands = ['pos', 'LayerData', 'LayerDataDecoded', 'scale',
-                     'RexPrimData']
+                     'RexPrimData', 'capabilities']
 
 if sys.version_info[0] == 3:
     import urllib.request as urllib2
