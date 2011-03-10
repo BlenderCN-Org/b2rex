@@ -188,8 +188,10 @@ class ScriptingModule(SyncModule):
         fsm, sensor = self._get_fsm_sensor()
         actuator = sensor.actuators.add()
         actuator.name = actuator.type
-        actuator.id = fsm.next_id
-        fsm.next_id += 1
+        if not "b2rex_next_id" in obj:
+            obj["b2rex_next_id"] = 0
+        actuator.id = obj["b2rex_next_id"]
+        obj["b2rex_next_id"] += 0
         self._initialize_actuator(obj, actuator)
 
     def _delete_state(self, context):
