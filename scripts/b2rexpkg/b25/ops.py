@@ -380,3 +380,28 @@ class ToggleSafeMode(bpy.types.Operator):
     def execute(self, context):
         b2rexpkg.safe_mode ^= True
         return {'FINISHED'}
+
+class ObjectItems(bpy.types.Operator):
+    bl_idname = "b2rex.objectitems"
+    bl_label = "Open object inventory"
+    obj_uuid = StringProperty(name="obj_uuid")
+    def execute(self, context):
+        for obj in context.selected_objects:
+            obj.opensim.toggle_inventory_expand 
+            if obj.opensim.inventory_expand:
+                bpy.b2rex_session.simrt.RequestTaskInventory(obj.opensim.uuid)
+
+        return {'FINISHED'}
+
+class RezScript(bpy.types.Operator):
+    bl_idname = "b2rex.rezscript"
+    bl_label = "Add script to object"
+    item_id = StringProperty(name="item_id")
+
+    def execute(self, context):
+        simrt = bpy.b2rex_session.simrt
+        for obj in context.selected_objects:
+            simrt.RezScript(obj.opensim.uuid, self.item_id)
+        
+        return {'FINISHED'}
+

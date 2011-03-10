@@ -7,7 +7,7 @@ import logging
 
 import bpy
 from bpy.props import BoolProperty
-
+from collections import defaultdict
 from .base import SyncModule
 
 
@@ -20,7 +20,12 @@ class InventoryModule(SyncModule):
         """
         Register this module with the editor
         """
-        bpy.types.B2RexObjectProps.inventory = property(self.get_inventory)
+        self.obj_inventory = {}
+        self.ui_inventory_expand = defaultdict(bool)
+        bpy.types.B2RexObjectProps.inventory = property(self.get_inventory, self.set_inventory)
+        bpy.types.B2RexObjectProps.inventory_expand = property(self.get_inventory_expand)
+        bpy.types.B2RexObjectProps.toggle_inventory_expand = property(self.toggle_inventory_expand)
+
         parent.registerCommand('InventorySkeleton', self.processInventorySkeleton)
         parent.registerCommand('InventoryDescendents', self.processInventoryDescendents)
 
@@ -69,7 +74,20 @@ class InventoryModule(SyncModule):
         self.update_items(items)
 
     def get_inventory(self, obj):
-        return {}
+        return self.obj_inventory[obj.uuid]
+
+    def set_inventory(self, obj, items):
+        self.obj_inventory[obj.uuid] = items
+
+    def get_inventory_expand(self, obj):
+        if not obj.uuid in self.ui_inventory_expand:
+            self.ui_inventory_expand[obj.uuid] = False
+
+        return self.ui_inventory_expand[obj.uuid]
+
+    def toggle_inventory_expand(self, obj):
+        self.ui_inventory_expand[obj.uuid] ^= True
+        return self.ui_inventory_expand[obj.uuid]
 
     def __iter__(self):
         props = bpy.context.scene.b2rex_props
@@ -207,6 +225,8 @@ class InventoryModule(SyncModule):
                                     op.item_id=str(item['ItemID'])
                                     op.asset_id=str(item['AssetID'])
                                     op.asset_type = 10 # LLSD Script
+                            row.operator('b2rex.rezscript', icon='UV_SYNC_SELECT', emboss=False).item_id = str(item['ItemID'])
+                           
                             #row.label(text=item['Name'], icon='SCRIPT')
                         else:
                             row.label(text=item['Name'] + str(item['InvType']))
@@ -223,4 +243,13 @@ class InventoryModule(SyncModule):
             oper.folder_id = folder_id
         else:
             row.label(text="Loading.......")
+
+    def draw_object(self, box, editor, obj):
+       if obj.opensim.inventory_expand:
+           box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_DOWN', emboss=False).obj_uuid = obj.opensim.uuid
+           for _item in obj.opensim.inventory:
+               box.label(_item['name'])
+       else:
+           box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_RIGHT', emboss=False).obj_uuid = obj.opensim.uuid
  
+
