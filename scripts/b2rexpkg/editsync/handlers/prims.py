@@ -95,6 +95,7 @@ class PrimsModule(SyncModule):
             p.Extrude(PathType.Flexible)
         else:
             print("Unknown Path Type!!", pars['PathCurve'])
+            return
 
         mesh = self.apply_prim(p)
 
