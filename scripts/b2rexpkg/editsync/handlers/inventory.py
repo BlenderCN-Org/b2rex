@@ -271,7 +271,7 @@ class InventoryModule(SyncModule):
         else:
             row.label(text="Loading.......")
 
-    def _toggle_script_active(self, obj_uuid, item_uuid):
+    def _get_item(self, obj_uuid, item_uuid):
         obj = self._parent.findWithUUID(obj_uuid)
         inv = self.get_inventory(obj.opensim)
         founditem = False
@@ -279,6 +279,15 @@ class InventoryModule(SyncModule):
             if item['item_id'] == item_uuid:
                 founditem = item
                 break
+        return founditem
+
+    def _reset_script(self, obj_uuid, item_uuid):
+        self.simrt.ScriptReset(obj_uuid, item_uuid)
+
+    def _toggle_script_active(self, obj_uuid, item_uuid):
+        founditem = self._get_item(obj_uuid, item_uuid)
+        if not founditem:
+            return
         newrunning = not founditem['running']
         #inv[item_uuid]['running'] = newrunning
         self.simrt.SetScriptRunning(obj_uuid, founditem['item_id'], newrunning)
@@ -291,11 +300,31 @@ class InventoryModule(SyncModule):
            box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_DOWN', emboss=True).obj_uuid = obj.opensim.uuid
            for _item in obj.opensim.inventory:
                row = box.row()
-               row.label(_item['name']+ ": "+str(_item['running']))
-               op = row.operator('b2rex.objectinventory', icon='SCRIPT')
+               enable_text = 'enable'
+               enable_icon = 'PLAY'
+               if _item['running']:
+                   row.label(_item['name'], icon='SCRIPT')
+               else:
+                   row.label(_item['name'], icon='WORDWRAP_ON')
+               row = row.row()
+               row.alignment = 'RIGHT'
+               if _item['running']:
+                   enable_text = 'disable'
+                   enable_icon = 'PAUSE'
+                   # reset button
+                   op = row.operator('b2rex.objectinventory', icon='REW',
+                                     text='')
+                   op.action = '_reset_script'
+                   op.obj_uuid = obj.opensim.uuid
+                   op.item_uuid = _item['item_id']
+
+               # enable / disable button
+               op = row.operator('b2rex.objectinventory', icon=enable_icon,
+                                 text='')
                op.action = '_toggle_script_active'
                op.obj_uuid = obj.opensim.uuid
                op.item_uuid = _item['item_id']
+
        else:
            box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_RIGHT', emboss=True).obj_uuid = obj.opensim.uuid
  
