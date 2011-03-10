@@ -9,6 +9,7 @@ import b2rexpkg
 from b2rexpkg.b25.ops import getLogLabel
 #from ..properties import B2RexProps
 
+
 class ConnectionPanel(bpy.types.Panel):
     bl_label = "b2rex" #baseapp.title
     #bl_space_type = "VIEW_3D"
@@ -89,15 +90,14 @@ class ConnectionPanel(bpy.types.Panel):
 
 
     def draw_regions(self, layout, session, props):
-        row = layout.column()
         if not len(props.regions):
             return
+        row = layout.column()
         if props.regions_expand:
             row.prop(props, 'regions_expand', icon="TRIA_DOWN", text="Regions")
         else:
             row.prop(props, 'regions_expand', icon="TRIA_RIGHT", text="Regions")
             return
-
         row = layout.row() 
         row.template_list(props, 'regions', props, 'selected_region')
         # XXX only real time operations for the moment.
