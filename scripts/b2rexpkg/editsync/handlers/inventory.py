@@ -248,7 +248,6 @@ class InventoryModule(SyncModule):
                                     op = row.operator('b2rex.requestasset', text="",
                                                  icon='PARTICLE_DATA',
                                                  emboss=False)
-                                    print(str(item['ItemID']),str(item['AssetID']))
                                     op.item_id=str(item['ItemID'])
                                     op.asset_id=str(item['AssetID'])
                                     op.asset_type = 10 # LLSD Script
