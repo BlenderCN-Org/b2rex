@@ -18,9 +18,8 @@ class AssetRequest(Handler):
     def onAgentConnected(self, agent):
         self._asset_manager = agent.asset_manager
 
-    def processAssetRequest(self, assetID, assetType):
+    def processAssetRequest(self, assetID, assetType, retries=10):
         def finish(assetID, is_ok):
-            print("Asset Arrived", is_ok, len(self._request_queue))
             if is_ok:
                 data = self._asset_manager.get_asset(assetID).data
                 b64data = base64.urlsafe_b64encode(data).decode('ascii')
@@ -28,18 +27,16 @@ class AssetRequest(Handler):
                 self.out_queue.put(["AssetArrived", str(assetID), b64data])
 
             if str(assetID) in self._requesting:
-                print("Remove from queue", assetID)
-                reqtime, reqtype = self._requesting.pop(str(assetID))
-                if not is_ok:
-                    self._request_queue.append((str(assetID), reqtype))
+                reqtime, reqtype, retries = self._requesting.pop(str(assetID))
+                if not is_ok and retries > 0:
+                    self._request_queue.append((str(assetID), reqtype, retries))
             if self._request_queue:
-                print("Readd to queue", assetID)
                 self.processAssetRequest(*self._request_queue.pop(0))
 
         if len(self._requesting) > 10:
-            self._request_queue.append((assetID, assetType))
+            self._request_queue.append((assetID, assetType, retries))
             return
-        self._requesting[assetID] = (time.time(), assetType)
+        self._requesting[assetID] = (time.time(), assetType, retries-1)
         self._asset_manager.request_asset(UUID(assetID), assetType, False, finish)
 
 

@@ -83,10 +83,8 @@ class InventoryModule(SyncModule):
 
     def set_inventory(self, obj, items):
         for item in items:
-            print(item)
             if not 'running' in item:
                 self.simrt.GetScriptRunning(obj.uuid, item['item_id'])
-                self.simrt.GetScriptRunning(obj.uuid, item['asset_id'])
                 item['running'] = False
         self.obj_inventory[obj.uuid] = items
 
@@ -98,10 +96,9 @@ class InventoryModule(SyncModule):
 
     def processScriptRunningReply(self, obj_id, item_id, running, mono):
         editor = self._parent
-        print("running reply", item_id, running, mono)
         obj = editor.findWithUUID(obj_id)
         for item in obj.opensim.inventory:
-            if item['asset_id'] == item_id:
+            if item['item_id'] == item_id:
                 item['running'] = running
 
     def processObjectInventory(self, obj_inv):
@@ -284,7 +281,8 @@ class InventoryModule(SyncModule):
                 break
         newrunning = not founditem['running']
         #inv[item_uuid]['running'] = newrunning
-        self.simrt.SetScriptRunning(obj_uuid, founditem['asset_id'], newrunning)
+        self.simrt.SetScriptRunning(obj_uuid, founditem['item_id'], newrunning)
+        self.simrt.GetScriptRunning(obj.uuid, item['item_id'])
 
     def draw_object(self, box, editor, obj):
        if not editor.simrt:

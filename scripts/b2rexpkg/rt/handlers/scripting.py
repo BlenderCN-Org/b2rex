@@ -14,17 +14,31 @@ class ScriptingHandler(Handler):
         res.subscribe(self.onScriptSensorReply)
         res = region.message_handler.register("LoadURL")
         res.subscribe(self.onScriptDialog)
+        res = region.message_handler.register("AlertMessage")
+        res.subscribe(self.onAlertMessage)
+        res = region.message_handler.register("HealthMessage")
+        res.subscribe(self.onHealthMessage)
+
+    def onHealthMessage(self, packet):
+        print("HealthMessage!")
+
+    def onAlertMessage(self, packet):
+        print("AlertMessage!", packet['AlertData'][0]['Message'])
 
     def onScriptSensorReply(self, packet):
+        print("ScriptSensorReply!")
         pass
 
     def onScriptQuestion(self, packet):
+        print("ScriptQuestion!")
         pass
 
     def onScriptDialog(self, packet):
+        print("ScriptDialog!")
         pass
 
     def onLoadURL(self, packet):
+        print("LoadURL!")
         pass
 
     def processGetScriptRunning(self, obj_id, item_id):
@@ -38,7 +52,6 @@ class ScriptingHandler(Handler):
 
     def processSetScriptRunning(self, obj_id, item_id, running):
         agent = self.manager.client
-        print("SetScriptRunning", obj_id, item_id, running)
         packet = Message('SetScriptRunning',
                         Block('AgentData',
                                 AgentID = agent.agent_id,
@@ -46,7 +59,7 @@ class ScriptingHandler(Handler):
                         Block('Script',
                                 ObjectID = UUID(str(obj_id)),
                                 ItemID = UUID(str(item_id)),
-                                Running = running))
+                                Running = int(running)))
         agent.region.enqueue_message(packet)
 
     def processScriptReset(self, obj_id, item_id):
@@ -80,7 +93,6 @@ class ScriptingHandler(Handler):
 
 
     def onScriptRunningReply(self, packet):
-        print("ScriptRunningReply", packet)
         for data in packet['Script']:
             objID = str(data['ObjectID'])
             itemID = str(data['ItemID'])
