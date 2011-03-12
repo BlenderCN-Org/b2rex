@@ -299,8 +299,6 @@ class InventoryModule(SyncModule):
        if obj.opensim.inventory_expand:
            box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_DOWN', emboss=True).obj_uuid = obj.opensim.uuid
            for _item_id, _item in obj.opensim.inventory.items():
-               if not _item:
-                   continue
                row = box.row()
                enable_text = 'enable'
                enable_icon = 'PLAY'
