@@ -20,7 +20,7 @@ class InventoryModule(SyncModule):
         """
         Register this module with the editor
         """
-        self.obj_inventory = {}
+        self.obj_inventory = defaultdict(dict)
         self.ui_inventory_expand = defaultdict(bool)
         bpy.types.B2RexObjectProps.inventory = property(self.get_inventory, self.set_inventory)
         bpy.types.B2RexObjectProps.inventory_expand = property(self.get_inventory_expand)
@@ -76,17 +76,24 @@ class InventoryModule(SyncModule):
         self.update_items(items)
 
     def get_inventory(self, obj):
-        if not obj.uuid in self.obj_inventory:
-            return {}
-        else:
-            return self.obj_inventory[obj.uuid]
+        return self.obj_inventory[obj.uuid]
 
     def set_inventory(self, obj, items):
+        old_ob_items = self.obj_inventory[obj.uuid]
+        ob_items = {}
+        self.obj_inventory[obj.uuid] = ob_items
+        if isinstance(items, dict):
+            items = list(items.values())
         for item in items:
-            if not 'running' in item:
-                self.simrt.GetScriptRunning(obj.uuid, item['item_id'])
-                item['running'] = False
-        self.obj_inventory[obj.uuid] = items
+            item_id = item['item_id']
+            if item_id in old_ob_items:
+                ob_items[item_id] = old_ob_items[item_id]
+                ob_items[item_id].update(item)
+            else:
+                ob_items[item_id] = item
+            if not 'running' in ob_items[item_id]:
+                ob_items[item_id]['running'] = False
+            self.simrt.GetScriptRunning(obj.uuid, item_id)
 
     def get_inventory_expand(self, obj):
         if not obj.uuid in self.ui_inventory_expand:
@@ -97,9 +104,8 @@ class InventoryModule(SyncModule):
     def processScriptRunningReply(self, obj_id, item_id, running, mono):
         editor = self._parent
         obj = editor.findWithUUID(obj_id)
-        for item in obj.opensim.inventory:
-            if item['item_id'] == item_id:
-                item['running'] = running
+        if item_id in obj.opensim.inventory:
+            obj.opensim.inventory[item_id]['running'] = running
 
     def processObjectInventory(self, obj_inv):
 
@@ -273,12 +279,7 @@ class InventoryModule(SyncModule):
     def _get_item(self, obj_uuid, item_uuid):
         obj = self._parent.findWithUUID(obj_uuid)
         inv = self.get_inventory(obj.opensim)
-        founditem = False
-        for item in inv:
-            if item['item_id'] == item_uuid:
-                founditem = item
-                break
-        return founditem
+        return inv.get(item_uuid, False)
 
     def _reset_script(self, obj_uuid, item_uuid):
         self.simrt.ScriptReset(obj_uuid, item_uuid)
@@ -297,7 +298,9 @@ class InventoryModule(SyncModule):
            return
        if obj.opensim.inventory_expand:
            box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_DOWN', emboss=True).obj_uuid = obj.opensim.uuid
-           for _item in obj.opensim.inventory:
+           for _item_id, _item in obj.opensim.inventory.items():
+               if not _item:
+                   continue
                row = box.row()
                enable_text = 'enable'
                enable_icon = 'PLAY'
@@ -315,14 +318,14 @@ class InventoryModule(SyncModule):
                                      text='')
                    op.action = '_reset_script'
                    op.obj_uuid = obj.opensim.uuid
-                   op.item_uuid = _item['item_id']
+                   op.item_uuid = _item_id
 
                # enable / disable button
                op = row.operator('b2rex.objectinventory', icon=enable_icon,
                                  text='')
                op.action = '_toggle_script_active'
                op.obj_uuid = obj.opensim.uuid
-               op.item_uuid = _item['item_id']
+               op.item_uuid = _item_id
 
        else:
            box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_RIGHT', emboss=True).obj_uuid = obj.opensim.uuid
