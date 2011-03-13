@@ -245,10 +245,16 @@ class B2Rex(BaseApplication):
         self.apply_position(obj, pos)
         self.positions[objId] = obj.location
 
+    def getObjectProperties(self, obj):
+        rot = obj.rotation_euler
+        if obj.opensim.uuid in self.Agents:
+            rot = [rot[0]-math.pi/2.0, rot[1], rot[2]+math.pi/2.0]
+        return (obj.location, rot, obj.scale)
+
     def _processRotCommand(self, obj, objId, rot):
         if objId in self.Agents:
-            rot = obj.rotation_euler
-            obj.rotation_euler = (rot[0]+math.pi/2.0, rot[1], rot[2]+math.pi/2.0)
+            rot = self._apply_rotation(rot)
+            obj.rotation_euler = (rot[0]+math.pi/2.0, rot[1], rot[2]-math.pi/2.0)
         else:
             self.apply_rotation(obj, rot)
         self.rotations[objId] = list(obj.rotation_euler)

@@ -256,4 +256,11 @@ class Base24Application(Screen, BaseApplication):
         self.rotations[str(objId)] = list(obj.getEuler())
         self.queueRedraw()
 
+    def getObjectProperties(self, obj):
+        pos = list(obj.getLocation())
+        rot = list(obj.getEuler())
+        scale = list(obj.getSize())
+        return pos, rot, scale
+
+
 

@@ -191,10 +191,4 @@ def set_loading_state(obj, value):
 def getVersion():
     return "Blender "+str(Blender.Get('version'))
 
-def getObjectProperties(obj):
-    pos = list(obj.getLocation())
-    rot = list(obj.getEuler())
-    scale = list(obj.getSize())
-    return pos, rot, scale
-
 

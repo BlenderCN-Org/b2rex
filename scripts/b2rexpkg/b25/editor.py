@@ -17,7 +17,4 @@ def get_loading_state(obj):
 def getVersion():
     return "Blender "+str(bpy.app.version_string)
 
-def getObjectProperties(obj):
-    return (obj.location, obj.rotation_euler, obj.scale)
-
 

@@ -156,7 +156,7 @@ class ObjectModule(SyncModule):
         obj_uuid = obj.opensim.uuid
         mesh_name = mesh.name
         mesh_uuid = mesh.opensim.uuid
-        pos, rot, scale = b2rexpkg.editor.getObjectProperties(obj)
+        pos, rot, scale = editor.getObjectProperties(obj)
         
         self.simrt.Clone(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            editor.unapply_position(obj, pos),
@@ -175,7 +175,7 @@ class ObjectModule(SyncModule):
         obj_uuid = obj.opensim.uuid
         mesh_name = mesh.name
         mesh_uuid = mesh.opensim.uuid
-        pos, rot, scale = b2rexpkg.editor.getObjectProperties(obj)
+        pos, rot, scale = editor.getObjectProperties(obj)
         
         self.simrt.Create(obj_name, obj_uuid, mesh_name, mesh_uuid,
                            editor.unapply_position(obj, pos),
