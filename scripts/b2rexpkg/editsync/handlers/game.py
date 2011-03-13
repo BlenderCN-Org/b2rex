@@ -15,13 +15,14 @@ class GameModule(SyncModule):
             if prop.name == 'uuid':
                 return True
 
-    def ensure_game_uuid(self, obj):
+    def ensure_game_uuid(self, context, obj):
         """
         Ensure the uuid is set as a game object property.
         """
         if obj.opensim.uuid:
             if not self.has_game_uuid(obj):
                 obj.select = True
+                context.scene.active = obj
                 bpy.ops.object.game_property_new()
                 # need to change type and then get the property otherwise
                 # it will stay in the wrong class
@@ -29,13 +30,14 @@ class GameModule(SyncModule):
                 prop = obj.game.properties[-1]
                 prop.name = 'uuid'
                 prop.value = obj.opensim.uuid
+                obj.select = False
 
-    def prepare_object(self, obj):
+    def prepare_object(self, context, obj):
         """
         Prepare the given object for running inside the
         game engine.
         """
-        self.ensure_game_uuid(obj)
+        self.ensure_game_uuid(context, obj)
 
     def start_game(self, context):
         """
@@ -46,7 +48,7 @@ class GameModule(SyncModule):
         for obj in selected:
             obj.select = False
         for obj in bpy.data.objects:
-            self.prepare_object(obj)
+            self.prepare_object(context, obj)
         for obj in selected:
             obj.select = True
         bpy.ops.view3d.game_start()
