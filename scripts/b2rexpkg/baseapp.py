@@ -13,6 +13,7 @@ from b2rexpkg import IMMEDIATE, ERROR, OK
 from b2rexpkg import editor
 
 from .editsync.handlers.map import MapModule
+from .editsync.handlers.game import GameModule
 from .editsync.handlers.caps import CapsModule
 from .editsync.handlers.stats import StatsModule
 from .editsync.handlers.asset import AssetModule
@@ -185,6 +186,7 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(AssetModule(self))
         self.registerModule(PrimsModule(self))
         self.registerModule(MapModule(self))
+        self.registerModule(GameModule(self))
         self.registerModule(CapsModule(self))
         self.registerModule(ObjectModule(self))
         self.registerModule(RexDataModule(self))

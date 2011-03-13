@@ -1,5 +1,27 @@
 import bpy
 
+class B2RexGameMenu(bpy.types.Menu):
+    bl_label = "Game"
+
+    def draw(self, context):
+        layout = self.layout
+
+        gs = context.scene.game_settings
+
+        layout.operator("b2rex.game_start")
+        #layout.operator("view3d.game_start")
+
+        layout.separator()
+
+        layout.prop(gs, "show_debug_properties")
+        layout.prop(gs, "show_framerate_profile")
+        layout.prop(gs, "show_physics_visualization")
+        layout.prop(gs, "use_deprecation_warnings")
+        layout.prop(gs, "use_animation_record")
+        layout.separator()
+        layout.prop(gs, "use_auto_start")
+
+
 class Menu(bpy.types.Header):
     bl_label = 'sim'
     bl_space_type = 'INFO'
@@ -45,7 +67,7 @@ class Menu(bpy.types.Header):
         sub = row.row(align=True)
         sub.menu("INFO_MT_file")
         sub.menu("INFO_MT_add")
-        if rd.use_game_engine: sub.menu("INFO_MT_game")
+        if rd.use_game_engine: sub.menu("B2RexGameMenu")
         else: sub.menu("INFO_MT_render")
         layout.separator()
         sub.menu("INFO_MT_instances")

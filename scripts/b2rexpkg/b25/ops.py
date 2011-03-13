@@ -70,6 +70,14 @@ class AddConnection(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class B2RexStartGame(bpy.types.Operator):
+    bl_idname = "b2rex.game_start"
+    bl_label = "Start Game"
+    def execute(self, context):
+        bpy.b2rex_session.Game.start_game(context)
+        return {'FINISHED'}
+
+
 class UploadText(bpy.types.Operator):
     bl_idname = "b2rex.upload_text"
     bl_label = "Upload to Sim"
