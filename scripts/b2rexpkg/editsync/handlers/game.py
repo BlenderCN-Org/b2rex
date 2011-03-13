@@ -22,7 +22,7 @@ class GameModule(SyncModule):
         if obj.opensim.uuid:
             if not self.has_game_uuid(obj):
                 obj.select = True
-                context.scene.active = obj
+                context.scene.objects.active = obj
                 bpy.ops.object.game_property_new()
                 # need to change type and then get the property otherwise
                 # it will stay in the wrong class
