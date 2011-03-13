@@ -14,10 +14,10 @@ class GameModule(SyncModule):
         for prop in obj.game.properties:
             if prop.name == 'uuid':
                 return True
-    def prepare_object(self, obj):
+
+    def ensure_game_uuid(self, obj):
         """
-        Prepare the given object for running inside the
-        game engine.
+        Ensure the uuid is set as a game object property.
         """
         if obj.opensim.uuid:
             if not self.has_game_uuid(obj):
@@ -29,8 +29,14 @@ class GameModule(SyncModule):
                 prop = obj.game.properties[-1]
                 prop.name = 'uuid'
                 prop.value = obj.opensim.uuid
-            else:
-                print(obj.game.properties[-1])
+
+    def prepare_object(self, obj):
+        """
+        Prepare the given object for running inside the
+        game engine.
+        """
+        self.ensure_game_uuid(obj)
+
     def start_game(self, context):
         """
         Start blender game engine, previously setting up game
