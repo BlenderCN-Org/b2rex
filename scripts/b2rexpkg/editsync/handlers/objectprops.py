@@ -82,6 +82,8 @@ class ObjectPropertiesModule(SyncModule):
             if "Name" in pars:
                 obj.name = pars["Name"]
                 obj.opensim.name = pars["Name"]
+            if 'InventorySerial' in pars and pars['InventorySerial'] > 0:
+                editor.simrt.RequestTaskInventory(objId)
 
             editor.applyObjectProperties(obj, pars)
         else:
