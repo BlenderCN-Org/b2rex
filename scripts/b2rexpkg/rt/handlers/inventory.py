@@ -257,6 +257,68 @@ class InventoryHandler(Handler):
             agent.region.objects.send_RezScript(agent, obj, UUID(item_id),
                                          Name=item.Name)
 
+    def processUpdateTaskInventoryItem(self, obj_id, item_id, trID, item_data):
+        agent = self.manager.client
+        obj = agent.region.objects.get_object_from_store(FullID = obj_id)
+        if obj:
+            self.sendUpdateTaskInventoryItem(agent, obj, trID, item_id, item_data)
+
+    def processRemoveTaskInventoryItem(self, obj_id, item_id):
+        agent = self.manager.client
+        obj = agent.region.objects.get_object_from_store(FullID = obj_id)
+
+
+        if obj:
+            packet = Message('RemoveTaskInventory',
+                            Block('AgentData',
+                                    AgentID = agent.agent_id,
+                                    SessionID = agent.session_id),
+                            Block('InventoryData',
+                                    LocalID = obj.LocalID,
+                                    ItemID = UUID(item_id)))
+            agent.region.enqueue_message(packet)
+
+
+    def sendUpdateTaskInventoryItem(self, agent, obj, transaction_id, item_id, item):
+        """ sends an UpdateInventoryItem packet to a region 
+
+        this function expects an InventoryItem instance already with updated data
+        """
+        print(transaction_id, item_id, item)
+        packet = Message('UpdateTaskInventory',
+                        Block('AgentData',
+                                AgentID = agent.agent_id,
+                                SessionID = agent.session_id),
+                        Block('UpdateData',
+                                LocalID = obj.LocalID,
+                                Key = 0), # only 0 seems implemented in opensim
+                        Block('InventoryData',
+                                ItemID = UUID(item_id),
+                                FolderID = UUID(item['parent_id']),
+                                CreatorID = UUID(item['permissions']['creator_id']),
+                                OwnerID = UUID(item['permissions']['owner_id']),
+                                GroupID = UUID(item['permissions']['group_id']),
+                                BaseMask = int(item['permissions']['base_mask']),
+                                OwnerMask = int(item['permissions']['base_mask']),
+                                GroupMask = int(item['permissions']['group_mask']),
+                                EveryoneMask = int(item['permissions']['everyone_mask']),
+                                NextOwnerMask = int(item['permissions']['next_owner_mask']),
+                                GroupOwned = item['permissions']['group_id'] != '00000000-0000-0000-0000-000000000000',
+                                TransactionID = UUID(transaction_id),
+                                Type = 10,
+                                InvType = 10,
+                                Flags = int(item['flags']),
+                                SaleType = 0,
+                                SalePrice = int(item['sale_info']['sale_price']),
+                                Name = item['name'].split('|')[0],
+                                Description = item['desc'],
+                                CreationDate = int(item['creation_date']),
+                                CRC = 0))
+
+        agent.region.enqueue_message(packet)
+
+
+
     def sendUpdateInventoryItem(self, agent, transaction_id, inventory_items = []):
         """ sends an UpdateInventoryItem packet to a region 
 

@@ -86,6 +86,7 @@ class RequestAsset(bpy.types.Operator):
     bl_label = "request asset"
     item_id = StringProperty(name="item_id",default='')
     asset_id = StringProperty(name="asset_id",default='')
+    object_id = StringProperty(default='')
     asset_type = IntProperty(name="asset_type",default=0)
     def __init__(self, context):
         pass
@@ -93,7 +94,11 @@ class RequestAsset(bpy.types.Operator):
     def execute(self, context):
         session = bpy.b2rex_session
         if self.item_id:
-            session.Inventory[self.item_id]['Downloading'] = True
+            if self.object_id:
+                ob = session.findWithUUID(self.object_id)
+                ob.opensim.inventory[self.item_id]['Downloading'] = True
+            else:
+                session.Inventory[self.item_id]['Downloading'] = True
         session.Asset.downloadAssetDefault(self.asset_id,
                                                      self.asset_type)
         return {'FINISHED'}

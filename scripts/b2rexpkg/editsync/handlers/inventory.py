@@ -85,6 +85,7 @@ class InventoryModule(SyncModule):
         if isinstance(items, dict):
             items = list(items.values())
         for item in items:
+            print(item)
             item_id = item['item_id']
             if item_id in old_ob_items:
                 ob_items[item_id] = old_ob_items[item_id]
@@ -125,6 +126,18 @@ class InventoryModule(SyncModule):
     def __iter__(self):
         props = bpy.context.scene.b2rex_props
         return iter(props._items.values())
+
+    def values(self):
+        props = bpy.context.scene.b2rex_props
+        return iter(props._items.values())
+
+    def keys(self):
+        props = bpy.context.scene.b2rex_props
+        return iter(props._items.keys())
+
+    def items(self):
+        props = bpy.context.scene.b2rex_props
+        return iter(props._items.items())
 
     def __contains__(self, itemID):
         props = bpy.context.scene.b2rex_props
@@ -252,12 +265,14 @@ class InventoryModule(SyncModule):
                                     row.label(icon='FORCE_DRAG', text='')
                                 else:
                                     op = row.operator('b2rex.requestasset', text="",
-                                                 icon='PARTICLE_DATA',
+                                                 icon='MUTE_IPO_OFF',
                                                  emboss=False)
                                     op.item_id=str(item['ItemID'])
                                     op.asset_id=str(item['AssetID'])
                                     op.asset_type = 10 # LLSD Script
-                            row.operator('b2rex.rezscript', icon='UV_SYNC_SELECT', emboss=False).item_id = str(item['ItemID'])
+                            row.operator('b2rex.rezscript',
+                                         icon='PARTICLE_DATA', text="", emboss=False).item_id = str(item['ItemID'])
+                            row.operator('b2rex.removeinventoryitem', text="", icon='ZOOMOUT', emboss=False).item_id=str(item['ItemID']) 
                            
                             #row.label(text=item['Name'], icon='SCRIPT')
                         else:
@@ -283,6 +298,9 @@ class InventoryModule(SyncModule):
 
     def _reset_script(self, obj_uuid, item_uuid):
         self.simrt.ScriptReset(obj_uuid, item_uuid)
+
+    def _delete_script(self, obj_uuid, item_uuid):
+        self.simrt.RemoveTaskInventoryItem(obj_uuid, item_uuid)
 
     def _toggle_script_active(self, obj_uuid, item_uuid):
         founditem = self._get_item(obj_uuid, item_uuid)
@@ -318,12 +336,32 @@ class InventoryModule(SyncModule):
                    op.obj_uuid = obj.opensim.uuid
                    op.item_uuid = _item_id
 
+               # delete button
+               op = row.operator('b2rex.objectinventory', icon='ZOOMOUT',
+                                 text='')
+               op.action = '_delete_script'
+               op.obj_uuid = obj.opensim.uuid
+               op.item_uuid = _item_id
+
                # enable / disable button
                op = row.operator('b2rex.objectinventory', icon=enable_icon,
                                  text='')
                op.action = '_toggle_script_active'
                op.obj_uuid = obj.opensim.uuid
                op.item_uuid = _item_id
+
+               if not editor.find_with_uuid(_item['asset_id'],
+                                            bpy.data.texts, 'texts'):
+                    if "Downloading" in _item:
+                        row.label(icon='FORCE_DRAG', text='')
+                    else:
+                        op = row.operator('b2rex.requestasset', text="",
+                                     icon='PARTICLE_DATA',
+                                     emboss=False)
+                        op.item_id = str(_item['item_id'])
+                        op.asset_id = str(_item['asset_id'])
+                        op.object_id = str(obj.opensim.uuid)
+                        op.asset_type = 10 # LLSD Script
 
        else:
            box.operator("b2rex.objectitems", text="object inventory", icon='TRIA_RIGHT', emboss=True).obj_uuid = obj.opensim.uuid

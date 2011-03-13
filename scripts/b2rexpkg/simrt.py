@@ -52,7 +52,7 @@ from rt.tools import prepare_server_name
 
 
 class AgentManager(object):
-    verbose = False
+    verbose = True
     def __init__(self, in_queue, out_queue):
         self._handlers = {}
         self._generichandlers = {}

@@ -50,11 +50,18 @@ class ScriptingModule(SyncModule):
         """
         editor = self._parent
         text = data.decode('ascii')
-        name = 'text'
+        name = ''
 
         for item in editor.Inventory:
             if item['AssetID'] == assetID:
                 name = item['Name']
+        if not name:
+            for object_id, items in editor.Inventory.obj_inventory.items():
+                for item_id, item in items.items():
+                    if item['asset_id'] == assetID:
+                        name = item['name']
+                        break
+         
 
         text_obj = bpy.data.texts.new(name)
         text_obj.write(text)
@@ -74,10 +81,10 @@ class ScriptingModule(SyncModule):
         # initialize object sim state
         name = text_obj.name
         desc = "test script"
-        item_id = ""
 
         # asset uploaded callback
         def upload_finished(old_uuid, new_uuid, tr_uuid):
+            print('upload_finished!!!!!', old_uuid, new_uuid, tr_uuid)
             text_obj.opensim.uuid = new_uuid
             text_obj.opensim.state = 'OK'
             self.simrt.CreateInventoryItem(tr_uuid,
@@ -88,21 +95,24 @@ class ScriptingModule(SyncModule):
         def update_finished(old_uuid, new_uuid, tr_uuid):
             text_obj.opensim.uuid = new_uuid
             text_obj.opensim.state = 'OK'
-            item = editor.Inventory[item_id]
-            # XXX this should happen automatically?
-            item['AssetID'] = new_uuid
-            self.simrt.UpdateInventoryItem(item_id,
-                                           tr_uuid,
-                                           LLSDText,
-                                           LLSDText,
-                                           name,
-                                           desc)
+            for item_id, item in editor.Inventory.items():
+                if item['AssetID'] == old_uuid:
+                    item['AssetID'] = new_uuid
+
+                    self.simrt.UpdateInventoryItem(item_id,
+                                                   tr_uuid,
+                                                   LLSDText,
+                                                   LLSDText,
+                                                   name,
+                                                   desc)
+            for object_id, items in editor.Inventory.obj_inventory.items():
+                for item_id, item in items.items():
+                    if item['asset_id'] == old_uuid:
+                        item['asset_id'] = new_uuid
+                        self.simrt.UpdateTaskInventoryItem(object_id, item_id,
+                                                           tr_uuid, item)
 
         if text_obj.opensim.uuid:
-            for item in editor.Inventory:
-                if item['AssetID'] == text_obj.opensim.uuid:
-                    item_id = item['ItemID']
-
             cb = update_finished
         else:
             text_obj.opensim.uuid = str(uuid.uuid4())

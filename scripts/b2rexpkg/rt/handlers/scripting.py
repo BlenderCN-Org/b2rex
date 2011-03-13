@@ -51,6 +51,7 @@ class ScriptingHandler(Handler):
         agent.region.enqueue_message(packet)
 
     def processSetScriptRunning(self, obj_id, item_id, running):
+        print("SetScriptRunning", obj_id, item_id, running)
         agent = self.manager.client
         packet = Message('SetScriptRunning',
                         Block('AgentData',
