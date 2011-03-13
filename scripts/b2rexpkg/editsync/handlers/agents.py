@@ -68,6 +68,7 @@ class AgentsModule(SyncModule):
             if agentID in editor.positions:
                 editor.apply_position(agent, editor.positions[agentID], raw=True)
             scene.objects.link(agent)
+            editor.set_loading_state(agent, 'OK')
             try:
                 agent.show_name = True
                 agent.show_x_ray = True
