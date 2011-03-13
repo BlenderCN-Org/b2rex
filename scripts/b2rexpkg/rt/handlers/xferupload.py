@@ -78,7 +78,7 @@ class XferUploadManager(Handler):
         self._agent.asset_manager.upload_asset(tr_uuid,
                                                assetType,
                                                False, # tempfile
-                                               True, # storelocal
+                                               False, # storelocal
                                                init_data) # asset_data
         return  assetID
 
