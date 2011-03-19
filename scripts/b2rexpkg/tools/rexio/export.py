@@ -36,7 +36,7 @@ class RexSceneExporter(object):
         """
         for comp in obj.opensim.components:
             component = ET.SubElement(entity, 'component')
-            component.set('type', comp.name)
+            component.set('type', comp.type)
             component.set('sync', '1')
             for attr in comp.attribute_names:
                 value = getattr(comp, attr)
