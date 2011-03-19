@@ -4,13 +4,11 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty, EnumProperty
 
-from b2rexpkg.b25.properties import B2RexBaseProps
-
 prim_extrude = [('TITLE', 'Extrusion Types', ""),
                 ("LINEAR", "Linear", ""),
                 ("CIRCULAR", "Circular", "")]
 
-class B2RexPrimProps(B2RexBaseProps):
+class B2RexPrimProps(bpy.types.IDPropertyGroup):
     extrapolationType = EnumProperty(items=prim_extrude, default='LINEAR', description='')
     sides = IntProperty(name="sides", min=3, max=50)
     hollowSides = IntProperty(name="hollowSides", min=3, max=50)
