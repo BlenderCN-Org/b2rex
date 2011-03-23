@@ -2,10 +2,13 @@
  RexLogicModule: Support for rex logic system
 """
 import math
+import os
 
 from .base import SyncModule
 
+import b2rexpkg.tools.rexio.export
 from b2rexpkg.tools import rexio
+from b2rexpkg.b25.material import RexMaterialIO
 
 #from .props.rexlogic import RexLogicProps
 
@@ -88,6 +91,41 @@ class RexLogicModule(SyncModule):
         """
         setattr(bpy.types.B2RexObjectProps, 'components',
                 property(self.get_entity_components))
+
+    def export(self, context):
+        """
+        Export and pack the scene to rex logic format.
+        """
+        editor = self._parent
+        editor.exportSettings = context.scene.b2rex_props
+        dest = editor.ensureDestinationDir(delete=True)
+
+        # export materials
+        for ob in bpy.context.scene.objects:
+            self.export_materials(ob, dest)
+
+        # export ogre data
+        editor.onExport(context, delete=False)
+
+        # export rex data
+        dest_tundra = os.path.join(dest, editor.exportSettings.pack + '.txml')
+        e = rexio.export.RexSceneExporter()
+        e.export(context.scene, dest_tundra)
+
+    def export_materials(self, obj, dest):
+        editor = self._parent
+        mesh = obj.data
+        faces = editor._getFaceRepresentatives(mesh)
+        f = open(os.path.join(dest, mesh.name + '.material'), 'w')
+        for face in faces:
+            bmat = editor._getFaceMaterial(mesh, face)
+            if not bmat.opensim.uuid:
+                bmat.opensim.uuid = str(uuid.uuid4())
+                bmat.name = bmat.opensim.uuid
+            matio = RexMaterialIO(self, mesh, face, bmat)
+            matio.write(f)
+        f.write('\n\n')
+        f.close()
 
     def unregister(self, parent):
         """
