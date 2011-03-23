@@ -96,9 +96,9 @@ class B2Rex(BaseApplication):
         self.simrt.RemoveInventoryItem(item_id)
  
 
-    def onExport(self, context):
+    def onExport(self, context, delete=True):
         props = context.scene.b2rex_props
-        self.doExport(props, props.loc)
+        self.doExport(props, props.loc, delete=delete)
 
     def delete_connection(self, context):
         props = context.scene.b2rex_props
