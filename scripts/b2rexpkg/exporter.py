@@ -92,7 +92,19 @@ class Exporter(object):
         f.close()
         finish_upload(data)
 
-    def doExport(self, exportSettings, location, pack=True):
+    def ensureDestinationDir(self, export_dir=None, delete=False):
+        if not export_dir:
+            export_dir = self.getExportDir()
+        destfolder = os.path.join(export_dir, 'b2rx_export')
+        if not os.path.exists(destfolder):
+            os.makedirs(destfolder)
+        elif delete:
+            shutil.rmtree(destfolder)
+            os.makedirs(destfolder)
+        return destfolder
+
+
+    def doExport(self, exportSettings, location, pack=True, delete=True):
         """
         Export Action
         """
@@ -104,12 +116,7 @@ class Exporter(object):
 
         self.addStatus("Exporting to " + export_dir, 'IMMEDIATE')
 
-        destfolder = os.path.join(export_dir, 'b2rx_export')
-        if not os.path.exists(destfolder):
-            os.makedirs(destfolder)
-        else:
-            shutil.rmtree(destfolder)
-            os.makedirs(destfolder)
+        destfolder = self.ensureDestinationDir(export_dir, delete)
 
         x, y, z = location
 
