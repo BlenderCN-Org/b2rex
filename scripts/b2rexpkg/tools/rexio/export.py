@@ -3,6 +3,9 @@
 import xml.etree.ElementTree as ET
 
 
+def attr_name(name):
+    return name.lower().replace(' ', '_')
+
 class RexSceneExporter(object):
     def export(self, scene, filename):
         """
@@ -39,7 +42,7 @@ class RexSceneExporter(object):
             component.set('type', comp.type)
             component.set('sync', '1')
             for attr in comp.attribute_names:
-                value = getattr(comp, attr)
+                value = getattr(comp, attr_name(attr))
                 attribute = ET.SubElement(component, 'attribute')
                 attribute.set('name', attr)
                 attribute.set('value', self.format_attribute(value))
