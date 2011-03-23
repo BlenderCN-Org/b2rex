@@ -182,6 +182,15 @@ class Export(bpy.types.Operator):
         bpy.b2rex_session.onExport(context)
         return {'FINISHED'}
 
+class RexExport(bpy.types.Operator):
+    bl_idname = "b2rex.rexexport"
+    bl_label = "rexexport"
+
+    def execute(self, context):
+        bpy.b2rex_session.RexLogic.export(context)
+        return {'FINISHED'}
+
+
 class ProcessQueue(bpy.types.Operator):
     bl_idname = "b2rex.processqueue"
     bl_label = "processqueue"
