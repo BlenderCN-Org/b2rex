@@ -101,6 +101,8 @@ class ConnectionPanel(bpy.types.Panel):
         row = layout.row() 
         row.template_list(props, 'regions', props, 'selected_region')
         # XXX only real time operations for the moment.
+        col = layout.column_flow(0)
+        col.operator("b2rex.rexexport", text="Export")
         return
         if props.selected_region > -1:
             col = layout.column_flow(0)
