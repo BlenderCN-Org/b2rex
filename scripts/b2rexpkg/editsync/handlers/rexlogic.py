@@ -3,6 +3,7 @@
 """
 import math
 import os
+import uuid
 
 from .base import SyncModule
 
@@ -122,7 +123,7 @@ class RexLogicModule(SyncModule):
             if not bmat.opensim.uuid:
                 bmat.opensim.uuid = str(uuid.uuid4())
                 bmat.name = bmat.opensim.uuid
-            matio = RexMaterialIO(self, mesh, face, bmat)
+            matio = RexMaterialIO(editor, mesh, face, bmat)
             matio.write(f)
         f.write('\n\n')
         f.close()
