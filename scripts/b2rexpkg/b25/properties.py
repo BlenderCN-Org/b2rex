@@ -4,7 +4,7 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty, EnumProperty
 
-from .logic import B2RexFsm
+from .logic import B2RexFsm, B2RexComponent
 
 import logging
 
@@ -56,6 +56,9 @@ class B2RexObjectProps(B2RexBaseProps):
     state = EnumProperty(items=states, default='OFFLINE', description='')
     everyonemask_expand = BoolProperty(name='everyonemask_expand', default=False)
     fsm = PointerProperty(type=B2RexFsm, name="fsm")
+    component_data = CollectionProperty(type=B2RexComponent, name='components')
+    selected_component = StringProperty(default="")
+    next_component_idx = IntProperty(default=0)
 
 
 class B2RexMeshProps(B2RexBaseProps):

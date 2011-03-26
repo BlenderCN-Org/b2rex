@@ -9,8 +9,28 @@ from ..tools.llsd_logic import parse_llsd_data
 
 # Helpers
 sensors, actuators = parse_llsd_data()
+components = (('FSM', 'FSM', 'FSM'), ('Script', 'Script', 'Script'))
 
 # Operators
+class EntityAction(bpy.types.Operator):
+    bl_idname = "b2rex.entity"
+    bl_label = "entity action"
+    action = StringProperty(name="action",default='add_component')
+    def execute(self, context):
+        getattr(bpy.b2rex_session.RexLogic, self.action)(context)
+        return {'FINISHED'}
+
+class ComponentTypeTypeAction(bpy.types.Operator):
+    bl_idname = "b2rex.component_type"
+    bl_label = "component type"
+    type = EnumProperty(items=components, description='')
+    def execute(self, context):
+        bpy.b2rex_session.RexLogic.set_component_type(context, self.type)
+        return {'FINISHED'}
+
+
+
+
 class FsmAction(bpy.types.Operator):
     bl_idname = "b2rex.fsm"
     bl_label = "fsmaction"
@@ -56,4 +76,6 @@ class B2RexFsm(bpy.types.IDPropertyGroup):
     selected_actuator = IntProperty()
     states = CollectionProperty(type=B2RexState)
 
-
+class B2RexComponent(bpy.types.IDPropertyGroup):
+    id = IntProperty()
+    type = EnumProperty(items=components, description='')

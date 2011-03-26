@@ -143,6 +143,118 @@ class RexLogicModule(SyncModule):
             return []
         obj = self._parent.findWithUUID(opensim_data.uuid)
         return self.find_components(obj)
+
     #parent.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
+
+    def _add_component(self, context):
+        entity = self._get_entity()
+        component = entity.component_data.add()
+
+        if entity.selected_component:
+            component.name = entity.selected_component
+        else:
+            component.name = 'default'
+        entity.selected_component = component.name
+
+        obj = self._parent.getSelected()[0]
+        self._initialize_component(obj, component)
+
+    def _initialize_component(self, obj, component):
+        coms_info = self.get_component_info()
+        com_info = coms_info[component.type]
+        pre = str(component.id)
+        for prop in com_info:
+            name = list(prop.keys())[0]
+            data = list(prop.values())[0]
+            tmp_name = "com_" + pre + name
+            if not tmp_name in obj:
+                if 'default' in data:
+                    val = data['default']
+                elif data['type'] == 'integer':
+                    val = 0
+                elif data['type'] == 'string':
+                    val = "bla"
+                elif data['type'] == 'key':
+                    val = "bla"
+                elif data['type'] == 'float':
+                    val = 0.0
+                obj[tmp_name] = val
+
+
+    def _delete_component(self, context):
+        entity = self._get_entity()
+
+    def _get_entity(self):
+        """
+        Get the current active entity.
+        """
+        editor = self._parent
+        objs = editor.getSelected()
+        obj = objs[0]
+        return obj.opensim
+
+    def set_component_type(self, context, new_type):
+        entity = self._get_entity()
+        component = entity.component_data[entity.selected_component]
+        component.type = new_type
+        component.idx = entity.next_component_idx
+        entity.next_component_idx += 1
+
+        obj = self._parent.getSelected()[0]
+        self._initialize_component(obj, component)
+
+    def get_component_info(self):
+        component_info = {}
+        script_component = [{"prop1":{"type":"string","default":"blah"}}]
+        fsm_component = [{"prop2":{"type":"string","default":"foo"}}]
+        component_info['Script'] = script_component
+        component_info['FSM'] = fsm_component
+        return component_info
+
+    def draw_object(self, box, editor, obj):
+        """
+        Draw scripting section in the object panel.
+        """
+        if not self.expand(box):
+            return False
+        mainbox = box.box()
+        box = mainbox.row()
+        main_row = mainbox.row()
+        #box = box.box()
+        box.label("Components")
+        props = obj.opensim
+        # draw state list
+        row = box.row()
+        if not props.component_data or (props.selected_component and not
+                                    props.selected_component in props.component_data):
+            row.operator('b2rex.entity', text='', icon='ZOOMIN').action = '_add_component'
+        elif props.component_data:
+            row.operator('b2rex.entity', text='', icon='ZOOMOUT').action = '_delete_component'
+        row.prop_search(props, 'selected_component', props, 'component_data')
+
+        # draw sensor list
+        if not props.selected_component or not props.selected_component in props.component_data:
+            return
+        box = main_row.column()
+        box.label("Current component")
+        component = props.component_data[props.selected_component]
+
+        #box.prop(curractuator, 'name')
+        row = box.row()
+        row.alignment = 'LEFT'
+        row.label(text='Type:')
+        row.operator_menu_enum('b2rex.component_type',
+                               'type',
+                               text=component.type, icon='BLENDER')
+
+        coms_info = self.get_component_info()
+        com_info = coms_info[component.type]
+        pre = str(component.id)
+        for prop in com_info:
+            name = list(prop.keys())[0]
+            data = list(prop.values())[0]
+            tmp_name = "com_" + pre + name
+            if tmp_name in obj:
+                box.prop(obj, '["'+tmp_name+'"]', text=name)
 
 
