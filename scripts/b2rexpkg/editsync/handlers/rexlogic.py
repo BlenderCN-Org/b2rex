@@ -106,6 +106,9 @@ class RexLogicModule(SyncModule):
         setattr(bpy.types.B2RexObjectProps, 'components',
                 property(self.get_entity_components))
 
+    def getPanelName(self):
+        return 'Components'
+
     def export(self, context):
         """
         Export and pack the scene to rex logic format.
