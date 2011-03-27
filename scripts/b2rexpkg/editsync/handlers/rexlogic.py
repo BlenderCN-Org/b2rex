@@ -282,7 +282,6 @@ class RexLogicModule(SyncModule):
             if tmp_name in obj:
                 if data['type'] == 'boolean':
                     box.prop(obj, '["'+tmp_name+'"]', text=name, toggle=True)
-                    print("draw boolean")
                 else:
                     box.prop(obj, '["'+tmp_name+'"]', text=name)
 
