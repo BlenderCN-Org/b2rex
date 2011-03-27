@@ -9,7 +9,7 @@ from ..tools.llsd_logic import parse_llsd_data
 
 # Helpers
 sensors, actuators = parse_llsd_data()
-components = (('FSM', 'FSM', 'FSM'), ('Script', 'Script', 'Script'))
+components = (('FSM', 'FSM', 'FSM'), ('EC_Script', 'EC_Script', 'EC_Script'))
 
 # Operators
 class EntityAction(bpy.types.Operator):

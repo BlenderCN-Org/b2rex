@@ -1,0 +1,26 @@
+Components:
+  FSM:
+    - channel: {
+       type: integer,
+       default: 0
+    }
+    - msg: {
+       type: string,
+       default: foo
+    }
+  EC_Script:
+    - type: {
+       type: hardcoded,
+       default: js,
+       internal_name: Type
+    }
+    - onload: {
+       type: boolean,
+       default: true,
+       internal_name: Run on load
+    }
+    - script: {
+       type: string,
+       internal_name: Script ref
+    }
+

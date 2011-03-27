@@ -75,17 +75,29 @@ class PlaceableComponent(RexComponent):
     transform = property(_get_transform) # -68,-4.32,80,0,0,0,2,2,2
     show_bounding_box = property(_get_dummy) # false
 
-class ScriptComponent(RexComponent):
-    type = 'EC_Script'
-    def _get_dummy(self):
-        return ""
-    _attribute_names = ['js', 'Run on load', 'Script ref']
-    js = property(_get_dummy) # js
-    run_on_load = property(_get_dummy) # true
-    script_ref = property(_get_dummy) # C:\Script\js\testanimation.js
+class GenericComponent(RexComponent):
+    def __init__(self, obj, component, metadata):
+        RexComponent.__init__(self, obj)
+        self._component = component
+        self._metadata = metadata
+        self.type = component.type
 
+    def _get_attribute_names(self):
+        attribute_names = []
+        for prop in self._metadata:
+            name = list(prop.keys())[0]
+            attribute_names.append(name)
+        return attribute_names
+    _attribute_names = property(_get_attribute_names)
+
+    def __getattr__(self, name):
+        entity = self._obj.opensim
+        pre = str(self._component.id)
+        tmp_name = "com_" + pre + name
+        return self._obj[tmp_name]
 
 class RexLogicModule(SyncModule):
+    component_data = None
     def register(self, parent):
         """
         Register this module with the editor
@@ -136,7 +148,17 @@ class RexLogicModule(SyncModule):
             delattr(bpy.types.B2RexObjectProps, 'components')
 
     def find_components(self, obj):
-        return [NameComponent(obj), PlaceableComponent(obj), MeshComponent(obj)]
+        # base components
+        components = [NameComponent(obj), PlaceableComponent(obj), MeshComponent(obj)]
+
+        # user defined components
+        coms_info = self.get_component_info()
+        for bcomp in obj.opensim.component_data:
+            metadata = coms_info[bcomp.type]
+            component = GenericComponent(obj, bcomp, metadata)
+            components.append(component)
+
+        return components
 
     def get_entity_components(self, opensim_data):
         if not opensim_data.uuid:
@@ -174,6 +196,8 @@ class RexLogicModule(SyncModule):
                     val = 0
                 elif data['type'] == 'string':
                     val = "bla"
+                elif data['type'] == 'boolean':
+                    val = True
                 elif data['type'] == 'key':
                     val = "bla"
                 elif data['type'] == 'float':
@@ -204,12 +228,7 @@ class RexLogicModule(SyncModule):
         self._initialize_component(obj, component)
 
     def get_component_info(self):
-        component_info = {}
-        script_component = [{"prop1":{"type":"string","default":"blah"}}]
-        fsm_component = [{"prop2":{"type":"string","default":"foo"}}]
-        component_info['Script'] = script_component
-        component_info['FSM'] = fsm_component
-        return component_info
+        return rexio.get_component_info()
 
     def draw_object(self, box, editor, obj):
         """
@@ -253,8 +272,14 @@ class RexLogicModule(SyncModule):
         for prop in com_info:
             name = list(prop.keys())[0]
             data = list(prop.values())[0]
+            if data['type'] == 'hardcoded':
+                continue
             tmp_name = "com_" + pre + name
             if tmp_name in obj:
-                box.prop(obj, '["'+tmp_name+'"]', text=name)
+                if data['type'] == 'boolean':
+                    box.prop(obj, '["'+tmp_name+'"]', text=name, toggle=True)
+                    print("draw boolean")
+                else:
+                    box.prop(obj, '["'+tmp_name+'"]', text=name)
 
 

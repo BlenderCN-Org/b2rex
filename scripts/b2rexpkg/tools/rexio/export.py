@@ -2,6 +2,7 @@
 
 import xml.etree.ElementTree as ET
 
+from .info import get_component_info
 
 def attr_name(name):
     return name.lower().replace(' ', '_')
@@ -37,18 +38,39 @@ class RexSceneExporter(object):
         Export all components from the given object into a
         rex entity element tree.
         """
+        components_info = get_component_info()
         for comp in obj.opensim.components:
             component = ET.SubElement(entity, 'component')
             component.set('type', comp.type)
             component.set('sync', '1')
             for attr in comp.attribute_names:
                 value = getattr(comp, attr_name(attr))
+                if comp.type in components_info:
+                    attr_meta = list(filter(lambda s: list(s.keys())[0] == attr,
+                                            components_info[comp.type]))
+                    if attr_meta:
+                        attr_meta = list(attr_meta[0].values())[0]
+                else:
+                    attr_meta = None
+
                 attribute = ET.SubElement(component, 'attribute')
-                attribute.set('name', attr)
+                if attr_meta:
+                    if 'internal_name' in attr_meta:
+                        name = attr_meta['internal_name']
+                    else:
+                        name = attr
+                else:
+                    name = attr
+                attribute.set('name', name)
                 attribute.set('value', self.format_attribute(value))
 
     def format_attribute(self, value):
         """
         Format the given value for inclusion into rex xml.
         """
+        if value.__class__ == bool:
+            if value:
+                return 'true'
+            else:
+                return 'false'
         return str(value)
