@@ -25,7 +25,7 @@ class RexComponent(object):
     attribute_names = property(_get_attribute_names)
 
 class NameComponent(RexComponent):
-    type = 'EC_Name'
+    component_type = 'EC_Name'
     _attribute_names = ['name', 'description']
     def _get_name(self):
         return self._obj.name
@@ -35,7 +35,7 @@ class NameComponent(RexComponent):
     description = property(_get_description)
 
 class MeshComponent(RexComponent):
-    type = 'EC_Mesh'
+    component_type = 'EC_Mesh'
     _attribute_names = ['Transform', 'Mesh ref', 'Skeleton ref',
                         'Mesh materials', 'Draw distance', 'Cast shadows']
     def _get_dummy(self):
@@ -54,7 +54,7 @@ class MeshComponent(RexComponent):
     cast_shadows = property(_get_dummy) # false
 
 class PlaceableComponent(RexComponent):
-    type = 'EC_Placeable'
+    component_type = 'EC_Placeable'
     def _get_dummy(self):
         return ""
     _attribute_names = ['Transform', 'Show bounding box']
@@ -80,7 +80,7 @@ class GenericComponent(RexComponent):
         RexComponent.__init__(self, obj)
         self._component = component
         self._metadata = metadata
-        self.type = component.type
+        self.component_type = component.type
 
     def _get_attribute_names(self):
         attribute_names = []

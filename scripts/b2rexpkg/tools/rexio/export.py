@@ -41,13 +41,13 @@ class RexSceneExporter(object):
         components_info = get_component_info()
         for comp in obj.opensim.components:
             component = ET.SubElement(entity, 'component')
-            component.set('type', comp.type)
+            component.set('type', comp.component_type)
             component.set('sync', '1')
             for attr in comp.attribute_names:
                 value = getattr(comp, attr_name(attr))
-                if comp.type in components_info:
+                if comp.component_type in components_info:
                     attr_meta = list(filter(lambda s: list(s.keys())[0] == attr,
-                                            components_info[comp.type]))
+                                            components_info[comp.component_type]))
                     if attr_meta:
                         attr_meta = list(attr_meta[0].values())[0]
                 else:
@@ -59,8 +59,12 @@ class RexSceneExporter(object):
                         name = attr_meta['internal_name']
                     else:
                         name = attr
+                    attr_type = attr_meta['type']
+                    if attr_type == 'boolean':
+                        value = bool(value)
                 else:
                     name = attr
+
                 attribute.set('name', name)
                 attribute.set('value', self.format_attribute(value))
 
