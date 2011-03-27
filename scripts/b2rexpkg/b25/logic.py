@@ -7,9 +7,15 @@ from bpy.props import FloatVectorProperty, EnumProperty
 
 from ..tools.llsd_logic import parse_llsd_data
 
+from ..tools import rexio
+
 # Helpers
 sensors, actuators = parse_llsd_data()
-components = (('FSM', 'FSM', 'FSM'), ('EC_Script', 'EC_Script', 'EC_Script'))
+components = ()
+# the following shouldnt be done on module import but on registering
+# to blender or even later if possible...
+for name in rexio.get_component_info():
+    components += ((name, name, name),)
 
 # Operators
 class EntityAction(bpy.types.Operator):

@@ -9,6 +9,7 @@ from .base import SyncModule
 
 import b2rexpkg.tools.rexio.export
 from b2rexpkg.tools import rexio
+from b2rexpkg.b25 import logic
 from b2rexpkg.b25.material import RexMaterialIO
 
 #from .props.rexlogic import RexLogicProps
