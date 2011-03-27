@@ -23,4 +23,12 @@ Components:
        type: string,
        internal_name: Script ref
     }
-
+  EC_HoveringText: {}
+  EC_RigidBody: {}
+  EC_EnvironmentLight: {}
+  EC_RttTarget: {}
+  EC_3DCanvasSource: {}
+  EC_WaterPlane: {}
+  EC_DynamicComponent: {}
+  EC_Touchable: {}
+  
