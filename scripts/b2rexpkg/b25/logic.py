@@ -15,7 +15,7 @@ components = ()
 # the following shouldnt be done on module import but on registering
 # to blender or even later if possible...
 for name in rexio.get_component_info():
-    components += ((name, name, name),)
+    components += ((name, name.replace('EC_', ''), name),)
 
 # Operators
 class EntityAction(bpy.types.Operator):
