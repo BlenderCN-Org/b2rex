@@ -20,7 +20,7 @@ Components:
        internal_name: Run on load
     }
     - script: {
-       type: string,
+       type: jsscript,
        internal_name: Script ref
     }
   EC_HoveringText:
