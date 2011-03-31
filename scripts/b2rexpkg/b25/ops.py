@@ -186,8 +186,9 @@ class RexExport(bpy.types.Operator):
     bl_idname = "b2rex.rexexport"
     bl_label = "rexexport"
 
+    action = bpy.props.StringProperty()
     def execute(self, context):
-        bpy.b2rex_session.RexLogic.export(context)
+        getattr(bpy.b2rex_session.RexLogic, self.action)(context)
         return {'FINISHED'}
 
 
