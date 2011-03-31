@@ -83,6 +83,11 @@ Components:
   EC_RttTarget: {}
   EC_3DCanvasSource: {}
   EC_WaterPlane: {}
+  EC_AnimationController:
+    - anim_state: {
+       type: string,
+       internal_name: Animation state
+    }
   EC_DynamicComponent: {}
   EC_Touchable: {}
   
