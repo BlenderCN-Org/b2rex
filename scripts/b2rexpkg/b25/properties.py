@@ -100,6 +100,11 @@ class B2RexProps(bpy.types.IDPropertyGroup):
                                      default='',
                                      description='path to tools required by the exporter')
 
+    tundra_path = StringProperty(name='tundra path',
+                                     default='',
+                                     description='path to tundra binary folder (where server and viewer are located)')
+
+
     export_dir = StringProperty(name='export dir',
                                 default='',
                                 description='') 
