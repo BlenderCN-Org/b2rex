@@ -1,8 +1,9 @@
-
+import os
 
 import xml.etree.ElementTree as ET
 
 from .info import get_component_info
+from .library import library
 
 def attr_name(name):
     return name.lower().replace(' ', '_')
@@ -13,6 +14,7 @@ class RexSceneExporter(object):
         Export the given scene into given filename.
         """
         root = ET.Element('scene')
+        self._dirname = os.path.dirname(filename)
         for idx, obj in enumerate(scene.objects):
             self.export_object(obj, root, idx)
         tree = ET.ElementTree(root)
@@ -62,6 +64,10 @@ class RexSceneExporter(object):
                     attr_type = attr_meta['type']
                     if attr_type == 'boolean':
                         value = bool(value)
+                    elif attr_type == 'jsscript':
+                        comp = library.get_component('jsscript', value)
+                        comp.pack(self._dirname)
+                        value = 'local://'+value+'.js'
                 else:
                     name = attr
 

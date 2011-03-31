@@ -9,6 +9,7 @@ from .base import SyncModule
 
 import b2rexpkg.tools.rexio.export
 from b2rexpkg.tools import rexio
+from b2rexpkg.tools.rexio.library import library
 from b2rexpkg.tools import runexternal
 
 from b2rexpkg.b25 import logic
@@ -224,6 +225,8 @@ class RexLogicModule(SyncModule):
                     val = 0
                 elif data['type'] == 'string':
                     val = "bla"
+                elif data['type'] == 'jsscript':
+                    val = ""
                 elif data['type'] == 'boolean':
                     val = True
                 elif data['type'] == 'key':
@@ -312,7 +315,15 @@ class RexLogicModule(SyncModule):
                 continue
             tmp_name = "com_" + pre + name
             if tmp_name in obj:
-                if data['type'] == 'boolean':
+                if data['type'] == 'jsscript':
+                    row = box.row()
+                    row.prop(obj, '["'+tmp_name+'"]', text=name)
+                    try:
+                        comp = library.get_component('jsscript', obj[tmp_name])
+                        row.label('', icon='FILE_TICK')
+                    except KeyError:
+                        pass
+                elif data['type'] == 'boolean':
                     box.prop(obj, '["'+tmp_name+'"]', text=name, toggle=True)
                 else:
                     box.prop(obj, '["'+tmp_name+'"]', text=name)
