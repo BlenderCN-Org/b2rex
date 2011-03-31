@@ -18,8 +18,8 @@ def add_binary_path(path):
         if not _path:
             _application_paths.pop(name)
 
-def find_application(name, user_paths=[]):
-    if name in _application_paths:
+def find_application(name, user_paths=[], reset=False):
+    if name in _application_paths and not reset:
         return _application_paths[name]
     # look for command with same name
     for path in _binary_paths + _extra_binary_paths + user_paths:
