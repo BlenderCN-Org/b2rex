@@ -58,14 +58,18 @@ class SyncModule(object):
         Called when the module is unregistered from the system:
         """
         pass
-    def expand(self, box, icons=['TRIA_DOWN', 'TRIA_RIGHT']):
+    def expand(self, box, icons=['TRIA_DOWN', 'TRIA_RIGHT'], title=None):
+        if not title:
+            title = self.getPanelName()
         if self._expand:
             icon=icons[0]
-            box.operator('b2rex.section', icon=icon, text=self.getPanelName(),
+            box.operator('b2rex.section', icon=icon,
+                         text=title,
                      emboss=True).section = self.getName()
         else:
             icon=icons[1]
-            box.operator("b2rex.section", icon=icon, text=self.getPanelName(),
+            box.operator("b2rex.section", icon=icon,
+                         text=title,
                      emboss=True).section = self.getName()
         return self._expand
 
