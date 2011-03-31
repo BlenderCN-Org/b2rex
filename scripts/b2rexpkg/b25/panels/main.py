@@ -7,6 +7,7 @@ import uuid
 
 import b2rexpkg
 from b2rexpkg.b25.ops import getLogLabel
+from b2rexpkg.tools import runexternal
 #from ..properties import B2RexProps
 
 
@@ -101,8 +102,6 @@ class ConnectionPanel(bpy.types.Panel):
         row = layout.row() 
         row.template_list(props, 'regions', props, 'selected_region')
         # XXX only real time operations for the moment.
-        col = layout.column_flow(0)
-        col.operator("b2rex.rexexport", text="Export")
         return
         if props.selected_region > -1:
             col = layout.column_flow(0)
@@ -148,6 +147,11 @@ class ConnectionPanel(bpy.types.Panel):
         for prop in ['agent_libs_path', 'tools_path']: # "loc", "path", "pack", "server_url", "username", "password",
             row = layout.row()
             row.prop(props, prop)
+
+        row = layout.row()
+        row.prop(props, 'tundra_path')
+        if runexternal.find_application('server', [props.tundra_path], True):
+            row.label(text='', icon='FILE_TICK')
 
         check_icon = ['CHECKBOX_DEHLT', 'CHECKBOX_HLT']
         col = layout.column_flow()
