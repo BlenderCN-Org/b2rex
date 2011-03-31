@@ -3,16 +3,19 @@ import shutil
 from collections import defaultdict
 
 class LibraryComponent(object):
-    def __init__(self, name, path, component_type, dependencies):
+    def __init__(self, name, path, component_type, dependencies,
+                 comp_dependencies, attrs):
         self._name = name
         self._path = path
         self._type = component_type
-        self._dependencies = dependencies
+        self._file_dependencies = dependencies
+        self.dependencies = comp_dependencies
+        self.attributes = attrs
 
     def pack(self, dest_dir):
         # XXX should create a subdirectory to avoid possible conflicts?
         shutil.copy(self._path, dest_dir)
-        for dep in self._dependencies:
+        for dep in self._file_dependencies:
             shutil.copy(dep, dest_dir)
 
     def __repr__(self):
@@ -64,8 +67,32 @@ class Library(object):
         paths = self.find_paths(path, 'local://')
         paths += self.find_paths(path, 'file://')
         paths = self.dereference_paths(paths, os.path.dirname(path))
+        deps, attrs = self.find_component_deps_fromjs(path)
         self._components['jsscript'][name] = LibraryComponent(name,
-                                                             path, 'js', paths)
+                                                             path, 'js', paths,
+                                                             deps, attrs)
+    def find_component_deps_fromjs(self, path):
+        f = open(path, 'r')
+        data = f.read()
+        f.close()
+        deps = set()
+        attrs = set()
+        if 'me.dynamiccomponent' in data:
+            deps.add('EC_DynamicComponent')
+            pos = data.find('me.dynamiccomponent')
+            linepos = data[:pos].rfind('\n')
+            name = data[linepos: pos].split('=')[0].strip()
+            key = name + '.GetAttribute('
+            found = data.find(key)
+            while not found == -1:
+                delim = data[found+len(key)]
+                end = data.find(delim, found+len(key)+2)
+                attrs.add(data[found+len(key)+1:end])
+                found = data.find(key, end)
+        if 'me.animationcontroller' in data:
+            deps.add('EC_AnimationController')
+        return list(deps), list(attrs)
+
     def get_component(self, component_type, name):
         return self._components[component_type][name]
 
