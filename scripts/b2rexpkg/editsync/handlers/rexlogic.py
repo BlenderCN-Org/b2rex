@@ -9,12 +9,15 @@ from .base import SyncModule
 
 import b2rexpkg.tools.rexio.export
 from b2rexpkg.tools import rexio
+from b2rexpkg.tools import runexternal
+
 from b2rexpkg.b25 import logic
 from b2rexpkg.b25.material import RexMaterialIO
 
 #from .props.rexlogic import RexLogicProps
 
 import bpy
+import subprocess
 
 class RexComponent(object):
     def __init__(self, obj):
@@ -67,7 +70,7 @@ class PlaceableComponent(RexComponent):
         if self._obj.parent:
             pos = editor.unapply_position(self._obj, pos,0,0,0)
         else:
-            pos = editor.unapply_position(self._obj, pos)
+            pos = editor.unapply_position(self._obj, pos,0,0,0)
             rot = list(map(lambda s: s*r, rot))
             # rot = editor.unapply_rotation(rot) - asks for euler?
         scale = editor.unapply_scale(self._obj, scale)
@@ -115,6 +118,7 @@ class RexLogicModule(SyncModule):
         """
         editor = self._parent
         editor.exportSettings = context.scene.b2rex_props
+        editor.exportSettings.loc = [0,0,0]
         dest = editor.ensureDestinationDir(delete=True)
 
         # export materials
@@ -128,6 +132,26 @@ class RexLogicModule(SyncModule):
         dest_tundra = os.path.join(dest, editor.exportSettings.pack + '.txml')
         e = rexio.export.RexSceneExporter()
         e.export(context.scene, dest_tundra)
+        return dest_tundra
+
+    def run(self, context):
+        dest_tundra = self.export(context)
+        editor = self._parent
+
+        # run tundra
+        props = editor.exportSettings
+        paths = []
+        if props.tundra_path:
+            paths.append(props.tundra_path)
+        app_path = runexternal.find_application('server', paths)
+        prevdir = os.curdir
+        os.chdir(os.path.dirname(app_path))
+
+        subprocess.call([app_path,
+                          '--file',
+                          dest_tundra])
+        os.chdir(prevdir)
+
 
     def export_materials(self, obj, dest):
         editor = self._parent
@@ -233,6 +257,14 @@ class RexLogicModule(SyncModule):
 
     def get_component_info(self):
         return rexio.get_component_info()
+
+    def draw(self, layout, session, props):
+        if not self.expand(layout, title='Tools'):
+            return False
+        col = layout.column_flow(0)
+        col.operator("b2rex.rexexport", text="Export to tundra format").action = 'export'
+        if runexternal.find_application('server', [props.tundra_path]):
+            col.operator("b2rex.rexexport", text="Export to tundra format and run").action = 'run'
 
     def draw_object(self, box, editor, obj):
         """
