@@ -6,8 +6,8 @@ from os.path import dirname
 class LibraryComponent(object):
     def __init__(self, name, path, component_type, dependencies,
                  comp_dependencies, attrs):
-        self._name = name
-        self._path = path
+        self.name = name
+        self.path = path
         self._type = component_type
         self._file_dependencies = dependencies
         self.dependencies = comp_dependencies
@@ -15,12 +15,12 @@ class LibraryComponent(object):
 
     def pack(self, dest_dir):
         # XXX should create a subdirectory to avoid possible conflicts?
-        shutil.copy(self._path, dest_dir)
+        shutil.copy(self.path, dest_dir)
         for dep in self._file_dependencies:
             shutil.copy(dep, dest_dir)
 
     def __repr__(self):
-        return "LibraryComponent(%s, %s, %s)"%(self._name, self._path, self._type)
+        return "LibraryComponent(%s, %s, %s)"%(self.name, self.path, self._type)
 
 class Library(object):
     def __init__(self):
@@ -87,15 +87,25 @@ class Library(object):
             linepos = data[:pos].rfind('\n')
             name = data[linepos: pos].split('=')[0].strip()
             key = name + '.GetAttribute('
-            found = data.find(key)
-            while not found == -1:
-                delim = data[found+len(key)]
-                end = data.find(delim, found+len(key)+2)
-                attrs.add(data[found+len(key)+1:end])
-                found = data.find(key, end)
+            attrs = attrs.union(self.find_from_function(data, key))
+
         if 'me.animationcontroller' in data:
             deps.add('EC_AnimationController')
+
+        key = 'me.GetComponentRaw('
+        deps = deps.union(self.find_from_function(data, key))
+
         return list(deps), list(attrs)
+
+    def find_from_function(self, data, key):
+        all_found = set()
+        found = data.find(key)
+        while not found == -1:
+            delim = data[found+len(key)]
+            end = data.find(delim, found+len(key)+2)
+            all_found.add(data[found+len(key)+1:end])
+            found = data.find(key, end)
+        return list(all_found)
 
     def get_component(self, component_type, name):
         return self._components[component_type][name]

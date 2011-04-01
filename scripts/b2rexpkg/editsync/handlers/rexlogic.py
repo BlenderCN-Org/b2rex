@@ -271,9 +271,19 @@ class RexLogicModule(SyncModule):
         if not self.expand(layout, title='Rex logic'):
             return False
         col = layout.column_flow(0)
-        col.operator("b2rex.rexexport", text="Export to tundra format").action = 'export'
+        col.operator("b2rex.rexexport", text="Export").action = 'export'
         if runexternal.find_application('server', [props.tundra_path]):
-            col.operator("b2rex.rexexport", text="Export to tundra format and run").action = 'run'
+            col.operator("b2rex.rexexport", text="Export and run").action = 'run'
+        components = library.get_components('jsscript')
+        box = layout.box()
+        for component_name in components:
+            component = components[component_name]
+            box.label(component.name)
+            if component.dependencies:
+                deps = map(lambda s: s.replace('EC_', ''), component.dependencies)
+                box.label("    "+", ".join(deps), icon='RNA')
+            if component.attributes:
+                box.label("    "+", ".join(component.attributes), icon='SETTINGS')
 
     def draw_object(self, box, editor, obj):
         """
