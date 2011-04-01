@@ -200,6 +200,8 @@ class RexLogicModule(SyncModule):
     def _add_component(self, context):
         entity = self._get_entity()
         component = entity.component_data.add()
+        component.id = entity.next_component_idx
+        entity.next_component_idx += 1
 
         if entity.selected_component:
             component.name = entity.selected_component
@@ -252,8 +254,6 @@ class RexLogicModule(SyncModule):
         entity = self._get_entity()
         component = entity.component_data[entity.selected_component]
         component.type = new_type
-        component.idx = entity.next_component_idx
-        entity.next_component_idx += 1
 
         obj = self._parent.getSelected()[0]
         self._initialize_component(obj, component)
