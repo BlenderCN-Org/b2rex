@@ -69,6 +69,7 @@ class RexSceneExporter(object):
                     elif attr_type == 'jsscript':
                         jscomp = library.get_component('jsscript', value)
                         jscomp.pack(self._dirname)
+                        component.set('name', value)
                         value = 'local://'+value+'.js'
                         if jscomp.attributes:
                             dyn_props += jscomp.attributes
