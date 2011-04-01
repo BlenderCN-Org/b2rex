@@ -1,6 +1,7 @@
 import os
 import shutil
 from collections import defaultdict
+from os.path import dirname
 
 class LibraryComponent(object):
     def __init__(self, name, path, component_type, dependencies,
@@ -103,6 +104,9 @@ class Library(object):
         return self._components[component_type]
 
 library = Library()
+library.add_path(os.path.join(dirname(dirname(dirname(__file__))),
+                              'data',
+                              'rexjs'))
 #library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Door')
 #library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Avatar')
 #library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Tooltip')
