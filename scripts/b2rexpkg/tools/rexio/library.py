@@ -102,6 +102,7 @@ class Library(object):
 library = Library()
 library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Door')
 library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Avatar')
+library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Tooltip')
 
 if __name__ == '__main__':
     l = Library()
