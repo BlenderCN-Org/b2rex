@@ -27,6 +27,9 @@ class Library(object):
         self._components = defaultdict(dict)
 
     def add_path(self, path):
+        if not os.path.exists(path):
+            # to allow for test paths that dont exist for other ppl
+            return
         if not path in self._paths:
             self._paths.append(path)
             self.scan_path(path)
