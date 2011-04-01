@@ -41,6 +41,8 @@ class RexSceneExporter(object):
         rex entity element tree.
         """
         components_info = get_component_info()
+        dyn_props = []
+        dyn_component = None
         for comp in obj.opensim.components:
             component = ET.SubElement(entity, 'component')
             component.set('type', comp.component_type)
@@ -65,14 +67,28 @@ class RexSceneExporter(object):
                     if attr_type == 'boolean':
                         value = bool(value)
                     elif attr_type == 'jsscript':
-                        comp = library.get_component('jsscript', value)
-                        comp.pack(self._dirname)
+                        jscomp = library.get_component('jsscript', value)
+                        jscomp.pack(self._dirname)
                         value = 'local://'+value+'.js'
+                        if jscomp.attributes:
+                            dyn_props += jscomp.attributes
                 else:
                     name = attr
 
                 attribute.set('name', name)
                 attribute.set('value', self.format_attribute(value))
+            if comp.component_type == 'EC_DynamicComponent':
+                dyn_component = component
+        if dyn_props:
+            if not dyn_component:
+                dyn_component = ET.SubElement(entity, 'component')
+                dyn_component.set('type', 'EC_DynamicComponent')
+                dyn_component.set('sync', '1')
+            for dyn_prop in dyn_props:
+                attribute = ET.SubElement(dyn_component, 'attribute')
+                attribute.set('name', dyn_prop)
+                attribute.set('type', 'bool')
+                attribute.set('value', self.format_attribute(False))
 
     def format_attribute(self, value):
         """
