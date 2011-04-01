@@ -191,6 +191,15 @@ class RexExport(bpy.types.Operator):
         getattr(bpy.b2rex_session.RexLogic, self.action)(context)
         return {'FINISHED'}
 
+class RexExport(bpy.types.Operator):
+    bl_idname = "b2rex.reload_components"
+    bl_label = "Reload Components"
+
+    def execute(self, context):
+        bpy.b2rex_session.RexLogic.reload_components(context)
+        return {'FINISHED'}
+
+
 
 class ProcessQueue(bpy.types.Operator):
     bl_idname = "b2rex.processqueue"

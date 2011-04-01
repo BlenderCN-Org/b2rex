@@ -26,11 +26,11 @@ class Library(object):
         self._paths = []
         self._components = defaultdict(dict)
 
-    def add_path(self, path):
+    def add_path(self, path, refresh=False):
         if not os.path.exists(path):
             # to allow for test paths that dont exist for other ppl
             return
-        if not path in self._paths:
+        if not path in self._paths or refresh:
             self._paths.append(path)
             self.scan_path(path)
 
@@ -103,9 +103,9 @@ class Library(object):
         return self._components[component_type]
 
 library = Library()
-library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Door')
-library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Avatar')
-library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Tooltip')
+#library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Door')
+#library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Avatar')
+#library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Tooltip')
 
 if __name__ == '__main__':
     l = Library()

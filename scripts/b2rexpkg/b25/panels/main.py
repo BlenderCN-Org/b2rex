@@ -22,6 +22,7 @@ class ConnectionPanel(bpy.types.Panel):
     cb_pixel = None
     cb_view = None
     def __init__(self, context):
+        self._prev_tundra_path = ""
         bpy.types.Panel.__init__(self)
         # not the best place to set the loglevel :P
         bpy.ops.b2rex.loglevel(level=str(bpy.context.scene.b2rex_props.loglevel))
@@ -150,6 +151,9 @@ class ConnectionPanel(bpy.types.Panel):
 
         row = layout.row()
         row.prop(props, 'tundra_path')
+        if not props.tundra_path == self._prev_tundra_path:
+            self._prev_tundra_path = props.tundra_path
+            bpy.ops.b2rex.reload_components()
         if runexternal.find_application('server', [props.tundra_path], True):
             row.label(text='', icon='FILE_TICK')
 

@@ -113,6 +113,12 @@ class RexLogicModule(SyncModule):
     def getPanelName(self):
         return 'Components'
 
+    def reload_components(self, context):
+        props = context.scene.b2rex_props
+        for subdir in ['Tooltip', 'Door', 'Avatar']:
+            dest = os.path.join(props.tundra_path, 'scenes', subdir)
+            library.add_path(dest, True)
+
     def export(self, context):
         """
         Export and pack the scene to rex logic format.
@@ -262,7 +268,7 @@ class RexLogicModule(SyncModule):
         return rexio.get_component_info()
 
     def draw(self, layout, session, props):
-        if not self.expand(layout, title='Tools'):
+        if not self.expand(layout, title='Rex logic'):
             return False
         col = layout.column_flow(0)
         col.operator("b2rex.rexexport", text="Export to tundra format").action = 'export'
