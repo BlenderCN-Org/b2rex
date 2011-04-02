@@ -15,18 +15,18 @@ states = (("UPLOADING", 'Uploading', 'standard level, show only errors'),
               ("OFFLINE", 'Offline', 'show warnings or errors'),
               ("LOADED", 'Loaded', 'show info or errors'))
 
-class B2RexConnection(bpy.types.IDPropertyGroup):
+class B2RexConnection(bpy.types.PropertyGroup):
     name = StringProperty(name='name', default='', description='')
     url = StringProperty(name='url', default='', description='')
     username = StringProperty(name='username', default='', description='')
 
-class B2RexConnectionForm(bpy.types.IDPropertyGroup):
+class B2RexConnectionForm(bpy.types.PropertyGroup):
     name = StringProperty(name='name', default='')
     url = StringProperty(name='login url', default='http://')
     username = StringProperty(name='username', default='')
     password = StringProperty(name='password', default='')
 
-class B2RexConnections(bpy.types.IDPropertyGroup):
+class B2RexConnections(bpy.types.PropertyGroup):
     list = CollectionProperty(type=B2RexConnection,
                                      name='Connections',
                                      description='Sessions on the server')
@@ -36,18 +36,18 @@ class B2RexConnections(bpy.types.IDPropertyGroup):
     form = PointerProperty(type=B2RexConnectionForm, description="Connection form")
 
 
-class B2RexRegions(bpy.types.IDPropertyGroup):
+class B2RexRegions(bpy.types.PropertyGroup):
     name = StringProperty(name='name', default='', description='')
 
-class B2RexTextProps(bpy.types.IDPropertyGroup):
+class B2RexTextProps(bpy.types.PropertyGroup):
     uuid = StringProperty(name='uuid', default='', description='')
     state = EnumProperty(items=states, default='OFFLINE', description='')
 
 
-class B2RexChatLine(bpy.types.IDPropertyGroup):
+class B2RexChatLine(bpy.types.PropertyGroup):
     name = StringProperty(name='name', default='', description='')
 
-class B2RexBaseProps(bpy.types.IDPropertyGroup):
+class B2RexBaseProps(bpy.types.PropertyGroup):
     uuid = StringProperty(name='uuid', default='', description='')
 
 class B2RexObjectProps(B2RexBaseProps):
@@ -77,7 +77,7 @@ class B2RexMaterialProps(B2RexBaseProps):
                               default='',
                               description='')
 
-class B2RexProps(bpy.types.IDPropertyGroup):
+class B2RexProps(bpy.types.PropertyGroup):
     #B2RexProps.credentials = PasswordManager("b2rex")
     path = StringProperty(name='path', default='', description='')
     pack = StringProperty(name='pack', default='pack')
@@ -157,5 +157,4 @@ class B2RexProps(bpy.types.IDPropertyGroup):
     selected_region = IntProperty(default=-1, description="Expand, to display")
     chat_expand = BoolProperty(default=False, description="Expand chat")
 #    B2RexProps.regions.name = StringProperty(name='Name', description='Name of the session', maxlen=128, default='[session]')
-
 

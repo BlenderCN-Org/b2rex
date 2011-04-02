@@ -30,8 +30,6 @@ class SetLogLevel(bpy.types.Operator):
     level = EnumProperty(items=log_levels,
                          name='level',
                          default=str(logging.ERROR))
-    def __init__(self, context):
-        pass
 
     def getLabel(self):
         return getLogLabel(self.level)
@@ -50,8 +48,6 @@ class AddConnection(bpy.types.Operator):
     bl_label = "Add"
     bl_description = "Perform an action on a connection"
     action = StringProperty(name="action",default='add')
-    def __init__(self, context):
-        pass
     def draw(self, context):
         self.bl_description = self.action+" the current connection"
         self.description = self.action+" the current connection"
@@ -82,8 +78,6 @@ class UploadText(bpy.types.Operator):
     bl_idname = "b2rex.upload_text"
     bl_label = "Upload to Sim"
     text = StringProperty(name="text",default='')
-    def __init__(self, context):
-        pass
 
     def execute(self, context):
         bpy.b2rex_session.Scripting.upload(self.text)
@@ -96,8 +90,6 @@ class RequestAsset(bpy.types.Operator):
     asset_id = StringProperty(name="asset_id",default='')
     object_id = StringProperty(default='')
     asset_type = IntProperty(name="asset_type",default=0)
-    def __init__(self, context):
-        pass
 
     def execute(self, context):
         session = bpy.b2rex_session
@@ -115,8 +107,6 @@ class RequestAsset(bpy.types.Operator):
 class Connect(bpy.types.Operator):
     bl_idname = "b2rex.connect"
     bl_label = "connect"
-    def __init__(self, context):
-        pass
 
     def execute(self, context):
         bpy.b2rex_session.onconnect(context)
@@ -374,7 +364,7 @@ class LocalView(bpy.types.Operator):
         return {'FINISHED'}
 
 class ToggleImportTerrain(bpy.types.Operator):
-    bl_idname = "b2rex.toggleImportTerrain"
+    bl_idname = "b2rex.toggleimportterrain"
     bl_label = "Toggle import terrain"
 
     def execute(self, context):
@@ -391,7 +381,7 @@ class ToggleImportTerrain(bpy.types.Operator):
         return {'FINISHED'}
 
 class ToggleImportTextures(bpy.types.Operator):
-    bl_idname = "b2rex.toggleImportTextures"
+    bl_idname = "b2rex.toggleimporttextures"
     bl_label = "Toggle import textures"
 
     def execute(self, context):

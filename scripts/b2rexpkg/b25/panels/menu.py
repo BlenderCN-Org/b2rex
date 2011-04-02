@@ -29,9 +29,12 @@ class Menu(bpy.types.Header):
         session = bpy.b2rex_session
         props = context.scene.b2rex_props
         self.default_menu(context, session, props)
-        self.draw_connections(self.layout, session, props)
+        self.draw_connections(context, self.layout, session, props)
 
-    def draw_connections(self, layout, session, props):
+    def draw_callback(self, referer, context):
+        bpy.ops.b2rex.processqueue()
+        
+    def draw_connections(self, context, layout, session, props):
         if len(props.connection.list):
             if props.connection.search and props.connection.search in props.connection.list:
                 if session.simrt:
@@ -47,7 +50,7 @@ class Menu(bpy.types.Header):
                     layout.operator("b2rex.toggle_rt", text="RT", icon='PMARKER')
                 if session.simrt:
                     session.processView()
-                    bpy.ops.b2rex.processqueue()
+                    self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
 
         if session.stats[5] > 10:
             layout.label(text='',icon='PREVIEW_RANGE')

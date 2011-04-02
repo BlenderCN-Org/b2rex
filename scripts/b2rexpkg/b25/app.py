@@ -284,11 +284,15 @@ class B2Rex(BaseApplication):
                     setattr(obj.opensim, key, value)
         self.queueRedraw()
 
+    def draw_callback(self, referer, context):
+        bpy.ops.b2rex.redraw()
+        
 
     def queueRedraw(self, immediate=False):
         screen = bpy.context.screen
+        context = bpy.context
         if screen and not immediate:
-            bpy.ops.b2rex.redraw()
+            self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
         else:
             # no context means we call a redraw for every
             # screen. this may be happening from a thread

@@ -21,7 +21,7 @@ class ConnectionPanel(bpy.types.Panel):
     bl_idname = "b2rex"
     cb_pixel = None
     cb_view = None
-    def __init__(self, context):
+    def __init__(self):
         self._prev_tundra_path = ""
         bpy.types.Panel.__init__(self)
         # not the best place to set the loglevel :P
@@ -159,8 +159,8 @@ class ConnectionPanel(bpy.types.Panel):
 
         check_icon = ['CHECKBOX_DEHLT', 'CHECKBOX_HLT']
         col = layout.column_flow()
-        col.operator('b2rex.toggleImportTerrain', text="Import Terrain", icon=check_icon[props.importTerrain], emboss=False) 
-        col.operator('b2rex.toggleImportTextures', text="Import Textures", icon=check_icon[props.importTextures], emboss=False) 
+        col.operator('b2rex.toggleimportterrain', text="Import Terrain", icon=check_icon[props.importTerrain], emboss=False) 
+        col.operator('b2rex.toggleimporttextures', text="Import Textures", icon=check_icon[props.importTextures], emboss=False) 
         col.operator('b2rex.toggle_safe_mode', text="Safe Mode",
                      icon=check_icon[b2rexpkg.safe_mode], emboss=False) 
 

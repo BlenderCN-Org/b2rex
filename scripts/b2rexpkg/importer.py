@@ -292,7 +292,7 @@ class Importer25(object):
         euler = mathutils.Quaternion((rot[3], rot[0], rot[1], rot[2]))
         r_mat = euler.to_matrix().to_4x4()
         l_rmat = r_mat*parent_imatrix
-        rot = l_rmat.to_quat()
+        rot = l_rmat.to_quaternion()
         return (rot.w, rot.x, rot.y, rot.z)
 
     def _get_local_scale(self, scale, parent):
@@ -349,7 +349,7 @@ class Importer25(object):
     def unapply_rotation(self, euler):
         euler = mathutils.Euler([euler[0], euler[1],
                                         euler[2]])
-        q = euler.to_quat()
+        q = euler.to_quaternion()
         return [q.x, q.y, q.z, q.w]
         
     def apply_rotation(self, obj, rot, raw=False):

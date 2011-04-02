@@ -73,6 +73,7 @@ _oldheader_ = None
 
 def register():
     global _oldheader_
+    bpy.utils.register_module(__name__)
 
     bpy.types.Scene.b2rex_props = PointerProperty(type=B2RexProps, name="b2rex props")
     bpy.types.Object.opensim = PointerProperty(type=B2RexObjectProps,
@@ -90,9 +91,9 @@ def register():
     bpy.b2rex_session = B2Rex(bpy.context.scene)
     if hasattr(bpy.types, 'INFO_HT_header'):
         _oldheader_ = bpy.types.INFO_HT_header
-        bpy.types.unregister( bpy.types.INFO_HT_header )
+        bpy.utils.unregister_class( bpy.types.INFO_HT_header )
     if hasattr(bpy.types, 'INFO_HT_myheader'):
-       bpy.types.unregister( bpy.types.INFO_HT_myheader )
+        bpy.utils.unregister_class( bpy.types.INFO_HT_myheader )
 
 
 #    register_keymaps()
@@ -107,7 +108,7 @@ def unregister():
     del bpy.types.Material.opensim
     del bpy.types.Texture.opensim
     del bpy.types.Image.opensim
-    bpy.types.register( _oldheader_ )
+    bpy.utils.register_class( _oldheader_ )
     #testthread.running = False
 #    unregister_keymaps()
 

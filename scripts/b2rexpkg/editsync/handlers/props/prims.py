@@ -8,7 +8,7 @@ prim_extrude = [('TITLE', 'Extrusion Types', ""),
                 ("LINEAR", "Linear", ""),
                 ("CIRCULAR", "Circular", "")]
 
-class B2RexPrimProps(bpy.types.IDPropertyGroup):
+class B2RexPrimProps(bpy.types.PropertyGroup):
     extrapolationType = EnumProperty(items=prim_extrude, default='LINEAR', description='')
     sides = IntProperty(name="sides", min=3, max=50)
     hollowSides = IntProperty(name="hollowSides", min=3, max=50)
