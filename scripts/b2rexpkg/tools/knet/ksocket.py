@@ -67,22 +67,6 @@ class KristalliSocket(object):
     def recv(self):
         datalen, datalen_size = self.get_vle16()
         msgID, msgID_size = self.get_vle16()
-        """
-        data = self.sock.recv(2)
-        if len(data) < 2:
-            return None
-        if len(data) > 2:
-            print("TOO MUCH DATA")
-
-        datalen, msgID = struct.unpack("<BB", data)
-        if datalen > 127:
-            c = datalen & 127
-            b = msgID
-            if b > 127:
-                print("MESSAGE TOO BIG!!")
-            datalen = (b << 7) | c
-        #raise RuntimeError("socket connection broken")
-        """
         datalen = datalen-msgID_size
         msg = b''
         currlen = 0
