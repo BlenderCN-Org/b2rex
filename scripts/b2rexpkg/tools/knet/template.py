@@ -1,4 +1,15 @@
 import xml.etree.ElementTree as ET
+import struct
+
+def get_hash(name):
+    # from tundra:Core:CoreStringUtils.cpp:GetHash()
+    ret = 0
+    if not name:
+        return ret
+    name_b = name.lower().encode('utf-8')
+    for c in name_b:
+        ret = (struct.unpack('<B', c)[0] + (ret<<6) + (ret<<16) - ret) & 0xFFFFFFFF
+    return ret
 
 class Message(object):
     def __init__(self, name):
