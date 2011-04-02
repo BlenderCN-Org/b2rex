@@ -28,7 +28,7 @@ class KristalliSession(object):
             msgId, data = data
             if msgId == 1:
                 val = data.get_u8()
-                print " - Ping request", val
+                print(" - Ping request", val)
                 s.send(2, data._data)
             elif msgId in t.templates:
                 msg = t.parse(msgId, data)
@@ -38,7 +38,7 @@ class KristalliSession(object):
                     f = open("/tmp/"+str(msgId)+".txt", "w")
                     f.write(data._data)
                     f.close()
-                print 'Received unknown', msgId, len(data._data)
+                print('Received unknown', msgId, len(data._data))
         s.close()
 
 if __name__ == "__main__":
