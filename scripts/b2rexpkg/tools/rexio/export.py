@@ -47,6 +47,8 @@ class RexSceneExporter(object):
             component = ET.SubElement(entity, 'component')
             component.set('type', comp.component_type)
             component.set('sync', '1')
+            if comp.component_name:
+                component.set('name', comp.component_name)
             for attr in comp.attribute_names:
                 value = getattr(comp, attr_name(attr))
                 if comp.component_type in components_info:
