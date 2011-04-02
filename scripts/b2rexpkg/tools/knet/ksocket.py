@@ -38,15 +38,52 @@ class KristalliSocket(object):
             if sent == 0:
                 raise RuntimeError("socket connection broken")
             totalsent += sent
+    def recv_byte(self):
+        data = self.sock.recv(1)
+        if len(data) < 1:
+            return None
+        return struct.unpack("<B", data)[0]
+
+    def recv_half(self):
+        data = self.sock.recv(2)
+        if len(data) < 2:
+            raise Exception("Not enough data!")
+        return struct.unpack("<H", data)[0]
+
+    def get_vle16(self):
+        c = self.recv_byte()
+        if c > 127:
+            b = self.recv_byte()
+            c = c & 127
+            if b > 127:
+                b = b & 127
+                a = self.recv_half()
+                return (a << 14) | (b << 7) | c, 4
+            else:
+                return (b << 7) | c, 2
+        else:
+            return c, 1
+            
     def recv(self):
+        datalen, datalen_size = self.get_vle16()
+        msgID, msgID_size = self.get_vle16()
+        """
         data = self.sock.recv(2)
         if len(data) < 2:
             return None
         if len(data) > 2:
             print("TOO MUCH DATA")
+
         datalen, msgID = struct.unpack("<BB", data)
+        if datalen > 127:
+            c = datalen & 127
+            b = msgID
+            if b > 127:
+                print("MESSAGE TOO BIG!!")
+            datalen = (b << 7) | c
         #raise RuntimeError("socket connection broken")
-        datalen = datalen-1
+        """
+        datalen = datalen-msgID_size
         msg = b''
         currlen = 0
         while currlen < datalen:
