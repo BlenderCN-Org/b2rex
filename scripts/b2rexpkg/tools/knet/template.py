@@ -21,6 +21,11 @@ class Message(object):
             components = self.components
             return "KristalliMessage(%s, %s, %s)" % (name, entityID, components)
 
+        elif hasattr(self, 'componentTypeHash'):
+            componentTypeHash = self.componentTypeHash
+            componentName = self.componentName
+            return "KristalliComponent(%s, %s)" % (componentTypeHash,
+                                                 componentName)
         elif hasattr(self, 'entityID'):
             entityID = self.entityID
             return "KristalliMessage(%s, %s)" % (name, entityID)
