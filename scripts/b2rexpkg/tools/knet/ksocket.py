@@ -27,11 +27,12 @@ class KristalliSocket(object):
         sock, addr = self.sock.accept()
         return KristalliSocket(sock), addr
     def send(self, msgId, data):
-        msg = struct.pack("<B", msgId)+data
-        strlen = struct.pack("<B", len(msg))
-        totallen = len(msg) + 1
+        msg = struct.pack("<B", msgId) + data
+        msg_len = len(msg)
+        strlen = KristalliData.encode_ve16(msg_len)
         totalsent = 0
         totalmsg = strlen+msg
+        totallen = len(totalmsg)
         while totalsent < totallen:
             sent = self.sock.send(totalmsg[totalsent:])
             if sent == 0:
@@ -41,6 +42,8 @@ class KristalliSocket(object):
         data = self.sock.recv(2)
         if len(data) < 2:
             return None
+        if len(data) > 2:
+            print("TOO MUCH DATA")
         datalen, msgID = struct.unpack("<BB", data)
         #raise RuntimeError("socket connection broken")
         datalen = datalen-1
