@@ -16,7 +16,16 @@ class KristalliSession(object):
         self.login()
 
     def login(self):
-        self._socket.send(100, struct.pack('<H', len(self.name))+self.name)
+        login_data = """<login>
+                            <address value="localhost" />
+                            <port value="2345" />
+                            <protocol value="tcp" />
+                            <username value="%s" />
+                            <password value="" />
+                        </login>
+                    """ %(self.name,)
+        print(login_data)
+        self._socket.send(100, struct.pack('<H', len(login_data))+login_data)
 
     def loop(self):
         s = self._socket
