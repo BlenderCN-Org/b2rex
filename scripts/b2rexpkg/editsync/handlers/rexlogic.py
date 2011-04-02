@@ -21,8 +21,9 @@ import bpy
 import subprocess
 
 class RexComponent(object):
-    def __init__(self, obj):
+    def __init__(self, obj, name=''):
         self._obj = obj
+        self.component_name = name
     def _get_dummy(self):
         return ""
     def _get_attribute_names(self):
@@ -82,7 +83,7 @@ class PlaceableComponent(RexComponent):
 
 class GenericComponent(RexComponent):
     def __init__(self, obj, component, metadata):
-        RexComponent.__init__(self, obj)
+        RexComponent.__init__(self, obj, component.name)
         self._component = component
         self._metadata = metadata
         self.component_type = component.type
