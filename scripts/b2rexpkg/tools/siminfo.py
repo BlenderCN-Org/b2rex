@@ -10,8 +10,6 @@ if sys.version_info[0] == 2:
 else:
     import urllib.request as urllib2
 
-import xml.etree.ElementTree as ET
-
 from .restconnector import RestConnector
 
 
