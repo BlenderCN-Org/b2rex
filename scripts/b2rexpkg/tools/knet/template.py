@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 
-class MessageAtom(object):
+class Message(object):
     def __init__(self, name):
         self.name = name
     def __repr__(self):
@@ -27,7 +27,7 @@ class MessageAtom(object):
         else:
             return "KristalliMessage(%s)" % (name,)
 
-class MessageStruct(object):
+class MessageTemplate(object):
     def __init__(self, xml):
         self._xml = xml
     def __getattr__(self, name):
@@ -48,7 +48,7 @@ class MessageStruct(object):
         return elmt_list
 
     def parse_element(self, xml, data, level):
-        dest = MessageAtom(xml.get('name'))
+        dest = Message(xml.get('name'))
         #print(" "*level, "Element", xml.get('name'))
         for elmt in xml:
             val = None
@@ -91,7 +91,7 @@ class MessageTemplateParser(object):
         xml = ET.fromstring(data)
         for elmt in xml:
             id = int(elmt.get('id'))
-            self.templates[id] = MessageStruct(elmt)
+            self.templates[id] = MessageTemplate(elmt)
             # print(id, self.templates[id])
 
     def parse(self, msg_id, data):
@@ -99,7 +99,7 @@ class MessageTemplateParser(object):
 
 
 if __name__ == '__main__':
-    from kdata import KristalliData
+    from data import KristalliData
     f = open("/tmp/113.txt")
     data = KristalliData(f.read())
     f.close()
