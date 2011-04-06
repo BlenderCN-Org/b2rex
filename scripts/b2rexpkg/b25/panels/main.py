@@ -21,7 +21,7 @@ class ConnectionPanel(bpy.types.Panel):
     bl_idname = "b2rex"
     cb_pixel = None
     cb_view = None
-    def __init__(self):
+    def __init__(self, context=None):
         self._prev_tundra_path = ""
         bpy.types.Panel.__init__(self)
         # not the best place to set the loglevel :P

@@ -4,6 +4,12 @@ from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty, EnumProperty
 
+if not hasattr(bpy.utils, 'register_class'):
+    # blender 2.56 compatibility
+    class PropertyGroup(bpy.types.IDPropertyGroup):
+        pass
+
+
 from .logic import B2RexFsm, B2RexComponent
 
 import logging

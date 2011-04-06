@@ -18,11 +18,17 @@ from .material import RexMaterialIO
 from bpy.props import StringProperty, PointerProperty, IntProperty
 from bpy.props import BoolProperty, FloatProperty, CollectionProperty
 from bpy.props import FloatVectorProperty
+
 from b2rexpkg.tools.passmanager import PasswordManager
 
 from b2rexpkg import IMMEDIATE, ERROR, OK
 
 import bpy
+
+b_version = 256
+if hasattr(bpy.utils, 'register_class'):
+    b_version = 257
+
 
 class B2Rex(BaseApplication):
     def __init__(self, context):
@@ -292,7 +298,10 @@ class B2Rex(BaseApplication):
         screen = bpy.context.screen
         context = bpy.context
         if screen and not immediate:
-            self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
+            if b_version == 256:
+                bpy.ops.b2rex.redraw()
+            else:
+                self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
         else:
             # no context means we call a redraw for every
             # screen. this may be happening from a thread
