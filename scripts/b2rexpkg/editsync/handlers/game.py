@@ -109,7 +109,6 @@ class GameModule(SyncModule):
             # keyboard control
 
     def processCommands(self):
-        print("commands!")
         from bge import logic as G
         from bge import render as R
         from bge import events
@@ -155,6 +154,21 @@ class GameModule(SyncModule):
                 prop.name = 'uuid'
                 prop.value = obj.opensim.uuid
                 obj.select = False
+            if obj.opensim.uuid == self._parent.agent_id:
+                self.prepare_avatar(context, obj)
+
+    def prepare_avatar(self, context, obj):
+        if not len(obj.game.sensors):
+            bpy.ops.logic.sensor_add( type='ALWAYS'  )
+            sensor = obj.game.sensors[-1]
+            sensor.use_pulse_true_level = True
+        if not len(obj.game.controllers):
+            for name in ['processCommands', 'processControls']:
+                bpy.ops.logic.controller_add( type='PYTHON'  )
+                controller = obj.game.controllers[-1]
+                controller.mode = 'MODULE'
+                controller.module = 'b2rexpkg.editsync.handlers.game.' + name
+                controller.link(sensor=obj.game.sensors[-1])
 
     def prepare_object(self, context, obj):
         """
