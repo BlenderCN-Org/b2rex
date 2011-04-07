@@ -43,14 +43,14 @@ class KristalliSession(object):
             msgId, data = data
             if msgId == 1:
                 val = data.get_u8()
-                print(" - Ping request", val)
+                #print(" - Ping request", val)
                 s.send(2, data._data)
             elif msgId in t.templates:
                 msg = t.parse(msgId, data)
                 if msgId in self._callbacks:
                     for cb in self._callbacks[msgId]:
                         cb(msg)
-                print(msg)
+                        # print(msg)
             else:
                 if not os.path.exists("/tmp/"+str(msgId)+".txt"):
                     f = open("/tmp/"+str(msgId)+".txt", "w")
