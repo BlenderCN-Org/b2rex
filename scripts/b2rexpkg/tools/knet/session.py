@@ -2,14 +2,21 @@
 import os
 import socket
 import struct
+from collections import defaultdict
 from .ksocket import KristalliSocket
 from .template import MessageTemplateParser
 
 class KristalliSession(object):
     def __init__(self, name):
         self.name = name.encode('utf-8')
+        self._callbacks = defaultdict(list)
         self._socket = KristalliSocket()
         self.templates = MessageTemplateParser()
+
+    def subscribe(self, msg_id, cb):
+        if isinstance(msg_id, str):
+            msg_id = self.templates.get_msg_id(msg_id)
+        self._callbacks[msg_id].append(cb)
 
     def connect(self, host, port):
         self._socket.connect((host, port))
@@ -40,6 +47,9 @@ class KristalliSession(object):
                 s.send(2, data._data)
             elif msgId in t.templates:
                 msg = t.parse(msgId, data)
+                if msgId in self._callbacks:
+                    for cb in self._callbacks[msgId]:
+                        cb(msg)
                 print(msg)
             else:
                 if not os.path.exists("/tmp/"+str(msgId)+".txt"):

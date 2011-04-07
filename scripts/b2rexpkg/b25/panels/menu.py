@@ -1,5 +1,9 @@
 import bpy
 
+b_version = 256
+if hasattr(bpy.utils, 'register_class'):
+    b_version = 257
+
 class B2RexGameMenu(bpy.types.Menu):
     bl_label = "Game"
 
@@ -50,7 +54,10 @@ class Menu(bpy.types.Header):
                     layout.operator("b2rex.toggle_rt", text="RT", icon='PMARKER')
                 if session.simrt:
                     session.processView()
-                    self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
+                    if b_version == 256:
+                        bpy.ops.b2rex.processqueue()
+                    else:
+                        self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
 
         if session.stats[5] > 10:
             layout.label(text='',icon='PREVIEW_RANGE')

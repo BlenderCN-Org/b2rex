@@ -1,15 +1,4 @@
 import xml.etree.ElementTree as ET
-import struct
-
-def get_hash(name):
-    # from tundra:Core:CoreStringUtils.cpp:GetHash()
-    ret = 0
-    if not name:
-        return ret
-    name_b = name.lower().encode('utf-8')
-    for c in name_b:
-        ret = (struct.unpack('<B', c)[0] + (ret<<6) + (ret<<16) - ret) & 0xFFFFFFFF
-    return ret
 
 class Message(object):
     def __init__(self, name):
@@ -99,6 +88,10 @@ class MessageTemplate(object):
 class MessageTemplateParser(object):
     def __init__(self):
         self.templates = {}
+        self._msg_ids = {}
+
+    def get_msg_id(self, msg_name):
+        return self._msg_ids[msg_name]
 
     def add_file(self, filename):
         f = open(filename, 'r')
@@ -107,7 +100,9 @@ class MessageTemplateParser(object):
         xml = ET.fromstring(data)
         for elmt in xml:
             id = int(elmt.get('id'))
+            name = elmt.get('name')
             self.templates[id] = MessageTemplate(elmt)
+            self._msg_ids[name] = id
             # print(id, self.templates[id])
 
     def parse(self, msg_id, data):
