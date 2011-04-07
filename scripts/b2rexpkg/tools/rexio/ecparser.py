@@ -20,14 +20,17 @@ class ComponentData(object):
 
     def initialize(self, data):
         attrs_size = data.get_u8()
+        data.fill(100)
         if not attrs_size == len(self._tpl.attribute_names):
-            print("Different sizes!", name, attrs_size,
+            print("Different sizes!", self._tpl.component_name, attrs_size,
                                             len(self._tpl.attribute_names))
-        for name in self._tpl.attribute_names:
+        for idx, name in enumerate(self._tpl.attribute_names):
             attrtype = self._tpl.attributes[name]
             val = None
             if attrtype == 'vector3':
                 val = data.get_vector3()
+            elif attrtype == 'vector4':
+                val = data.get_vector4()
             elif attrtype == 'transform':
                 val = data.get_transform()
             elif attrtype == 'string':
@@ -37,7 +40,9 @@ class ComponentData(object):
             elif attrtype == 'float':
                 val = data.get_float()
             elif attrtype == 'integer':
-                val = data.get_integer()
+                val = data.get_s32()
+            elif attrtype == 'uint':
+                val = data.get_u32()
             elif attrtype == 'asset':
                 val = data.get_string(8)
             elif attrtype == 'assetlist':
@@ -49,7 +54,7 @@ class ComponentData(object):
 
     def __str__(self):
         return "ComponentData(%s) [%s]" % (self._tpl.component_name,
-                                           self._tpl.attribute_names)
+                                           self.__dict__)
 
 class ComponentTemplate(object):
     def __init__(self, name):
@@ -70,11 +75,14 @@ class ComponentTemplate(object):
                                                           self.attributes)
 
 type_map = {'QVector3D': 'vector3',
+            'Vector3df': 'vector3',
+            'Color': 'vector4', # XXX ?
             'Transform': 'transform',
             'bool': 'boolean',
             'QString': 'string',
             'float': 'float',
             'int': 'integer',
+            'uint': 'uint',
             'AssetReference' : 'asset',
             'AssetReferenceList' : 'assetlist'}
 
