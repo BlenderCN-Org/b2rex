@@ -20,7 +20,7 @@ class ComponentData(object):
 
     def initialize(self, data):
         attrs_size = data.get_u8()
-        data.fill(100)
+        data.fill(120)
         if not attrs_size == len(self._tpl.attribute_names):
             print("Different sizes!", self._tpl.component_name, attrs_size,
                                             len(self._tpl.attribute_names))
