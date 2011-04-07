@@ -143,7 +143,10 @@ class ObjectHandler(Handler):
                 obj_uuid = str(obj.FullID)
                 obj.pos = v3_to_list(pos)
                 obj.rot = q_to_list(rot)
-                self.out_queue.put(['pos', obj_uuid, v3_to_list(pos), q_to_list(rot)])
+                if obj_uuid and obj.pos and obj.rot:
+                    self.out_queue.put(['pos', obj_uuid, v3_to_list(pos), q_to_list(rot)])
+                else:
+                    print("not avatar update")
             else:
                 print("cant find object")
 
