@@ -49,6 +49,11 @@ class KristalliData(object):
         self._idx += 4
         return val
 
+    def get_s32(self):
+        val = struct.unpack('<i', self._data[self._idx:self._idx+4])[0]
+        self._idx += 4
+        return val
+
     def get_s8(self):
         val = self._data[self._idx]
         self._idx += 1
@@ -74,6 +79,11 @@ class KristalliData(object):
     def get_transform(self):
         val = struct.unpack("<fffffffff", self._data[self._idx:self._idx+36])
         self._idx += 36
+        return val
+
+    def get_vector4(self):
+        val = struct.unpack("<ffff", self._data[self._idx:self._idx+16])
+        self._idx += 16
         return val
 
     def get_vector3(self):
