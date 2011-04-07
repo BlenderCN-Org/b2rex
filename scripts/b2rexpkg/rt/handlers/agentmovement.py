@@ -18,8 +18,8 @@ class AgentMovementHandler(Handler):
     def processBodyRotation(self, body_rotation):
         print("processBodyRotation")
         agent = self.manager.client
-	print(body_rotation)
-	print(type(body_rotation))
+        print(body_rotation)
+        print(type(body_rotation))
         agent.body_rotation(body_rotation)
 
     def processStop(self):
