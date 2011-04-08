@@ -9,10 +9,18 @@ import os
 import mathutils
 
 def processControls():
-    bpy.b2rex_session.Game.processControls()
+    """
+    Process keyboard and mouse. Function to hook up
+    inside a blender python module controller.
+    """
+    bpy.b2rex_session.Game.game_controls()
 
 def processCommands():
-    bpy.b2rex_session.Game.processCommands()
+    """
+    Process incoming sim commands. Function to hook up
+    inside a blender python module controller.
+    """
+    bpy.b2rex_session.Game.game_commands()
 
 class GameModule(SyncModule):
     def has_game_uuid(self, obj):
@@ -24,6 +32,9 @@ class GameModule(SyncModule):
                 return True
 
     def import_object(self, obname):
+        """
+        Import an object from a blender library (not used, example)
+        """
         opath = "//cube.blend\\Object\\" + obname
         s = os.sep
         dpath = bpy.utils.script_paths()[0] + \
@@ -46,12 +57,16 @@ class GameModule(SyncModule):
        # for ob in bpy.context.selected_objects:
        #     ob.location = bpy.context.scene.cursor_location
 
-    def processControls(self):
+    def game_controls(self):
+        """
+        Process keyboard and mouse controls for the game engine.
+        """
         from bge import logic as G
         from bge import render as R
         from bge import events
 
         sensitivity = 1.0    # mouse sensitivity
+        speed = 0.2    # walk speed
         owner = G.getCurrentController().owner
         camera = owner.children[0]
 
@@ -121,15 +136,14 @@ class GameModule(SyncModule):
             else:
                 simrt.Stop()
 
-    def processCommands(self):
+    def game_commands(self):
+        """
+        Process incoming sim queue commands.
+        """
         from bge import logic as G
         from bge import render as R
         from bge import events
 
-        speed = 0.2    # walk speed
-        sensitivity = 1.0    # mouse sensitivity
-
-        owner = G.getCurrentController().owner
         scene = G.getCurrentScene()
 
         simrt = bpy.b2rex_session.simrt
@@ -142,16 +156,21 @@ class GameModule(SyncModule):
                 self.processPosition(scene, *command[1:])
 
     def find_object(self, scene, obj_uuid):
+        """
+        Find the object in the given scene with given uuid.
+        """
         for obj in scene.objects:
             if obj.get('uuid') == obj_uuid:
                 return obj
 
     def processPosition(self, scene, objid, pos, rot=None):
+        """
+        Process a position command.
+        """
         session = bpy.b2rex_session
         obj = self.find_object(scene, objid)
         #if objid == session.agent_id:
         if obj:
-            print(pos, obj.get("uuid"))
             obj.worldPosition = session._apply_position(pos)
             if rot:
                b_q = mathutils.Quaternion((rot[3], rot[0], rot[1], rot[2]))
@@ -178,6 +197,10 @@ class GameModule(SyncModule):
                 self.prepare_avatar(context, obj)
 
     def prepare_avatar(self, context, obj):
+        """
+        Prepare an avatar for the game engine. Creates the necessary
+        logic bricks.
+        """
         if not len(obj.game.sensors):
             bpy.ops.logic.sensor_add( type='ALWAYS'  )
             sensor = obj.game.sensors[-1]
