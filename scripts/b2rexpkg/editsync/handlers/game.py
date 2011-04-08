@@ -8,6 +8,16 @@ import bpy
 import os
 import mathutils
 
+class ControlFlags:
+    # some controlflags from pyogp.lib.client.enums.AgentControlFlags
+    AtPos   = 0x00000001
+    AtNeg   = 0x00000002
+    LeftPos = 0x00000004
+    LeftNeg = 0x00000008
+    UpPos   = 0x00000010
+    UpNeg   = 0x00000020
+    Fly     = 0x00002000
+
 def processControls():
     """
     Process keyboard and mouse. Function to hook up
@@ -79,7 +89,8 @@ class GameModule(SyncModule):
             owner["oldY"] = 0.0
             owner["minX"] = 10.0
             owner["minY"] = 10.0
-
+            owner["flying"] = False
+            owner["flags"] = 0
         else:
             
             # clamp camera to above surface
@@ -117,24 +128,63 @@ class GameModule(SyncModule):
                 owner["minY"] = y
                 
             # Center mouse in game window
-           
-
             G.mouse.position = (0.5,0.5)
             
             # keyboard control
             keyboard = G.keyboard.events
+
+            # walk forwards / backwards
             if keyboard[events.WKEY]:
-                simrt.Walk(True)
-            elif keyboard[events.SKEY]:
-                simrt.WalkBackwards(True)
-            elif keyboard[events.AKEY]:
-                pass
-                #simrt.BodyRotation([1, 0, 0, 1])
-            elif keyboard[events.DKEY]:
-                pass
-                #simrt.BodyRotation([1, 1, 0, 1])
+                owner['flags'] |= ControlFlags.AtPos
+            else:
+                owner['flags'] &= ~ControlFlags.AtPos
+            if keyboard[events.SKEY]:
+                owner['flags'] |= ControlFlags.AtNeg
+            else:
+                owner['flags'] &= ~ControlFlags.AtNeg
+
+            # strafe
+            if keyboard[events.AKEY]:
+                owner['flags'] |= ControlFlags.LeftPos
+            else:
+                owner['flags'] &= ~ControlFlags.LeftPos
+            if keyboard[events.DKEY]:
+                owner['flags'] |= ControlFlags.LeftNeg
+            else:
+                owner['flags'] &= ~ControlFlags.LeftNeg
+
+            # fly up
+            if keyboard[events.EKEY]:
+                owner['flags'] |= ControlFlags.UpPos
+            else:
+                owner['flags'] &= ~ControlFlags.UpPos
+
+            # fly down
+            if keyboard[events.CKEY]:
+                owner['flags'] |= ControlFlags.UpNeg
+            else:
+                owner['flags'] &= ~ControlFlags.UpNeg
+
+            # toggle fly
+            if keyboard[events.FKEY]:
+                if not owner['f_pressed']:
+                    owner['flying'] = not owner['flying']
+                    owner['f_pressed'] = True
+            else:
+                owner['f_pressed'] = False
+
+            # set flying control flag
+            if owner['flying']:
+                owner['flags'] |= ControlFlags.Fly
+            else:
+                owner['flags'] &= ~ControlFlags.Fly
+            # stop
+            #if not action and not owner['flying']:
+            if owner['flags']:
+                simrt.SetFlags(owner['flags'])
             else:
                 simrt.Stop()
+
 
     def game_commands(self):
         """
@@ -155,6 +205,7 @@ class GameModule(SyncModule):
             if command[0] == "pos":
                 self.processPosition(scene, *command[1:])
 
+
     def find_object(self, scene, obj_uuid):
         """
         Find the object in the given scene with given uuid.
@@ -163,13 +214,13 @@ class GameModule(SyncModule):
             if obj.get('uuid') == obj_uuid:
                 return obj
 
+
     def processPosition(self, scene, objid, pos, rot=None):
         """
         Process a position command.
         """
         session = bpy.b2rex_session
         obj = self.find_object(scene, objid)
-        #if objid == session.agent_id:
         if obj:
             obj.worldPosition = session._apply_position(pos)
             if rot:
@@ -193,18 +244,19 @@ class GameModule(SyncModule):
                 prop.name = 'uuid'
                 prop.value = obj.opensim.uuid
                 obj.select = False
-            if obj.opensim.uuid == self._parent.agent_id:
-                self.prepare_avatar(context, obj)
+
 
     def prepare_avatar(self, context, obj):
         """
         Prepare an avatar for the game engine. Creates the necessary
         logic bricks.
         """
+        # add sensors
         if not len(obj.game.sensors):
             bpy.ops.logic.sensor_add( type='ALWAYS'  )
             sensor = obj.game.sensors[-1]
             sensor.use_pulse_true_level = True
+        # add controllers
         if not len(obj.game.controllers):
             for name in ['processCommands', 'processControls']:
                 bpy.ops.logic.controller_add( type='PYTHON'  )
@@ -213,23 +265,36 @@ class GameModule(SyncModule):
                 controller.module = 'b2rexpkg.editsync.handlers.game.' + name
                 controller.link(sensor=obj.game.sensors[-1])
 
+
     def prepare_object(self, context, obj):
         """
         Prepare the given object for running inside the
         game engine.
         """
         self.ensure_game_uuid(context, obj)
+        if obj.opensim.uuid and obj.opensim.uuid == self._parent.agent_id:
+            self.prepare_avatar(context, obj)
+
 
     def start_game(self, context):
         """
         Start blender game engine, previously setting up game
         properties for opensim.
         """
+        # save selected for later
         selected = list(context.selected_objects)
+
+        # unselect all
         for obj in selected:
             obj.select = False
+
+        # prepare each object
         for obj in bpy.data.objects:
             self.prepare_object(context, obj)
+
+        # restore initial selection
         for obj in selected:
             obj.select = True
+
+        # start the game
         bpy.ops.view3d.game_start()
