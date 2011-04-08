@@ -19,6 +19,28 @@ class AgentMovementHandler(Handler):
         agent = self.manager.client
         agent.control_flags = flags
 
+    def processStop(self):
+        """
+        Stop all movement
+        """
+        agent = self.manager.client
+        agent.stop()
+
+    def onAgentMovementComplete(self, packet):
+        """
+        AgentMovementComplete received from sim
+        """
+        # some region info
+        AgentData = packet['AgentData'][0]
+        Data = packet['Data'][0]
+        pos = Data['Position']
+        lookat = Data['LookAt']
+        agent_id = str(AgentData['AgentID'])
+        lookat = [lookat.X, lookat.Y, lookat.Z]
+        pos = [pos.X, pos.Y, pos.Z]
+        self.out_queue.put(["AgentMovementComplete", agent_id, pos, lookat])
+
+    # unused:
     def processWalk(self, walk = False):
         """
         Walk on/off
@@ -40,13 +62,6 @@ class AgentMovementHandler(Handler):
         agent = self.manager.client
         agent.body_rotation(body_rotation)
 
-    def processStop(self):
-        """
-        Stop all movement
-        """
-        agent = self.manager.client
-        agent.stop()
-
     def processFly(self, flying):
         """
         Set flying flag
@@ -67,34 +82,5 @@ class AgentMovementHandler(Handler):
         """
         agent = self.manager.client
         agent.move_down(flying)
-
-    def processStrafeLeft(self, moving = True):
-        """
-        Strafe left on/off
-        """
-        agent = self.manager.client
-        agent.strafe_left(moving)
-
-    def processStrafeRight(self, moving = True):
-        """
-        Strafe right on/off
-        """
-        agent = self.manager.client
-        agent.strafe_right(moving)
-
-
-    def onAgentMovementComplete(self, packet):
-        """
-        AgentMovementComplete received from sim
-        """
-        # some region info
-        AgentData = packet['AgentData'][0]
-        Data = packet['Data'][0]
-        pos = Data['Position']
-        lookat = Data['LookAt']
-        agent_id = str(AgentData['AgentID'])
-        lookat = [lookat.X, lookat.Y, lookat.Z]
-        pos = [pos.X, pos.Y, pos.Z]
-        self.out_queue.put(["AgentMovementComplete", agent_id, pos, lookat])
 
 
