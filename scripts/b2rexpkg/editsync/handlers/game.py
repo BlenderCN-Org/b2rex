@@ -128,6 +128,7 @@ class GameModule(SyncModule):
         sensitivity = 1.0    # mouse sensitivity
 
         owner = G.getCurrentController().owner
+        scene = G.getCurrentScene()
 
         simrt = bpy.b2rex_session.simrt
         session = bpy.b2rex_session
@@ -136,16 +137,23 @@ class GameModule(SyncModule):
 
         for command in commands:
             if command[0] == "pos":
-                self.processPosition(owner, *command[1:])
+                self.processPosition(scene, *command[1:])
 
-    def processPosition(self, owner, objid, pos, rot=None):
+    def find_object(self, scene, obj_uuid):
+        for obj in scene.objects:
+            if obj.get('uuid') == obj_uuid:
+                return obj
+
+    def processPosition(self, scene, objid, pos, rot=None):
         session = bpy.b2rex_session
-        if objid == session.agent_id:
-            print(pos, owner.get("uuid"))
-            owner.worldPosition = session._apply_position(pos)
+        obj = self.find_object(scene, objid)
+        #if objid == session.agent_id:
+        if obj:
+            print(pos, obj.get("uuid"))
+            obj.worldPosition = session._apply_position(pos)
             if rot:
                b_q = mathutils.Quaternion((rot[3], rot[0], rot[1], rot[2]))
-               owner.worldOrientation = b_q
+               obj.worldOrientation = b_q
 
 
     def ensure_game_uuid(self, context, obj):
