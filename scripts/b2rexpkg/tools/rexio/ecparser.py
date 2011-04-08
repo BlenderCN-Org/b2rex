@@ -1,7 +1,14 @@
+"""
+ Parser for entity component c++ header files.
+"""
+
 import os
 import struct
 
 def get_hash(name):
+    """
+    Get the tundra hash for a name.
+    """
     # from tundra:Core:CoreStringUtils.cpp:GetHash()
     ret = 0
     if not name:
@@ -13,12 +20,18 @@ def get_hash(name):
 
 
 class ComponentData(object):
+    """
+    Component data
+    """
     def __init__(self, tpl, data=None):
         self._tpl = tpl
         if data:
             self.initialize(data)
 
     def initialize(self, data):
+        """
+        Initialize with given data.
+        """
         attrs_size = data.get_u8()
         data.fill(120)
         if not attrs_size == len(self._tpl.attribute_names):
@@ -53,20 +66,32 @@ class ComponentData(object):
                 setattr(self, name, val)
 
     def __str__(self):
+        """
+        Return a string representation of the object.
+        """
         return "ComponentData(%s) [%s]" % (self._tpl.component_name,
                                            self.__dict__)
 
 class ComponentTemplate(object):
+    """
+    A component template.
+    """
     def __init__(self, name):
         self.component_name = name
         self.attributes = {}
         self.attribute_names = []
 
     def add_attribute(self, name, attribute):
+        """
+        Add an attribute to this template.
+        """
         self.attributes[name] = attribute
         self.attribute_names.append(name)
 
     def deserialize(self, data):
+        """
+        Deserialize a component from the given data.
+        """
         cdata = ComponentData(self, data)
         return cdata
 
@@ -87,12 +112,19 @@ type_map = {'QVector3D': 'vector3',
             'AssetReferenceList' : 'assetlist'}
 
 class ECParser(object):
+    """
+    Entity component c++ header parser.
+    """
     def __init__(self):
         self._components = {}
         self._components['unknown'] = ComponentTemplate('unknown')
         self._comp2hash = {}
 
     def deserialize(self, namehash, data):
+        """
+        Deserialize the given data using the template for the component
+        with the given namehash.
+        """
         try:
             name = self._comp2hash[namehash]
         except:
@@ -101,12 +133,22 @@ class ECParser(object):
         return c.deserialize(data)
 
     def get_component(self, name):
+        """
+        Get the component with the given name.
+        """
         return self._components[name]
 
     def has_component(self, name):
+        """
+        Check if the parser has the component with the given
+        name.
+        """
         return name in self._components
 
     def parse_file(self, filename):
+        """
+        Parse the given file looking for entity components.
+        """
         f = open(filename, 'r')
         data = f.readlines()
         f.close
@@ -124,21 +166,36 @@ class ECParser(object):
             self._comp2hash[get_hash(c.component_name)] = c.component_name
 
     def parse_component_line(self, line):
+        """
+        Parse a component class declaration line.
+        """
         name = line.split(':')[0].strip().split(' ')[-1]
         return ComponentTemplate(name)
 
     def parse_attribute_line(self, line):
+        """
+        Parse a line containing a single attribute declared by using
+        a template.
+        """
         name = line.split(' ')[1].strip(';')
         proptype = line.split('>')[0].split('<')[1]
         return name, type_map.get(proptype, proptype)
 
     def parse_define_line(self, line):
+        """
+        Parse a line containing a single attribute declared by using
+        a macro.
+        """
         values = line.split('(')[1].split(')')[0]
         proptype, name = values.split(',')
         proptype = proptype.strip()
         return name.strip(), type_map.get(proptype, proptype)
 
     def add_dir(self, dirname):
+        """
+        Scan the given directory recursively looking for c++ header
+        files and entity components inside.
+        """
         for dirpath, dirnames, filenames in os.walk(dirname):
             for filename in filenames:
                 full_filename = os.path.join(dirpath, filename)

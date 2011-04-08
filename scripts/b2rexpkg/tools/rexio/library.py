@@ -4,6 +4,9 @@ from collections import defaultdict
 from os.path import dirname
 
 class LibraryComponent(object):
+    """
+    A component found inside  a library.
+    """
     def __init__(self, name, path, component_type, dependencies,
                  comp_dependencies, attrs):
         self.name = name
@@ -14,6 +17,10 @@ class LibraryComponent(object):
         self.attributes = attrs
 
     def pack(self, dest_dir):
+        """
+        Pack the component and all its dependencies into the destination
+        directory.
+        """
         # XXX should create a subdirectory to avoid possible conflicts?
         shutil.copy(self.path, dest_dir)
         for dep in self._file_dependencies:
@@ -23,11 +30,18 @@ class LibraryComponent(object):
         return "LibraryComponent(%s, %s, %s)"%(self.name, self.path, self._type)
 
 class Library(object):
+    """
+    A component library.
+    """
     def __init__(self):
         self._paths = []
         self._components = defaultdict(dict)
 
     def add_path(self, path, refresh=False):
+        """
+        Add the given path into the library. The path will be scanned for
+        known component types.
+        """
         if not os.path.exists(path):
             # to allow for test paths that dont exist for other ppl
             return
@@ -36,6 +50,9 @@ class Library(object):
             self.scan_path(path)
 
     def scan_path(self, path):
+        """
+        Scan the given path for known component types.
+        """
         for f in os.listdir(path):
             if f.endswith(".js"):
                 name = f[:-3]
@@ -43,6 +60,9 @@ class Library(object):
                 self.add_js_component(name, f_path)
 
     def find_paths(self, path, delim):
+        """
+        Find paths inside the given file.
+        """
         f = open(path, 'r')
         data = f.read()
         f.close()
@@ -59,6 +79,10 @@ class Library(object):
         return list(paths)
 
     def dereference_paths(self, paths, basepath):
+        """
+        Dereference the given paths from local:// or file:// style
+        into filesystem.
+        """
         new_paths = []
         for path in paths:
             if path.startswith('local://'):
@@ -68,6 +92,9 @@ class Library(object):
         return new_paths
 
     def add_js_component(self, name, path):
+        """
+        Add the given js component into the library.
+        """
         paths = self.find_paths(path, 'local://')
         paths += self.find_paths(path, 'file://')
         paths = self.dereference_paths(paths, os.path.dirname(path))
@@ -76,6 +103,9 @@ class Library(object):
                                                              path, 'js', paths,
                                                              deps, attrs)
     def find_component_deps_fromjs(self, path):
+        """
+        Find the component dependencies by scanning a javascript file.
+        """
         f = open(path, 'r')
         data = f.read()
         f.close()
@@ -98,6 +128,9 @@ class Library(object):
         return list(deps), list(attrs)
 
     def find_from_function(self, data, key):
+        """
+        Search for a given key in the given data.
+        """
         all_found = set()
         found = data.find(key)
         while not found == -1:
@@ -108,19 +141,23 @@ class Library(object):
         return list(all_found)
 
     def get_component(self, component_type, name):
+        """
+        Get the component with the given type and name.
+        """
         return self._components[component_type][name]
 
     def get_components(self, component_type):
+        """
+        Get all components with the given type.
+        """
         return self._components[component_type]
 
+# hardcoded path, would be nice to do it later and also to allow the user to
+# add his own paths.
 library = Library()
 library.add_path(os.path.join(dirname(dirname(dirname(__file__))),
                               'data',
                               'rexjs'))
-#library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Door')
-#library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Avatar')
-#library.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Tooltip')
-
 if __name__ == '__main__':
     l = Library()
     l.add_path('/home/caedes/SVN/REALXTEND/tundra/bin/scenes/Door')

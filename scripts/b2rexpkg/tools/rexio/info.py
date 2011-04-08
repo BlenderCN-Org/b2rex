@@ -4,6 +4,9 @@ import os
 component_data = None
 
 def get_component_info():
+    """
+    Get component info for realxtend.
+    """
     global component_data
     if component_data:
         return component_data

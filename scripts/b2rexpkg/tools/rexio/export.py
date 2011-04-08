@@ -1,3 +1,7 @@
+"""
+ Exporter for tundra xml format.
+"""
+
 import os
 
 import xml.etree.ElementTree as ET
@@ -6,6 +10,9 @@ from .info import get_component_info
 from .library import library
 
 def attr_name(name):
+    """
+    Return an attribute name converted into a python attribute name.
+    """
     return name.lower().replace(' ', '_')
 
 class RexSceneExporter(object):
