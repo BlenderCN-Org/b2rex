@@ -22,12 +22,22 @@
   - b2.4 support partially working
 0.9 - Logic
  Goals:
-  - Control of rex logic
+  - Control of rex logic DONE
+    - generate rex file DONE
+    - generate ogre components DONE
+    - generic support for rex components DONE
   - Control of ll state scripts
+    - edit with custom editor DONE
+    - assign from inventory, stop, pause, delete DONE
+    - better debugging capabilities DEFERRED
   - Some sort of graphical state machine editor
-  - Maybe direct support for editing logic using blender bricks
-  - Doors, pickables, physics
+    - editor for llscripts DONE
+    - generic editor DEFERRED
+  - Maybe direct support for editing logic using blender bricks DEFERRED
+  - Doors, pickables, physics DONE
   - Maybe support for running in game engine mode
+    - control of avatar DONE
+    - synchronize all object positions DONE
 
 1.0 - Release
  Goals:
