@@ -31,7 +31,7 @@ class RexComponent(object):
 
 class NameComponent(RexComponent):
     """
-    Name component.
+    Name component proxying a blender object.
     """
     component_type = 'EC_Name'
     _attribute_names = ['name', 'description']
@@ -44,7 +44,7 @@ class NameComponent(RexComponent):
 
 class MeshComponent(RexComponent):
     """
-    Mesh component.
+    Mesh component proxying a blender object.
     """
     component_type = 'EC_Mesh'
     _attribute_names = ['Transform', 'Mesh ref', 'Skeleton ref',
@@ -66,7 +66,7 @@ class MeshComponent(RexComponent):
 
 class PlaceableComponent(RexComponent):
     """
-    Placeable component.
+    Placeable component proxying a blender object.
     """
     component_type = 'EC_Placeable'
     def _get_dummy(self):
@@ -91,7 +91,7 @@ class PlaceableComponent(RexComponent):
 
 class GenericComponent(RexComponent):
     """
-    A generic component (can hold any other component)
+    A generic component (can hold any other component).
     """
     def __init__(self, obj, component, metadata):
         RexComponent.__init__(self, obj, component.name)
@@ -243,7 +243,7 @@ class RexLogicModule(SyncModule):
 
     def draw_object(self, box, editor, obj):
         """
-        Draw scripting section in the object panel.
+        Component editor.
         """
         if not self.expand(box):
             return False
