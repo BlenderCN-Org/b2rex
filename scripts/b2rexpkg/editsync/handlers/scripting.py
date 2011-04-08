@@ -1,5 +1,5 @@
 """
- OnlineModule: Manages agent online and offline messages from the simulator.
+ Takes care of attaching scripts to objects.
 """
 import uuid
 
