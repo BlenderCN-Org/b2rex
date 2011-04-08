@@ -1,41 +1,92 @@
+"""
+ Implements agent movement operations.
+"""
+
 from .base import Handler
 
 class AgentMovementHandler(Handler):
     def onRegionConnect(self, region):
+        """
+        Agent connected to region
+        """
         res = region.message_handler.register("AgentMovementComplete")
         res.subscribe(self.onAgentMovementComplete)
 
+    def processSetFlags(self, flags):
+        """
+        Set agent movement flags directly
+        """
+        agent = self.manager.client
+        agent.control_flags = flags
+
     def processWalk(self, walk = False):
-        print("processWalk")
+        """
+        Walk on/off
+        """
         agent = self.manager.client
         agent.walk(walk)
 
     def processWalkBackwards(self, walk = False):
-        print("processWalkBackwards")
+        """
+        Walk backwards on/off
+        """
         agent = self.manager.client
         agent.walk_backwards(walk)
 
     def processBodyRotation(self, body_rotation):
+        """
+        Set body rotation by a quaternion
+        """
         agent = self.manager.client
         agent.body_rotation(body_rotation)
 
     def processStop(self):
-        print("processStop")
+        """
+        Stop all movement
+        """
         agent = self.manager.client
         agent.stop()
 
-    def processTurnLeft(self, turning = True):
-        print("processTurnLeft")
+    def processFly(self, flying):
+        """
+        Set flying flag
+        """
         agent = self.manager.client
-        agent.turn_left(turning)
+        agent.fly(flying)
 
-    def processTurnRight(self, turning = True):
-        print("processTurnRight")
+    def processMoveUp(self, flying):
+        """
+        Move up on/off
+        """
         agent = self.manager.client
-        agent.turn_right(turning)
+        agent.move_up(flying)
+
+    def processMoveDown(self, flying):
+        """
+        Move down on/off
+        """
+        agent = self.manager.client
+        agent.move_down(flying)
+
+    def processStrafeLeft(self, moving = True):
+        """
+        Strafe left on/off
+        """
+        agent = self.manager.client
+        agent.strafe_left(moving)
+
+    def processStrafeRight(self, moving = True):
+        """
+        Strafe right on/off
+        """
+        agent = self.manager.client
+        agent.strafe_right(moving)
 
 
     def onAgentMovementComplete(self, packet):
+        """
+        AgentMovementComplete received from sim
+        """
         # some region info
         AgentData = packet['AgentData'][0]
         Data = packet['Data'][0]
