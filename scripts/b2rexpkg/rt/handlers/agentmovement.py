@@ -16,10 +16,7 @@ class AgentMovementHandler(Handler):
         agent.walk_backwards(walk)
 
     def processBodyRotation(self, body_rotation):
-        print("processBodyRotation")
         agent = self.manager.client
-        print(body_rotation)
-        print(type(body_rotation))
         agent.body_rotation(body_rotation)
 
     def processStop(self):
