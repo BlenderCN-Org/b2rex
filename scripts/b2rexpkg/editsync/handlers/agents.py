@@ -61,10 +61,13 @@ class AgentsModule(SyncModule):
         editor = self._parent
         agent = editor.findWithUUID(agentID)
         if not agent:
-            objects = set(list(bpy.data.objects))
+            context = bpy.context
+            selected = list(context.selected_objects)
+            for obj in selected:
+                obj.select = False
             bpy.ops.mesh.primitive_cube_add()
-            objects2 = set(list(bpy.data.objects))
-            agent = list(objects2.difference(objects))[0]
+            agent = context.selected_objects[0]
+            agent.select = False
             agent.name = agentID
             camera = bpy.data.cameras.new(agentID)
             camera_obj = bpy.data.objects.new('cam_'+agentID, camera)
@@ -80,6 +83,8 @@ class AgentsModule(SyncModule):
                 editor.apply_position(agent, editor.positions[agentID], raw=True)
                 #scene.objects.link(agent)
             b2rexpkg.editor.set_loading_state(agent, 'OK')
+            for obj in selected:
+                obj.select = True
             try:
                 agent.show_name = True
                 agent.show_x_ray = True
