@@ -87,16 +87,15 @@ class GameModule(SyncModule):
                  
                 # set the values
                 owner.applyRotation([0, 0, x], False)
-                camera.applyRotation([y, 0, 0], True)
+                #camera.applyRotation([y, 0, 0], True)
                 
-                _rotmat = owner.worldOrientation
-                print(_rotmat)
-                _roteul = _rotmat.to_euler()
-                _roteul[0] = 0
-                _roteul[1] = 0
-                rot = session.unapply_rotation(_roteul)
+                _rotmat = owner.localOrientation
+                #_roteul = _rotmat.to_euler()
+                # XXX to_quaternion in 257?
+                q = _rotmat.to_quat()
+                #rot = session.unapply_rotation(_roteul)
             #    print(rot)
-                simrt.BodyRotation(rot)
+                simrt.BodyRotation([q.x, q.y, q.z, q.w])
             
             else:
                 owner["minX"] = x
@@ -110,7 +109,6 @@ class GameModule(SyncModule):
             # keyboard control
             keyboard = G.keyboard.events
             if keyboard[events.WKEY]:
-                print("WALKT")
                 simrt.Walk(True)
             elif keyboard[events.SKEY]:
                 simrt.WalkBackwards(True)
