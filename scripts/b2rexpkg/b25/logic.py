@@ -17,7 +17,7 @@ components = ()
 for name in rexio.get_component_info():
     components += ((name, name.replace('EC_', ''), name),)
 
-# Operators
+# Operators for the component editor.
 class EntityAction(bpy.types.Operator):
     bl_idname = "b2rex.entity"
     bl_label = "entity action"
@@ -34,15 +34,13 @@ class ComponentTypeTypeAction(bpy.types.Operator):
         bpy.b2rex_session.RexLogic.set_component_type(context, self.type)
         return {'FINISHED'}
 
-
-
-
+# Operators for the fsm editor.
 class FsmAction(bpy.types.Operator):
     bl_idname = "b2rex.fsm"
     bl_label = "fsmaction"
     action = StringProperty(name="action",default='add_state')
     def execute(self, context):
-        getattr(bpy.b2rex_session.Scripting, self.action)(context)
+        getattr(bpy.b2rex_session.FsmEditor, self.action)(context)
         return {'FINISHED'}
 
 class FsmActuatorTypeAction(bpy.types.Operator):
@@ -50,7 +48,7 @@ class FsmActuatorTypeAction(bpy.types.Operator):
     bl_label = "actuatortype"
     type = EnumProperty(items=actuators, description='')
     def execute(self, context):
-        bpy.b2rex_session.Scripting.set_actuator_type(context, self.type)
+        bpy.b2rex_session.FsmEditor.set_actuator_type(context, self.type)
         return {'FINISHED'}
 
 class FsmSensorTypeAction(bpy.types.Operator):
@@ -58,7 +56,7 @@ class FsmSensorTypeAction(bpy.types.Operator):
     bl_label = "sensortype"
     type = EnumProperty(items=sensors, description='')
     def execute(self, context):
-        bpy.b2rex_session.Scripting.set_sensor_type(context, self.type)
+        bpy.b2rex_session.FsmEditor.set_sensor_type(context, self.type)
         return {'FINISHED'}
 
 

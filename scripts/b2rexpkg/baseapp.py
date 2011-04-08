@@ -21,6 +21,7 @@ from .editsync.handlers.prims import PrimsModule
 from .editsync.handlers.online import OnlineModule
 from .editsync.handlers.rexlogic import RexLogicModule
 from .editsync.handlers.rexexport import RexExportModule
+from .editsync.handlers.fsmeditor import FsmEditorModule
 from .editsync.handlers.scripting import ScriptingModule
 from .editsync.handlers.agents import AgentsModule
 from .editsync.handlers.object import ObjectModule
@@ -201,6 +202,7 @@ class BaseApplication(Importer, Exporter):
         self.registerModule(RexExportModule(self))
         self.registerModule(AgentsModule(self))
         self.registerModule(ScriptingModule(self))
+        self.registerModule(FsmEditorModule(self))
 
     def initializeCommands(self):
         """
