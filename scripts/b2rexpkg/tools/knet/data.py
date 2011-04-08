@@ -1,7 +1,7 @@
 """
  Kristalli data serialization.
 
- see http://clb.demon.fi/Kristalli/_immediate_mode_serialization.html
+ see http://clb.demon.fi/knet/_immediate_mode_serialization.html
 """
 import struct
 

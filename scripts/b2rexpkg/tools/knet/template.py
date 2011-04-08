@@ -1,7 +1,7 @@
 """
  Kristalli message xml parser
 
- see http://clb.demon.fi/Kristalli/_kristalli_x_m_l.html
+ see http://clb.demon.fi/knet/_kristalli_x_m_l.html
 """
 import xml.etree.ElementTree as ET
 
