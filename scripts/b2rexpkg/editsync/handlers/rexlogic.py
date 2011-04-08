@@ -3,14 +3,11 @@
 """
 import math
 import os
-import uuid
 
 from .base import SyncModule
 
-import b2rexpkg.tools.rexio.export
 from b2rexpkg.tools import rexio
 from b2rexpkg.tools.rexio.library import library
-from b2rexpkg.tools import runexternal
 
 from b2rexpkg.b25 import logic
 from b2rexpkg.b25.material import RexMaterialIO
@@ -18,9 +15,11 @@ from b2rexpkg.b25.material import RexMaterialIO
 #from .props.rexlogic import RexLogicProps
 
 import bpy
-import subprocess
 
 class RexComponent(object):
+    """
+    A rex component present in a blender object.
+    """
     def __init__(self, obj, name=''):
         self._obj = obj
         self.component_name = name
@@ -31,6 +30,9 @@ class RexComponent(object):
     attribute_names = property(_get_attribute_names)
 
 class NameComponent(RexComponent):
+    """
+    Name component.
+    """
     component_type = 'EC_Name'
     _attribute_names = ['name', 'description']
     def _get_name(self):
@@ -41,6 +43,9 @@ class NameComponent(RexComponent):
     description = property(_get_description)
 
 class MeshComponent(RexComponent):
+    """
+    Mesh component.
+    """
     component_type = 'EC_Mesh'
     _attribute_names = ['Transform', 'Mesh ref', 'Skeleton ref',
                         'Mesh materials', 'Draw distance', 'Cast shadows']
@@ -60,6 +65,9 @@ class MeshComponent(RexComponent):
     cast_shadows = property(_get_dummy) # false
 
 class PlaceableComponent(RexComponent):
+    """
+    Placeable component.
+    """
     component_type = 'EC_Placeable'
     def _get_dummy(self):
         return ""
@@ -82,6 +90,9 @@ class PlaceableComponent(RexComponent):
     show_bounding_box = property(_get_dummy) # false
 
 class GenericComponent(RexComponent):
+    """
+    A generic component (can hold any other component)
+    """
     def __init__(self, obj, component, metadata):
         RexComponent.__init__(self, obj, component.name)
         self._component = component
@@ -103,6 +114,9 @@ class GenericComponent(RexComponent):
         return self._obj[tmp_name]
 
 class RexLogicModule(SyncModule):
+    """
+    b2rex module taking care of tundra components and the component editor.
+    """
     component_data = None
     def register(self, parent):
         """
@@ -120,62 +134,6 @@ class RexLogicModule(SyncModule):
             dest = os.path.join(props.tundra_path, 'scenes', subdir)
             library.add_path(dest, True)
 
-    def export(self, context):
-        """
-        Export and pack the scene to rex logic format.
-        """
-        editor = self._parent
-        editor.exportSettings = context.scene.b2rex_props
-        editor.exportSettings.loc = [0,0,0]
-        dest = editor.ensureDestinationDir(delete=True)
-
-        # export materials
-        for ob in bpy.context.scene.objects:
-            self.export_materials(ob, dest)
-
-        # export ogre data
-        editor.onExport(context, delete=False)
-
-        # export rex data
-        dest_tundra = os.path.join(dest, editor.exportSettings.pack + '.txml')
-        e = rexio.export.RexSceneExporter()
-        e.export(context.scene, dest_tundra)
-        return dest_tundra
-
-    def run(self, context):
-        dest_tundra = self.export(context)
-        editor = self._parent
-
-        # run tundra
-        props = editor.exportSettings
-        paths = []
-        if props.tundra_path:
-            paths.append(props.tundra_path)
-        app_path = runexternal.find_application('server', paths)
-        prevdir = os.curdir
-        os.chdir(os.path.dirname(app_path))
-
-        subprocess.call([app_path,
-                          '--file',
-                          dest_tundra])
-        os.chdir(prevdir)
-
-
-    def export_materials(self, obj, dest):
-        editor = self._parent
-        mesh = obj.data
-        faces = editor._getFaceRepresentatives(mesh)
-        f = open(os.path.join(dest, mesh.name + '.material'), 'w')
-        for face in faces:
-            bmat = editor._getFaceMaterial(mesh, face)
-            if not bmat.opensim.uuid:
-                bmat.opensim.uuid = str(uuid.uuid4())
-                bmat.name = bmat.opensim.uuid
-            matio = RexMaterialIO(editor, mesh, face, bmat)
-            matio.write(f)
-        f.write('\n\n')
-        f.close()
-
     def unregister(self, parent):
         """
         Unregister this module from the editor
@@ -184,11 +142,14 @@ class RexLogicModule(SyncModule):
             delattr(bpy.types.B2RexObjectProps, 'components')
 
     def find_components(self, obj):
+        """
+        Return components in the given object.
+        """
         # base components
         components = [NameComponent(obj), PlaceableComponent(obj), MeshComponent(obj)]
 
         # user defined components
-        coms_info = self.get_component_info()
+        coms_info = rexio.get_component_info()
         for bcomp in obj.opensim.component_data:
             metadata = coms_info[bcomp.type]
             component = GenericComponent(obj, bcomp, metadata)
@@ -197,6 +158,9 @@ class RexLogicModule(SyncModule):
         return components
 
     def get_entity_components(self, opensim_data):
+        """
+        Get components from the given opensim data.
+        """
         if not opensim_data.uuid:
             return []
         obj = self._parent.findWithUUID(opensim_data.uuid)
@@ -205,6 +169,9 @@ class RexLogicModule(SyncModule):
     #parent.registerCommand('CoarseLocationUpdate', self.processCoarseLocationUpdate)
 
     def _add_component(self, context):
+        """
+        Add component operator.
+        """
         entity = self._get_entity()
         component = entity.component_data.add()
         component.id = entity.next_component_idx
@@ -220,7 +187,10 @@ class RexLogicModule(SyncModule):
         self._initialize_component(obj, component)
 
     def _initialize_component(self, obj, component):
-        coms_info = self.get_component_info()
+        """
+        Initialize component operator.
+        """
+        coms_info = rexio.get_component_info()
         com_info = coms_info[component.type]
         pre = str(component.id)
         for prop in com_info:
@@ -246,6 +216,9 @@ class RexLogicModule(SyncModule):
 
 
     def _delete_component(self, context):
+        """
+        Delete component operator.
+        """
         entity = self._get_entity()
 
     def _get_entity(self):
@@ -258,33 +231,15 @@ class RexLogicModule(SyncModule):
         return obj.opensim
 
     def set_component_type(self, context, new_type):
+        """
+        Set the component type.
+        """
         entity = self._get_entity()
         component = entity.component_data[entity.selected_component]
         component.type = new_type
 
         obj = self._parent.getSelected()[0]
         self._initialize_component(obj, component)
-
-    def get_component_info(self):
-        return rexio.get_component_info()
-
-    def draw(self, layout, session, props):
-        if not self.expand(layout, title='Rex logic'):
-            return False
-        col = layout.column_flow(0)
-        col.operator("b2rex.rexexport", text="Export").action = 'export'
-        if runexternal.find_application('server', [props.tundra_path]):
-            col.operator("b2rex.rexexport", text="Export and run").action = 'run'
-        components = library.get_components('jsscript')
-        box = layout.box()
-        for component_name in components:
-            component = components[component_name]
-            box.label(component.name)
-            if component.dependencies:
-                deps = map(lambda s: s.replace('EC_', ''), component.dependencies)
-                box.label("    "+", ".join(deps), icon='RNA')
-            if component.attributes:
-                box.label("    "+", ".join(component.attributes), icon='SETTINGS')
 
     def draw_object(self, box, editor, obj):
         """
@@ -322,7 +277,7 @@ class RexLogicModule(SyncModule):
                                'type',
                                text=component.type, icon='BLENDER')
 
-        coms_info = self.get_component_info()
+        coms_info = rexio.get_component_info()
         com_info = coms_info[component.type]
         pre = str(component.id)
         for prop in com_info:

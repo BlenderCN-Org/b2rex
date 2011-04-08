@@ -178,7 +178,7 @@ class RexExport(bpy.types.Operator):
 
     action = bpy.props.StringProperty()
     def execute(self, context):
-        getattr(bpy.b2rex_session.RexLogic, self.action)(context)
+        getattr(bpy.b2rex_session.RexExport, self.action)(context)
         return {'FINISHED'}
 
 class RexExport(bpy.types.Operator):
