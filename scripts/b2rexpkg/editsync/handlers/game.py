@@ -134,17 +134,9 @@ class GameModule(SyncModule):
         simrt = bpy.b2rex_session.simrt
         session = bpy.b2rex_session
 
-        if not "avatar" in bpy.data.objects:
-            self.import_object("avatar")
-            
-
-        avatar = bpy.data.objects["avatar"]
-
         commands = simrt.getQueue()
 
-        print('processCommands', len(commands), avatar)
         for command in commands:
-            print(' *', command)
             if command[0] == "pos":
                 self.processPosition(owner, *command[1:])
 
