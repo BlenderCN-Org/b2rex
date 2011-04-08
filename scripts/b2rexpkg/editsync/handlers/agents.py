@@ -9,6 +9,7 @@ from .base import SyncModule
 
 import bpy
 import b2rexpkg
+import math
 
 class AgentsModule(SyncModule):
     _agents = {}
@@ -60,15 +61,24 @@ class AgentsModule(SyncModule):
         editor = self._parent
         agent = editor.findWithUUID(agentID)
         if not agent:
+            objects = set(list(bpy.data.objects))
+            bpy.ops.mesh.primitive_cube_add()
+            objects2 = set(list(bpy.data.objects))
+            agent = list(objects2.difference(objects))[0]
+            agent.name = agentID
             camera = bpy.data.cameras.new(agentID)
-            agent = bpy.data.objects.new(agentID, camera)
+            camera_obj = bpy.data.objects.new('cam_'+agentID, camera)
+            scene = editor.get_current_scene()
+            scene.objects.link(camera_obj)
+            camera_obj.location = (1.0, 0.0, 1.0)
+            camera_obj.rotation_euler = (math.pi/2.0, 0.0, -math.pi/2.0)
+            camera_obj.parent = agent
             editor.set_uuid(agent, agentID)
             self._agents[agentID] = agentID
 
-            scene = editor.get_current_scene()
             if agentID in editor.positions:
                 editor.apply_position(agent, editor.positions[agentID], raw=True)
-            scene.objects.link(agent)
+                #scene.objects.link(agent)
             b2rexpkg.editor.set_loading_state(agent, 'OK')
             try:
                 agent.show_name = True
