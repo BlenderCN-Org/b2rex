@@ -107,6 +107,18 @@ class GameModule(SyncModule):
             G.mouse.position = (0.5,0.5)
             
             # keyboard control
+            keyboard = G.keyboard.events
+            if keyboard[events.WKEY]:
+                print("WALKT")
+                simrt.Walk(True)
+            elif keyboard[events.SKEY]:
+                simrt.WalkBackwards(True)
+            elif keyboard[events.AKEY]:
+                simrt.BodyRotation([1, 0, 0, 1])
+            elif keyboard[events.DKEY]:
+                simrt.BodyRotation([1, 1, 0, 1])
+            else:
+                simrt.Stop()
 
     def processCommands(self):
         from bge import logic as G
@@ -129,7 +141,9 @@ class GameModule(SyncModule):
 
         commands = simrt.getQueue()
 
+        print('processCommands', len(commands))
         for command in commands:
+            print(' *', command)
             if command[0] == "pos":
                 print("command0")
                 objid = command[1]
