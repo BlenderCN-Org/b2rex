@@ -1,3 +1,7 @@
+"""
+Maintain a session to a kristalli server
+"""
+
 # Echo client program
 import os
 import socket
@@ -7,6 +11,9 @@ from .ksocket import KristalliSocket
 from .template import MessageTemplateParser
 
 class KristalliSession(object):
+    """
+    Object managing a session with a kristalli server
+    """
     def __init__(self, name):
         self.name = name.encode('utf-8')
         self._callbacks = defaultdict(list)
@@ -14,15 +21,24 @@ class KristalliSession(object):
         self.templates = MessageTemplateParser()
 
     def subscribe(self, msg_id, cb):
+        """
+        Subscribe a callback for given msg_id
+        """
         if isinstance(msg_id, str):
             msg_id = self.templates.get_msg_id(msg_id)
         self._callbacks[msg_id].append(cb)
 
     def connect(self, host, port):
+        """
+        Connect to the given host and post
+        """
         self._socket.connect((host, port))
         self.login(host, port)
 
     def login(self, host, port):
+        """
+        Send a login message to the given host and port
+        """
         login_data = """<login>
                             <address value="%s" />
                             <port value="%s" />
@@ -34,6 +50,10 @@ class KristalliSession(object):
         self._socket.send(100, struct.pack('<H', len(login_data))+login_data)
 
     def loop(self):
+        """
+        Loop over the connection and trigger registered callbacks as
+        messages arrive
+        """
         s = self._socket
         t = self.templates
         while True:

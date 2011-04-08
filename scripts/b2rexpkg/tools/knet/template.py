@@ -1,9 +1,20 @@
+"""
+ Kristalli message xml parser
+
+ see http://clb.demon.fi/Kristalli/_kristalli_x_m_l.html
+"""
 import xml.etree.ElementTree as ET
 
 class Message(object):
+    """
+    A kristalli message
+    """
     def __init__(self, name):
         self.name = name
     def __repr__(self):
+        """
+        Return a string representation of the object
+        """
         name = self.name
         #desc = "KristalliMessage("+name+"\n"
         #for name in dir(self):
@@ -33,16 +44,30 @@ class Message(object):
             return "KristalliMessage(%s)" % (name,)
 
 class MessageTemplate(object):
+    """
+    A kristalli message template
+    """
     def __init__(self, xml):
         self._xml = xml
+
     def __getattr__(self, name):
+        """
+        Get attributes from the root xml node if they
+        don't exist in this class.
+        """
         return self._xml.get(name)
 
     def parse(self, data):
+        """
+        Parse the given data using the current template.
+        """
         dest = self.parse_element(self._xml, data, 0)
         return dest
 
     def parse_list(self, xml, data, level):
+        """
+        Parse a list of elements.
+        """
         elmt_list = []
         dynamic_count = int(xml.get('dynamicCount'))
         count = data.get_dynamic_count(dynamic_count)
@@ -53,6 +78,9 @@ class MessageTemplate(object):
         return elmt_list
 
     def parse_element(self, xml, data, level):
+        """
+        Parse an xml element.
+        """
         dest = Message(xml.get('name'))
         #print(" "*level, "Element", xml.get('name'))
         for elmt in xml:
@@ -81,19 +109,36 @@ class MessageTemplate(object):
             else:
                 print("Tag with no value", elmt.get('name'))
         return dest
+
     def __repr__(self):
+        """
+        Return a string representation of this object
+        """
         return 'MessageTemplate(%s)'%(self.name,)
 
 
 class MessageTemplateParser(object):
+    """
+    A parser for message templates, that works
+    by adding files for it will parse.
+
+    Maintains a dict of templates at self.templates
+    and msg_ids can be queried using self.get_msg_id(msg_name)
+    """
     def __init__(self):
         self.templates = {}
         self._msg_ids = {}
 
     def get_msg_id(self, msg_name):
+        """
+        Query the kristalli id for a message
+        """
         return self._msg_ids[msg_name]
 
     def add_file(self, filename):
+        """
+        Add a file for parsing
+        """
         f = open(filename, 'r')
         data = f.read()
         f.close()
@@ -106,6 +151,9 @@ class MessageTemplateParser(object):
             # print(id, self.templates[id])
 
     def parse(self, msg_id, data):
+        """
+        Parse the given data with the template for msg_id
+        """
         return self.templates[msg_id].parse(data)
 
 
