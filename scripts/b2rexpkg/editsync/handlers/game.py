@@ -113,9 +113,11 @@ class GameModule(SyncModule):
             elif keyboard[events.SKEY]:
                 simrt.WalkBackwards(True)
             elif keyboard[events.AKEY]:
-                simrt.BodyRotation([1, 0, 0, 1])
+                pass
+                #simrt.BodyRotation([1, 0, 0, 1])
             elif keyboard[events.DKEY]:
-                simrt.BodyRotation([1, 1, 0, 1])
+                pass
+                #simrt.BodyRotation([1, 1, 0, 1])
             else:
                 simrt.Stop()
 
