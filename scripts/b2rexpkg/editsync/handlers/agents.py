@@ -69,11 +69,15 @@ class AgentsModule(SyncModule):
             agent = context.selected_objects[0]
             agent.select = False
             agent.name = agentID
+            for vert in agent.data.vertices:
+                vert.co[0] *= 0.5
+                vert.co[1] *= 0.5
+                vert.co[2] *= 0.5
             camera = bpy.data.cameras.new(agentID)
             camera_obj = bpy.data.objects.new('cam_'+agentID, camera)
             scene = editor.get_current_scene()
             scene.objects.link(camera_obj)
-            camera_obj.location = (1.0, 0.0, 1.0)
+            camera_obj.location = (0.5, 0.0, 0.5)
             camera_obj.rotation_euler = (math.pi/2.0, 0.0, -math.pi/2.0)
             camera_obj.parent = agent
             editor.set_uuid(agent, agentID)
