@@ -191,7 +191,7 @@ class ObjectHandler(Handler):
         obj_idx = self._next_create
 
         tok = UUID(str(uuid.uuid4()))
-        def finish_creating(real_uuid):
+        def finish_creating(real_uuid, transaction_id):
             del self._creating_cb[obj_idx]
             args = {"RexMeshUUID": mesh_uuid_str,
                     "materials": materials,
