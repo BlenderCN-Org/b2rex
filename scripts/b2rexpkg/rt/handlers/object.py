@@ -163,7 +163,7 @@ class ObjectHandler(Handler):
         data = base64.urlsafe_b64decode(b64data.encode('ascii'))
         self._next_create = (self._next_create + 1) % (256*256)
         obj_idx = self._next_create
-        def finishupload(asset_id):
+        def finishupload(asset_id, transaction_id):
             # asset uploaded, we have its uuid and can proceed now
             tok = UUID(str(uuid.uuid4()))
             def finish_creating(real_uuid):
