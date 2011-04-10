@@ -43,6 +43,10 @@ class RexDataModule(SyncModule):
             # XXX we dont update mesh for the moment
             return
         mesh = editor.find_with_uuid(meshId, bpy.data.meshes, "meshes")
+        urls = []
+        # 4 is sound and more are materials
+        if 'urls' in pars and len(pars['urls']) > 3:
+            urls = pars['urls']
         if mesh:
             editor.Object.createObjectWithMesh(mesh, objId, meshId)
             editor.queueRedraw()
@@ -53,14 +57,22 @@ class RexDataModule(SyncModule):
                 for index, matId, asset_type in materials:
                     if not matId == ZERO_UUID_STR:
                         if asset_type == AssetType.OgreMaterial:
-                            editor.Asset.downloadAsset(matId, asset_type,
+                            if urls:
+                                asset_url = urls[5+index]
+                                self.addDownload(asset_url, cb, pars, extra_main=main)
+                            else:
+                                editor.Asset.downloadAsset(matId, asset_type,
                                                editor.materialArrived, (objId,
                                                                          meshId,
                                                                          matId,
                                                                          asset_type,
                                                                          index))
                         elif asset_type == 0:
-                            editor.Asset.downloadAsset(matId, asset_type,
+                            if urls:
+                                asset_url = urls[5+index]
+                                self.addDownload(asset_url, cb, pars, extra_main=main)
+                            else:
+                                editor.Asset.downloadAsset(matId, asset_type,
                                                editor.materialTextureArrived, (objId,
                                                                          meshId,
                                                                          matId,
@@ -71,11 +83,16 @@ class RexDataModule(SyncModule):
             if meshId and not meshId == ZERO_UUID_STR:
                 asset_type = pars["drawType"]
                 if asset_type == RexDrawType.Mesh:
-                    if not editor.Asset.downloadAsset(meshId, AssetType.OgreMesh,
+                    if urls:
+                        asset_url = urls[0]
+                        todownload = self.addDownload(asset_url, cb, pars, extra_main=main)
+                    else:
+                        todownload = editor.Asset.downloadAsset(meshId, AssetType.OgreMesh,
                                     self.meshArrived, 
                                      (objId, meshId, materials),
-                                            main=self.doMeshDownloadTranscode):
-                        editor.add_mesh_callback(meshId,
+                                            main=self.doMeshDownloadTranscode)
+                    if not todownload:
+                            editor.add_mesh_callback(meshId,
                                                editor.Object.createObjectWithMesh,
                                                objId,
                                                meshId, materials)
