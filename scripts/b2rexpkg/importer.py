@@ -300,6 +300,8 @@ class Importer25(object):
         return (rot.w, rot.x, rot.y, rot.z)
 
     def _get_local_scale(self, scale, parent):
+        p_scale = parent.scale
+        return (scale[0]/p_scale[0], scale[1]/p_scale[1], scale[2]/p_scale[2])
         parent_imatrix = parent.matrix_world.to_euler().to_matrix()
         parent_imatrix.invert()
         p_scale = parent.scale
