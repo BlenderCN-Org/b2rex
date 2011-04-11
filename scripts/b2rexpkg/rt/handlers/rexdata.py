@@ -69,9 +69,9 @@ class RexDataHandler(Handler):
             materials.append([matindex, str(matuuid), assettype])
             pos = pos + 18
         pars["Materials"] = materials
-        self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
         if not len(rexdata) > pos:
             self.logger.debug("RexPrimData: no more data")
+            self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
             return
         idx = pos
         while rexdata[idx] != '\0' and len(rexdata) > idx+1:
@@ -82,26 +82,42 @@ class RexDataHandler(Handler):
 
         pos = idx+1
         if not len(rexdata) > pos+16:
+            self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
             return
         RexSound = str(UUID(bytes=rexdata[pos:pos+16]))
         if RexSound and False:
                 print("RexSound", RexSound)
         pos += 16
         if not len(rexdata) > pos+4:
+            self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
             return
         RexSoundVolume = struct.unpack("<f", rexdata[pos:pos+4])[0]
         pos += 4
         if not len(rexdata) > pos+4:
+            self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
             return
         RexSoundRadius = struct.unpack("<f", rexdata[pos:pos+4])[0]
         pos += 4
         if not len(rexdata) > pos+4:
+            self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
             return
         RexSelectPriority= struct.unpack("<I", rexdata[pos:pos+4])[0]
         pos += 4
-        print("DATA LEFT",rexdata[pos:])
+        #print("DATA LEFT",rexdata[pos:])
         #self.logger.debug(" REXCLASSNAME: " + str(RexClassName))
-
+        urls = []
+        while rexdata[pos:]:
+            url = ""
+            idx = pos
+            while rexdata[idx] != '\0':
+                idx += 1
+            url = rexdata[pos:idx]
+            urls.append(url)
+            pos = idx+1
+        if urls:
+            print("urls found", urls)
+            pars['urls'] = urls
+        self.out_queue.put(['RexPrimData', obj_uuid_str, pars])
 
     def sendRexPrimData(self, obj_uuid, args):
         client = self.manager.client
