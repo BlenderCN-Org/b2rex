@@ -654,7 +654,6 @@ class BaseApplication(Importer, Exporter):
 
             if not obj_uuid in self.rotations or not rot == self.rotations[obj_uuid]:
                 self.stats[1] += 1
-                print("sending object position", obj_uuid)
                 if obj.parent:
                     self.simrt.apply_position(obj_uuid,
                                               self.unapply_position(obj, pos,0,0,0), self.unapply_rotation(rot))
@@ -665,7 +664,6 @@ class BaseApplication(Importer, Exporter):
                 self.rotations[obj_uuid] = rot
             elif not obj_uuid in self.positions or not pos == self.positions[obj_uuid]:
                 self.stats[1] += 1
-                print("sending object position", obj_uuid)
                 if obj.parent:
                     self.simrt.apply_position(obj_uuid,
                                               self.unapply_position(obj, pos,0,0,0))

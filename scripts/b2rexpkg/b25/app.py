@@ -244,12 +244,12 @@ class B2Rex(BaseApplication):
         #prev_scale = list(obj.scale)
         #if not prev_scale == scale:
             #    obj.scale = scale
-        self.scales[objId] = obj.scale
-        self.positions[objId] = obj.location
+        self.scales[objId] = list(obj.scale)
+        self.positions[objId] = list(obj.location)
 
     def _processPosCommand(self, obj, objId, pos):
         self.apply_position(obj, pos)
-        self.positions[objId] = obj.location
+        self.positions[objId] = list(obj.location)
 
     def getObjectProperties(self, obj):
         rot = obj.rotation_euler
