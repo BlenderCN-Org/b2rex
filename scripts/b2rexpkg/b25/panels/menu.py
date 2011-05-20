@@ -36,7 +36,10 @@ class Menu(bpy.types.Header):
         self.draw_connections(context, self.layout, session, props)
 
     def draw_callback(self, referer, context):
+        #print("redraw menu")
         bpy.ops.b2rex.processqueue()
+        if bpy.b2rex_session.stats[5]:
+            context.screen.name = context.screen.name
         
     def draw_connections(self, context, layout, session, props):
         if len(props.connection.list):
@@ -57,7 +60,13 @@ class Menu(bpy.types.Header):
                     if b_version == 256:
                         bpy.ops.b2rex.processqueue()
                     else:
-                        self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
+                        if not hasattr(session, "_redraw_handle"):
+                            session._redraw_handle =  context.region.callback_add(self.draw_callback, (self,
+                                                                         context),
+                                                    'POST_PIXEL')
+                        for area in context.screen.areas:
+                            if area.type in ['INFO', 'VIEW_3D']:
+                                area.tag_redraw()
 
         if session.stats[5] > 10:
             layout.label(text='',icon='PREVIEW_RANGE')
