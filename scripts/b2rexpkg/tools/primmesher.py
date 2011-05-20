@@ -361,7 +361,7 @@ class Angle(object):
         if not name.startswith('_'):
             return getattr(self, '_'+name)
         else:
-            raise Exception()
+            raise AttributeError
 
 class AngleList(object):
     _angles3 = List(Angle,
