@@ -4,7 +4,7 @@ Classes managing the ogre tools from blender 2.5
 
 import os
 import uuid
-import addon_ogreDotScene
+import io_export_ogreDotScene as addon_ogreDotScene
 from b2rexpkg.tools import uuidexport
 
 ogre_mesh_entity_helper = addon_ogreDotScene.INFO_OT_createOgreExport._node_export

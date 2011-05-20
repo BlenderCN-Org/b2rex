@@ -18,18 +18,19 @@
 
 # <pep8 compliant>
 
-bl_addon_info = {
-    'name': 'b2rex',
-    'author': 'Invi, Caedes',
-    'version': (0, 8, 0),
-    'blender': (2, 5, 6),
-    'api': 33928,
-    'location': 'Tools window > Scene panel',
-    'warning': '',
-    'description': 'Connect to opensim and realxtend servers',
-    'wiki_url': 'https://sim.lorea.org/pg/pages/view/438/',
-    'tracker_url': 'https://github.com/b2rex/b2rex',
-    'category': 'B2Rex'}
+bl_info = {
+    "name": 'b2rex',
+    "author": 'Invi, Caedes',
+    "blender": (2, 5, 7),
+    "api": 35622,
+    "version": (0, 8, 0),
+    "location": 'Tools window > Scene panel',
+    "warning": '',
+    "description": 'Connect to opensim and realxtend servers',
+    "wiki_url": 'https://sim.lorea.org/pg/pages/view/438/',
+    "support": 'COMMUNITY',
+    "tracker_url": 'https://github.com/b2rex/b2rex',
+    "category": 'Development'}
 
 import sys
 import traceback
