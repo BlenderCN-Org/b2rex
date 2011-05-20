@@ -303,8 +303,8 @@ class B2Rex(BaseApplication):
         if screen and not immediate:
             if b_version == 256:
                 bpy.ops.b2rex.redraw()
-            else:
-                self._handle = context.region.callback_add(self.draw_callback, (self, context), 'POST_VIEW')
+            # b2.57 does it directly on menu panel with
+            # draw callbacks
         else:
             # no context means we call a redraw for every
             # screen. this may be happening from a thread
