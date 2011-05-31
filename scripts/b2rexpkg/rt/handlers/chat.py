@@ -1,3 +1,6 @@
+"""
+ Receive and send chat commands from the sim
+"""
 
 from eventlet import api
 

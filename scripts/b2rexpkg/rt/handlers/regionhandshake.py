@@ -1,3 +1,7 @@
+"""
+ Receive region handshake
+"""
+
 from .base import Handler
 
 class RegionHandshakeHandler(Handler):

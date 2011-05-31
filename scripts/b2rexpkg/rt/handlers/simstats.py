@@ -1,3 +1,7 @@
+"""
+ Receive sim stats
+"""
+
 from .base import Handler
 
 class SimStatsHandler(Handler):

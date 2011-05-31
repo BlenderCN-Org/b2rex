@@ -1,3 +1,7 @@
+"""
+ UDP xfer upload manager
+"""
+
 from array import array
 import base64
 

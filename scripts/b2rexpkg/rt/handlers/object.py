@@ -1,3 +1,7 @@
+"""
+ Object creation, updating and reception
+"""
+
 try:
     from simtypes import AssetType
 except:

@@ -1,3 +1,7 @@
+"""
+ Request Assets to the sim server
+"""
+
 from array import array
 import base64
 import time

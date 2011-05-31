@@ -1,3 +1,7 @@
+"""
+ Bootstrap client from previously available data
+"""
+
 from .base import Handler
 
 class BootstrapHandler(Handler):

@@ -1,3 +1,7 @@
+"""
+ Receive and send terrain layer data
+"""
+
 import base64
 import struct
 from array import array

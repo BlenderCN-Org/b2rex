@@ -1,3 +1,6 @@
+"""
+ Receive map information from coarse updates
+"""
 
 from .base import Handler
 

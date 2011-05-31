@@ -1,3 +1,7 @@
+"""
+ Different functions related to llsd scripts
+"""
+
 from .base import Handler
 
 from pyogp.lib.base.datatypes import UUID

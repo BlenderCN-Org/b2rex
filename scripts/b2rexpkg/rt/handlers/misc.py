@@ -1,3 +1,7 @@
+"""
+ Miscelaneous functionality like localteleport or autopilot
+"""
+
 import uuid
 
 from .base import Handler

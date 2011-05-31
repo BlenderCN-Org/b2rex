@@ -1,3 +1,7 @@
+"""
+ Inventory Commands
+"""
+
 from .base import Handler
 from tools.inventorystring import InventoryStringParser
 from pyogp.lib.client.inventory import UDP_Inventory

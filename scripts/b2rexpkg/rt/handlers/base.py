@@ -1,3 +1,7 @@
+"""
+ Base class for agent handlers
+"""
+
 import logging
 
 class Handler(object):

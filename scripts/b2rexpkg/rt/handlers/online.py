@@ -1,3 +1,7 @@
+"""
+ Receive status updates from other avatars
+"""
+
 from .base import Handler
 
 class OnlineHandler(Handler):

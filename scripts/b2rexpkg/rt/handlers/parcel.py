@@ -1,3 +1,7 @@
+"""
+ Receive parcel information
+"""
+
 from .base import Handler
 
 class ParcelHandler(Handler):

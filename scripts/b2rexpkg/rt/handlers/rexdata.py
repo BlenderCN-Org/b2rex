@@ -1,3 +1,7 @@
+"""
+ Receive and send RexPrimData
+"""
+
 import uuid
 import struct
 

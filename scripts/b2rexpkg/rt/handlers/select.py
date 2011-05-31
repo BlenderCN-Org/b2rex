@@ -1,3 +1,7 @@
+"""
+ Object selection
+"""
+
 from .base import Handler
 
 class SelectHandler(Handler):

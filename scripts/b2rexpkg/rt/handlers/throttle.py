@@ -1,3 +1,7 @@
+"""
+ Send throttle parameters to sim
+"""
+
 import struct
 
 from pyogp.lib.base.message.message import Message, Block
